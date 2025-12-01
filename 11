@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OM-PRO: 통합 주문 관리 시스템</title>
+    <!-- Vue 3 & Tailwind -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Excel Lib -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Postcode -->
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        
+        body { 
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #f3f4f6; /* Light Gray Background */
+            color: #1f2937;
+        }
+
+        /* Professional Card Style */
+        .pro-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        /* Clean Input Style */
+        .pro-input {
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            color: #111827;
+            transition: all 0.2s;
+        }
+        .pro-input:focus {
+            background-color: #ffffff;
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        .btn-primary {
+            background-color: #2563eb; /* Royal Blue */
+            color: white;
+        }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        
+        .btn-secondary {
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            color: #374151;
+        }
+        .btn-secondary:hover { background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-sm">
+    <div id="app" class="h-full flex flex-col max-w-[1600px] mx-auto w-full">
+        
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center z-10 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-sm">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-800 tracking-tight">OM-PRO <span class="text-blue-600">Manager</span></h1>
+                    <p class="text-xs text-gray-400">Professional Order System</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="showProductModal = true" class="btn-secondary px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center">
+                    <i class="fas fa-box text-gray-400 mr-2"></i>상품/단가 관리
+                </button>
+                <button @click="backupData" class="btn-secondary px-3 py-1.5 rounded-md text-xs font-medium transition flex items-center">
+                    <i class="fas fa-download text-gray-400 mr-2"></i>백업
+                </button>
+                <button @click="clearAllData" class="btn-secondary px-3 py-1.5 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 border-red-100 transition flex items-center">
+                    <i class="fas fa-trash-alt mr-2"></i>초기화
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Widgets -->
+        <section class="p-6 pb-2 grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0">
+            <!-- Total Revenue -->
+            <div class="pro-card rounded-xl p-4 flex flex-col justify-between">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-semibold text-gray-500 uppercase">총 예상 매출</span>
+                    <i class="fas fa-coins text-blue-100 bg-blue-600 rounded-full p-1.5 text-xs"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ formatCurrency(dashboard.totalRevenue) }}</div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        주문 <span class="font-bold text-gray-700">{{ dashboard.orderCount }}</span>건 / 
+                        상품 <span class="font-bold text-gray-700">{{ dashboard.totalQty }}</span>개
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Breakdown -->
+            <div class="pro-card rounded-xl p-4 flex flex-col justify-center gap-1.5 text-xs">
+                <div class="flex justify-between items-center border-b border-dashed border-gray-100 pb-1">
+                    <span class="text-gray-500"><i class="far fa-credit-card mr-1"></i>카드 결제</span>
+                    <span class="font-bold text-gray-800">{{ formatCurrency(dashboard.cardRevenue) }}</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-dashed border-gray-100 pb-1">
+                    <span class="text-gray-500"><i class="far fa-money-bill-alt mr-1"></i>현금 입금</span>
+                    <span class="font-bold text-gray-800">{{ formatCurrency(dashboard.cashRevenue) }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500"><i class="fas fa-truck mr-1"></i>배송비 매출</span>
+                    <span class="font-bold text-gray-800">{{ formatCurrency(dashboard.shippingRevenue) }}</span>
+                </div>
+            </div>
+
+            <!-- Unpaid Status (Critical) -->
+            <div class="pro-card rounded-xl p-4 border-l-4 border-l-red-500 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition">
+                    <i class="fas fa-exclamation-circle text-6xl text-red-600"></i>
+                </div>
+                <div class="text-xs font-bold text-red-500 uppercase mb-1 flex items-center">
+                    미수금 알림 <span v-if="dashboard.totalUnpaid > 0" class="ml-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                </div>
+                <div class="text-2xl font-bold text-red-600">{{ formatCurrency(dashboard.totalUnpaid) }}</div>
+                <div class="text-xs text-gray-500 mt-1 flex gap-2">
+                    <span class="bg-red-50 text-red-600 px-1.5 rounded">상품 {{ formatCurrency(dashboard.productUnpaid) }}</span>
+                    <span class="bg-red-50 text-red-600 px-1.5 rounded">배송 {{ formatCurrency(dashboard.shippingUnpaid) }}</span>
+                </div>
+            </div>
+
+            <!-- Excel Export Actions -->
+            <div class="pro-card rounded-xl p-4 flex flex-col gap-2 justify-center bg-white">
+                <button @click="exportExcel('all')" class="w-full btn-primary py-2 rounded-lg text-sm font-bold shadow-sm flex justify-center items-center transition-transform active:scale-95">
+                    <i class="fas fa-file-excel mr-2"></i> 전체 장부 다운로드
+                </button>
+                <div class="flex gap-2">
+                    <button @click="exportExcel('invoice')" class="flex-1 btn-secondary py-1.5 rounded text-xs hover:text-green-600 hover:border-green-200">송장용</button>
+                    <button @click="exportExcel('order')" class="flex-1 btn-secondary py-1.5 rounded text-xs hover:text-blue-600 hover:border-blue-200">발주용</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex gap-6 px-6 pb-6 overflow-hidden">
+            
+            <!-- Left: Input Panel -->
+            <div class="w-[35%] flex flex-col gap-4">
+                <!-- Smart Parse Area -->
+                <div class="pro-card rounded-xl p-5 flex flex-col flex-1 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-bold text-gray-800 flex items-center"><i class="fas fa-magic text-blue-500 mr-2"></i>스마트 주문 입력</h2>
+                        <span class="text-[10px] text-gray-400 bg-gray-100 px-2 py-1 rounded">자동 파싱 활성화됨</span>
+                    </div>
+                    <div class="relative flex-1 group">
+                        <textarea v-model="rawInput" 
+                            placeholder="SNS 댓글이나 카톡 주문서를 여기에 붙여넣으세요.&#13;&#10;자동으로 이름, 전화번호, 주소, 상품을 분류합니다.&#13;&#10;&#13;&#10;예시)&#13;&#10;김철수 010-1234-5678 서울시 강남구...&#13;&#10;화이트 셔츠 2개"
+                            class="w-full h-full pro-input rounded-lg p-4 resize-none text-sm leading-relaxed placeholder-gray-400"></textarea>
+                        <button @click="processInput" class="absolute bottom-3 right-3 bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg hover:bg-black transition-all flex items-center">
+                            <i class="fas fa-arrow-down mr-2"></i>분석 및 적용
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manual Input Form -->
+                <div class="pro-card rounded-xl p-5 shadow-sm">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase mb-3">수동 입력 / 수정</h3>
+                    <div class="space-y-3">
+                        <div class="flex gap-2">
+                            <input v-model="manual.nickname" placeholder="닉네임/주문자" class="pro-input w-1/3 px-3 py-2 rounded-md text-xs">
+                            <div class="relative flex-1">
+                                <input v-model="manual.product" @input="filterProducts" placeholder="상품명 검색..." class="pro-input w-full px-3 py-2 rounded-md text-xs">
+                                <!-- Autocomplete Dropdown -->
+                                <div v-if="showSuggestions && filteredProducts.length" class="absolute z-50 w-full bg-white border border-gray-200 rounded-md shadow-xl mt-1 max-h-40 overflow-y-auto">
+                                    <div v-for="p in filteredProducts" @click="selectProduct(p)" class="px-3 py-2 hover:bg-blue-50 cursor-pointer text-xs flex justify-between items-center border-b border-gray-50 last:border-0">
+                                        <span class="font-medium text-gray-700">{{p.name}}</span>
+                                        <span class="text-blue-600 font-bold">{{formatCurrency(p.price)}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <input v-model.number="manual.qty" type="number" min="1" placeholder="수량" class="pro-input w-16 px-2 py-2 rounded-md text-xs text-center">
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <input v-model="manual.receiver" placeholder="수령인" class="pro-input w-1/3 px-3 py-2 rounded-md text-xs">
+                            <input v-model="manual.phone" placeholder="연락처" class="pro-input flex-1 px-3 py-2 rounded-md text-xs">
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <input v-model="manual.address" placeholder="기본 주소 + 상세 주소" class="pro-input flex-1 px-3 py-2 rounded-md text-xs">
+                            <button @click="openDaumPostcode" class="bg-gray-200 text-gray-600 px-3 rounded-md text-xs hover:bg-gray-300 font-medium whitespace-nowrap">주소검색</button>
+                        </div>
+                        
+                        <button @click="addOrder" class="w-full btn-primary py-2.5 rounded-lg text-sm font-bold shadow-sm mt-1 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>주문 리스트에 추가
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Order Grid -->
+            <div class="flex-1 pro-card rounded-xl flex flex-col shadow-sm overflow-hidden bg-white">
+                <!-- Toolbar -->
+                <div class="px-5 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">LIVE</span>
+                        <h3 class="font-bold text-gray-700">주문 현황 ({{ filteredOrderList.length }})</h3>
+                    </div>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
+                        <input v-model="searchQuery" placeholder="주문자, 전화번호 검색..." class="pl-9 pr-4 py-1.5 rounded-full border border-gray-300 text-xs w-64 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition">
+                    </div>
+                </div>
+
+                <!-- Table Header -->
+                <div class="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-100 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    <div class="col-span-1 text-center">No</div>
+                    <div class="col-span-2">주문자 정보</div>
+                    <div class="col-span-3">상품 / 단가</div>
+                    <div class="col-span-2 text-right">결제 필요 금액</div>
+                    <div class="col-span-3 text-center">결제 처리 (배송/카드/입금)</div>
+                    <div class="col-span-1 text-center">관리</div>
+                </div>
+
+                <!-- Table Body -->
+                <div class="flex-1 overflow-y-auto bg-white">
+                    <div v-if="filteredOrderList.length === 0" class="h-full flex flex-col items-center justify-center text-gray-400">
+                        <i class="fas fa-clipboard-list text-4xl mb-3 opacity-20"></i>
+                        <p>등록된 주문이 없습니다.</p>
+                    </div>
+                    
+                    <div v-else class="divide-y divide-gray-100">
+                        <div v-for="(order, index) in filteredOrderList" :key="order.id" 
+                            class="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-blue-50/30 transition-colors group text-xs">
+                            
+                            <!-- No -->
+                            <div class="col-span-1 text-center text-gray-400 font-mono">{{ filteredOrderList.length - index }}</div>
+                            
+                            <!-- User Info -->
+                            <div class="col-span-2 overflow-hidden">
+                                <div class="font-bold text-gray-800 truncate" :title="order.nickname">{{ order.nickname }}</div>
+                                <div class="text-[10px] text-gray-400 truncate">{{ order.phone || '-' }}</div>
+                            </div>
+                            
+                            <!-- Product -->
+                            <div class="col-span-3">
+                                <div class="font-medium text-gray-700 truncate flex items-center gap-1">
+                                    {{ order.product }}
+                                    <span class="bg-gray-100 text-gray-500 px-1 rounded text-[10px]">{{ order.qty }}개</span>
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-0.5">
+                                    @{{ formatCurrency(order.unitPrice) }} 
+                                    <span v-if="getShippingMasterId(order.nickname) === order.id" class="ml-1 text-blue-600 bg-blue-50 px-1 rounded font-bold">배송비포함</span>
+                                </div>
+                            </div>
+
+                            <!-- Amounts -->
+                            <div class="col-span-2 text-right">
+                                <div class="font-bold text-gray-800">{{ formatCurrency(calculateOrderTotal(order)) }}</div>
+                                <div class="font-bold mt-0.5" :class="calculateUnpaid(order) > 0 ? 'text-red-500' : 'text-green-600'">
+                                    <span class="text-[10px] text-gray-400 font-normal mr-1">미수</span>
+                                    {{ formatCurrency(calculateUnpaid(order)) }}
+                                </div>
+                            </div>
+
+                            <!-- Payment Inputs -->
+                            <div class="col-span-3 flex flex-col gap-1.5">
+                                <!-- Shipping Toggle -->
+                                <div v-if="getShippingMasterId(order.nickname) === order.id" class="flex items-center justify-between bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                                    <span class="text-[10px] text-gray-500"><i class="fas fa-truck text-gray-400 mr-1"></i>배송비 납부</span>
+                                    <button @click="toggleShipping(order)" 
+                                        class="relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none"
+                                        :class="order.isShippingPaid ? 'bg-blue-600' : 'bg-gray-300'">
+                                        <span class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 ease-in-out ml-0.5"
+                                            :class="order.isShippingPaid ? 'translate-x-4' : 'translate-x-0'"></span>
+                                    </button>
+                                </div>
+
+                                <div class="flex gap-1">
+                                    <input v-model.number="order.cardAmount" placeholder="카드" class="w-1/2 pro-input py-1 px-1.5 text-right text-[11px] rounded" @focus="$event.target.select()">
+                                    <input v-model.number="order.depositAmount" placeholder="입금" class="w-1/2 pro-input py-1 px-1.5 text-right text-[11px] rounded" @focus="$event.target.select()">
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="col-span-1 flex justify-center items-center gap-2">
+                                <button @click="copyOrderInfo(order)" class="text-gray-400 hover:text-blue-600 transition" title="주문서 복사">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                                <button @click="deleteOrder(order.id)" class="text-gray-400 hover:text-red-500 transition" title="삭제">
+                                    <i class="far fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Product Manager Modal -->
+        <div v-if="showProductModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-2xl w-[400px] border border-gray-200 overflow-hidden">
+                <div class="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-800">상품 및 단가 관리</h3>
+                    <button @click="showProductModal = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-5">
+                    <div class="flex gap-2 mb-4">
+                        <input v-model="newProduct.name" placeholder="상품명 입력" class="pro-input flex-1 px-3 py-2 rounded-md text-xs">
+                        <input v-model.number="newProduct.price" placeholder="단가" type="number" class="pro-input w-24 px-3 py-2 rounded-md text-xs">
+                        <button @click="saveProduct" class="btn-primary px-3 rounded-md text-xs font-bold"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <ul class="h-64 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                        <li v-for="(p, i) in products" class="flex justify-between items-center p-2.5 bg-white border border-gray-100 rounded-lg hover:border-blue-200 transition">
+                            <span class="text-gray-700 font-medium text-xs">{{ p.name }}</span>
+                            <div class="flex items-center gap-3">
+                                <span class="text-blue-600 font-bold text-xs">{{ formatCurrency(p.price) }}</span>
+                                <button @click="removeProduct(i)" class="text-gray-300 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-between items-center">
+                    <button @click="updateExistingOrders" class="text-xs text-blue-600 hover:underline">현재 단가로 전체 주문 업데이트</button>
+                    <button @click="showProductModal = false" class="btn-secondary px-4 py-1.5 rounded-md text-xs">닫기</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    orders: [],
+                    // 현실적인 쇼핑몰 예시 데이터
+                    products: [
+                        { name: "데일리 슬랙스", price: 39000 },
+                        { name: "오버핏 셔츠", price: 45000 },
+                        { name: "캐시미어 니트", price: 89000 },
+                        { name: "기본 무지 티셔츠", price: 15000 },
+                        { name: "와이드 데님 팬츠", price: 42000 }
+                    ],
+                    manual: { nickname: '', product: '', qty: 1, receiver: '', phone: '', address: '' },
+                    rawInput: '',
+                    searchQuery: '',
+                    showProductModal: false,
+                    showSuggestions: false,
+                    newProduct: { name: '', price: '' },
+                    defaultShippingCost: 3000
+                }
+            },
+            computed: {
+                filteredProducts() {
+                    if (!this.manual.product) return [];
+                    return this.products.filter(p => p.name.includes(this.manual.product));
+                },
+                // 정렬 로직 강화: 최신순 정렬
+                filteredOrderList() {
+                    const query = this.searchQuery.toLowerCase().trim();
+                    return this.orders.filter(o => 
+                        (o.nickname && o.nickname.toLowerCase().includes(query)) || 
+                        (o.phone && o.phone.includes(query)) ||
+                        (o.receiver && o.receiver.includes(query))
+                    ).sort((a, b) => b.timestamp - a.timestamp); // 최신순
+                },
+                // 최적화된 배송비 마스터 맵 (Computed Map for O(1) lookup)
+                // 닉네임별로 가장 오래된(먼저 들어온) 주문 ID를 저장
+                shippingMasterMap() {
+                    const map = {};
+                    // 전체 주문을 시간순(오름차순)으로 정렬하여 마스터 선정
+                    const sorted = [...this.orders].sort((a, b) => a.timestamp - b.timestamp);
+                    sorted.forEach(o => {
+                        if (o.nickname && !map[o.nickname]) {
+                            map[o.nickname] = o.id;
+                        }
+                    });
+                    return map;
+                },
+                dashboard() {
+                    let totalRevenue = 0, cardRevenue = 0, cashRevenue = 0, shippingRevenue = 0;
+                    let productUnpaid = 0, shippingUnpaid = 0;
+                    let totalQty = 0;
+
+                    this.filteredOrderList.forEach(order => {
+                        totalQty += order.qty;
+                        
+                        const itemPrice = order.unitPrice * order.qty;
+                        // O(1) Lookup via Map
+                        const isShippingMaster = this.shippingMasterMap[order.nickname] === order.id;
+                        const shippingCost = isShippingMaster ? this.defaultShippingCost : 0;
+
+                        // 매출 집계
+                        totalRevenue += itemPrice + shippingCost;
+                        cardRevenue += order.cardAmount || 0;
+                        cashRevenue += order.depositAmount || 0;
+
+                        // 미수금 계산 로직 (순수 상품값 / 배송비 분리)
+                        // 총 필요 금액 = 상품값 + 배송비
+                        // 총 지불 금액 = 카드 + 입금
+                        // 미수금 = 총 필요 - 총 지불
+                        
+                        const totalRequired = itemPrice + shippingCost;
+                        const totalPaid = (order.cardAmount || 0) + (order.depositAmount || 0);
+                        let remainingDue = totalRequired - totalPaid;
+
+                        // 배송비 미수금 분리 로직
+                        let sUnpaid = 0;
+                        if (isShippingMaster) {
+                            // 배송비가 있는 주문인데 '배송비 납부' 버튼이 안 켜져있으면?
+                            // 버튼은 단순히 '기록용'인지 '계산용'인지 정의 필요.
+                            // 여기서는 "배송비 납부 토글"이 꺼져있으면 배송비는 미납으로 간주.
+                            // 단, 현금을 넉넉히 냈으면 퉁칠 수 있음.
+                            // 보수적으로 계산: 토글이 꺼져있으면 배송비 3000원은 무조건 미수 잡음.
+                            if (!order.isShippingPaid) {
+                                sUnpaid = this.defaultShippingCost;
+                            } else {
+                                // 토글이 켜져있으면 배송비 매출로 잡음 (입금여부와 무관하게 매출 인식 or 현금매출에 포함?)
+                                // 보통 대시보드에서는 "받은 돈" 기준이므로, 토글이 켜졌다는 건 돈을 받았다는 뜻으로 해석.
+                                shippingRevenue += this.defaultShippingCost;
+                            }
+                        }
+                        
+                        // 상품 미수금 = 전체 미수금 - 배송비 미수금
+                        // (단, 마이너스가 나오면 0 처리 or 과입금)
+                        let pUnpaid = remainingDue - sUnpaid;
+                        
+                        // 통계 합산
+                        shippingUnpaid += sUnpaid;
+                        productUnpaid += pUnpaid;
+                    });
+
+                    return {
+                        totalRevenue, cardRevenue, cashRevenue, shippingRevenue,
+                        totalUnpaid: productUnpaid + shippingUnpaid,
+                        productUnpaid, shippingUnpaid,
+                        orderCount: this.filteredOrderList.length,
+                        totalQty
+                    };
+                }
+            },
+            mounted() {
+                this.loadState();
+                // 데이터 보호를 위해 10초마다 자동 저장
+                setInterval(this.saveState, 10000);
+            },
+            methods: {
+                formatCurrency(value) {
+                    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(value);
+                },
+                getShippingMasterId(nickname) {
+                    return this.shippingMasterMap[nickname];
+                },
+                calculateOrderTotal(order) {
+                    let total = order.unitPrice * order.qty;
+                    if (this.getShippingMasterId(order.nickname) === order.id) {
+                        total += this.defaultShippingCost;
+                    }
+                    return total;
+                },
+                calculateUnpaid(order) {
+                    const totalRequired = this.calculateOrderTotal(order);
+                    const paid = (order.cardAmount || 0) + (order.depositAmount || 0);
+                    return totalRequired - paid;
+                },
+                toggleShipping(order) {
+                    order.isShippingPaid = !order.isShippingPaid;
+                },
+                
+                // --- 개선된 파싱 로직 ---
+                processInput() {
+                    const lines = this.rawInput.split('\n');
+                    let addedCount = 0;
+
+                    lines.forEach(line => {
+                        const cleanLine = line.trim();
+                        if(!cleanLine) return;
+                        
+                        // 1. 이름 추출 (한글 2~4자 + 공백 or 끝)
+                        let nameMatch = cleanLine.match(/^([가-힣]{2,4})/);
+                        // 2. 전화번호 추출 (다양한 형식 지원)
+                        let phoneMatch = cleanLine.match(/010[-.\s]?([0-9]{4})[-.\s]?([0-9]{4})/);
+                        
+                        // 3. 상품 매칭
+                        let foundProduct = this.products.find(p => cleanLine.includes(p.name));
+                        
+                        if (nameMatch || phoneMatch) {
+                            // 주문자 정보 라인으로 간주
+                            if(nameMatch) {
+                                this.manual.nickname = nameMatch[0];
+                                this.manual.receiver = nameMatch[0]; // 수령인 기본값
+                            }
+                            if(phoneMatch) {
+                                this.manual.phone = `010-${phoneMatch[1]}-${phoneMatch[2]}`;
+                            }
+                            // 주소 추출: 이름과 전화번호를 제거한 나머지 텍스트
+                            let addressCandidate = cleanLine;
+                            if(nameMatch) addressCandidate = addressCandidate.replace(nameMatch[0], '');
+                            if(phoneMatch) addressCandidate = addressCandidate.replace(phoneMatch[0], '');
+                            
+                            // 특수문자 제거 후 주소로 설정
+                            addressCandidate = addressCandidate.replace(/^[:\s]+/, '').trim();
+                            if(addressCandidate.length > 5) {
+                                this.manual.address = addressCandidate;
+                            }
+
+                        } else if (foundProduct) {
+                            // 상품 라인으로 간주 -> 바로 추가
+                            this.manual.product = foundProduct.name;
+                            
+                            // 수량 추출 (숫자 + '개' 또는 뒤쪽의 숫자)
+                            let qtyMatch = cleanLine.match(/([0-9]+)\s*개/);
+                            if(!qtyMatch) qtyMatch = cleanLine.match(/\s([0-9]+)$/); // 끝에 숫자만 있는 경우
+                            
+                            this.manual.qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+                            
+                            this.addOrder();
+                            addedCount++;
+                        }
+                    });
+
+                    if(addedCount > 0) {
+                        this.rawInput = '';
+                        // 알림은 제거 (너무 빈번함)
+                    } else {
+                        alert("분석된 주문이 없습니다. 텍스트 형식을 확인해주세요.");
+                    }
+                },
+
+                filterProducts() {
+                    this.showSuggestions = true;
+                },
+                selectProduct(p) {
+                    this.manual.product = p.name;
+                    this.showSuggestions = false;
+                },
+                addOrder() {
+                    // 유효성 검사 강화
+                    if (!this.manual.nickname) {
+                        alert("주문자(닉네임) 정보가 없습니다.");
+                        return;
+                    }
+                    if (!this.manual.product) {
+                        alert("상품명이 선택되지 않았습니다.");
+                        return;
+                    }
+                    
+                    const productInfo = this.products.find(p => p.name === this.manual.product) || { price: 0 };
+                    
+                    this.orders.push({
+                        id: Date.now() + Math.random(), // ID 중복 방지 강화
+                        timestamp: Date.now(),
+                        nickname: this.manual.nickname,
+                        product: this.manual.product,
+                        unitPrice: productInfo.price,
+                        qty: this.manual.qty,
+                        receiver: this.manual.receiver || this.manual.nickname,
+                        phone: this.manual.phone || '',
+                        address: this.manual.address || '',
+                        cardAmount: 0,
+                        depositAmount: 0,
+                        isShippingPaid: false,
+                    });
+                    
+                    // 연속 입력을 위해 닉네임/주소는 유지, 상품/수량만 리셋
+                    this.manual.product = '';
+                    this.manual.qty = 1;
+                },
+                openDaumPostcode() {
+                    new daum.Postcode({
+                        oncomplete: (data) => {
+                            let addr = data.roadAddress || data.jibunAddress;
+                            if(data.buildingName) addr += ` (${data.buildingName})`;
+                            this.manual.address = addr;
+                        }
+                    }).open();
+                },
+                saveProduct() {
+                    if(this.newProduct.name && this.newProduct.price) {
+                        this.products.push({...this.newProduct});
+                        this.newProduct = { name: '', price: '' };
+                    }
+                },
+                removeProduct(index) {
+                    if(confirm("정말 삭제하시겠습니까?")) {
+                        this.products.splice(index, 1);
+                    }
+                },
+                updateExistingOrders() {
+                    if(!confirm("현재 등록된 모든 주문의 단가가 상품 관리 설정값으로 변경됩니다.")) return;
+                    let count = 0;
+                    this.orders.forEach(o => {
+                        const p = this.products.find(prod => prod.name === o.product);
+                        if(p && o.unitPrice !== p.price) {
+                            o.unitPrice = p.price;
+                            count++;
+                        }
+                    });
+                    alert(`${count}건의 주문 단가가 업데이트 되었습니다.`);
+                },
+                deleteOrder(id) {
+                    if(confirm("선택한 주문을 삭제하시겠습니까?")) {
+                        this.orders = this.orders.filter(o => o.id !== id);
+                        // 삭제 후 배송비 마스터 자동 재계산은 computed property가 처리함
+                    }
+                },
+                copyOrderInfo(order) {
+                    const unpaid = this.calculateUnpaid(order);
+                    const total = this.calculateOrderTotal(order);
+                    
+                    // 더 깔끔한 텍스트 포맷
+                    const text = `[주문서]\n상품명: ${order.product} (${order.qty}개)\n----------------\n결제금액: ${this.formatCurrency(total)}\n미수금: ${this.formatCurrency(unpaid)}\n\n입금계좌: OO은행 123-456-7890`;
+                    
+                    navigator.clipboard.writeText(text).then(() => {
+                        // 토스트 메시지 대신 간단한 alert (UI 복잡도 감소)
+                        // 실제 앱에선 Toast UI가 좋으나 단일 파일 한계상 alert 사용
+                        // alert("클립보드 복사 완료"); 
+                    });
+                },
+                saveState() {
+                    const data = {
+                        orders: this.orders,
+                        products: this.products
+                    };
+                    localStorage.setItem('omProData_v2', JSON.stringify(data)); // 키값 변경으로 버전 관리
+                },
+                loadState() {
+                    const saved = localStorage.getItem('omProData_v2');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.orders = data.orders || [];
+                        this.products = data.products || this.products;
+                    } else {
+                        // 구버전 데이터 마이그레이션 시도 (선택사항)
+                        const old = localStorage.getItem('omProData');
+                        if(old) {
+                            const data = JSON.parse(old);
+                            this.orders = data.orders || [];
+                            // 제품은 기본값 사용 권장
+                        }
+                    }
+                },
+                backupData() {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({orders: this.orders, products: this.products}));
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    downloadAnchorNode.setAttribute("download", `OM-PRO_Backup_${new Date().toISOString().slice(0,10)}.json`);
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                },
+                clearAllData() {
+                    if(confirm("경고: 모든 주문 데이터가 삭제됩니다. 계속하시겠습니까?")) {
+                        this.orders = [];
+                        localStorage.removeItem('omProData_v2');
+                    }
+                },
+                exportExcel(type) {
+                    let data = [];
+                    // 엑셀 스타일링 데이터 준비
+                    if (type === 'all') {
+                        data = this.filteredOrderList.map(o => ({
+                            '주문번호': o.id,
+                            '닉네임': o.nickname,
+                            '상품명': o.product,
+                            '수량': o.qty,
+                            '단가': o.unitPrice,
+                            '합계': o.unitPrice * o.qty,
+                            '수령인': o.receiver,
+                            '전화번호': `\u200B${o.phone}`,
+                            '주소': o.address,
+                            '카드결제': o.cardAmount || 0,
+                            '현금입금': o.depositAmount || 0,
+                            '배송비부과여부': this.getShippingMasterId(o.nickname) === o.id ? 'Y' : 'N',
+                            '배송비납부': o.isShippingPaid ? '완납' : '미납',
+                            '최종미수금': this.calculateUnpaid(o)
+                        }));
+                    } else if (type === 'invoice') {
+                        // 송장용: 배송비 부과 대상인 마스터 주문자만 출력하거나 전체 출력?
+                        // 보통 합배송이므로 닉네임 기준 1줄만 나와야 함.
+                        // 하지만 엑셀 요구사항은 "주문 건별"일 수도 있음.
+                        // 여기서는 송장 프로그램 업로드용이므로 모든 Row 출력하되 합배송 메시지 추가
+                        data = this.filteredOrderList.map(o => ({
+                            '수령인': o.receiver,
+                            '전화번호': `\u200B${o.phone}`, // 엑셀 0탈락 방지 특수문자
+                            '주소': o.address,
+                            '상품명': o.product,
+                            '수량': o.qty,
+                            '배송메세지': `(합배송: ${o.nickname})`
+                        }));
+                    } else if (type === 'order') {
+                        const summary = {};
+                        this.filteredOrderList.forEach(o => {
+                            if (!summary[o.product]) summary[o.product] = 0;
+                            summary[o.product] += o.qty;
+                        });
+                        data = Object.keys(summary).map(key => ({
+                            '상품명': key,
+                            '총수량': summary[key]
+                        }));
+                    }
+
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "OrderData");
+                    XLSX.writeFile(wb, `OM-PRO_${type}_${new Date().toISOString().slice(0,10)}.xlsx`);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
