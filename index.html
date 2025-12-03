@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지  v3.3 (Formatted Print 2-Up)</title>
+    <title>강은지 주문서 자동화 v3.4 (Perfect A4 Split Print)</title>
     
     <!-- Daum Postcode -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -78,17 +78,18 @@
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* === PRINT FIX v3.3: Full Width & 2 Per Page (A5 Size) === */
+        /* === PRINT FIX v3.4: Absolute A4 Half Split === */
         @media print {
             @page {
                 size: A4;
-                margin: 10mm; /* Moderate margin to prevent cutting */
+                margin: 0; /* Mandatory: Reset browser margins to 0 */
             }
 
-            body > * { display: none !important; }
-            #root { display: block !important; }
-            header, main, .fixed, .no-print { display: none !important; }
-
+            body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            
+            /* Hide everything except the modal content */
+            body > *:not(.receipt-modal-overlay) { display: none !important; }
+            
             .receipt-modal-overlay {
                 position: absolute !important;
                 top: 0 !important;
@@ -98,55 +99,52 @@
                 z-index: 9999 !important;
                 background: white !important;
                 display: block !important;
-                overflow: visible !important;
             }
 
             .receipt-content-container {
+                display: block !important;
                 overflow: visible !important;
                 height: auto !important;
-                display: block !important;
                 padding: 0 !important;
             }
 
             #receipt-container {
-                display: block !important; /* Stack vertically */
                 width: 100% !important;
-                max-width: none !important;
+                display: block !important;
             }
 
             .receipt-page {
+                /* Exact dimensions for 2-up on A4 */
                 width: 100% !important;
-                /* Height calculation: A4 Height (297mm) / 2 - margins approx */
-                height: 135mm !important; 
-                margin-bottom: 5mm !important; /* Space between receipts */
+                height: 148.5mm !important; /* Exactly half of 297mm */
                 
-                border: 2px solid black !important; /* Thicker border for distinct look */
+                /* Safe padding inside the receipt */
+                padding: 15mm 20mm !important; 
+                
+                /* Box model */
+                box-sizing: border-box !important;
+                
+                /* Styling */
+                background: transparent !important;
+                border: none !important; /* Remove outer border, use dashed line for cut */
+                border-bottom: 1px dashed #000 !important; /* Cut line */
                 border-radius: 0 !important;
                 box-shadow: none !important;
-                padding: 20px !important;
-                background-color: transparent !important;
+                margin: 0 !important;
                 color: black !important;
                 
-                /* Formatting */
+                /* Layout */
                 display: flex !important;
                 flex-direction: column !important;
-                justify-content: space-between !important; /* Distribute content */
+                justify-content: space-between !important;
                 
-                page-break-inside: avoid !important; /* Don't cut inside a receipt */
+                /* Page Break Logic */
+                page-break-inside: avoid !important; 
                 break-inside: avoid !important;
             }
-
-            /* Ensure table header repeats or stays clean */
-            table { width: 100% !important; }
             
-            * { 
-                color: black !important; 
-                background: transparent !important;
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important; 
-            }
-            
-            .print-hidden { display: none !important; }
+            /* Hide UI elements */
+            .no-print { display: none !important; }
         }
     </style>
 </head>
@@ -200,7 +198,7 @@
             return <i className={`${weightClass} ${map[name] || 'ph-question'} ${className}`} style={{ fontSize: size }}></i>;
         });
 
-        // --- COMPONENT: Receipt Modal ---
+        // --- COMPONENT: Receipt Modal (FIXED SIZE) ---
         const ReceiptModal = ({ isOpen, onClose, orders, shippingFee }) => {
             if (!isOpen) return null;
 
@@ -246,13 +244,13 @@
                                 const isPaid = unpaid === 0;
 
                                 return (
-                                    <div key={idx} className="receipt-page bg-white text-black p-6 rounded-xl shadow-sm max-w-xl mx-auto border border-gray-200 print:shadow-none print:mb-0">
-                                        {/* Top Section */}
+                                    <div key={idx} className="receipt-page bg-white text-black p-6 rounded-xl shadow-sm max-w-xl mx-auto border border-gray-200 print:rounded-none print:shadow-none">
+                                        {/* Top Content */}
                                         <div>
                                             <div className="flex justify-between items-center mb-4 pb-2 border-b-2 border-black">
                                                 <div>
                                                     <p className="text-xs text-gray-500 font-bold">CUSTOMER</p>
-                                                    <p className="text-lg font-black">{name} 님</p>
+                                                    <p className="text-xl font-black">{name} 님</p>
                                                 </div>
                                                 <p className="text-xs text-gray-400">{new Date().toLocaleDateString()}</p>
                                             </div>
@@ -260,24 +258,24 @@
                                             <table className="w-full text-xs mb-4">
                                                 <thead>
                                                     <tr className="border-b border-gray-400">
-                                                        <th className="text-left py-1.5">상품명</th>
-                                                        <th className="text-center py-1.5 w-12">수량</th>
-                                                        <th className="text-right py-1.5 w-20">금액</th>
+                                                        <th className="text-left py-2">상품명</th>
+                                                        <th className="text-center py-2 w-14">수량</th>
+                                                        <th className="text-right py-2 w-24">금액</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {items.map((item, i) => (
                                                         <tr key={i} className="border-b border-dashed border-gray-200">
-                                                            <td className="py-1.5 pr-2 font-medium truncate max-w-[200px]">{item.product}</td>
-                                                            <td className="py-1.5 text-center text-gray-600">{item.quantity}</td>
-                                                            <td className="py-1.5 text-right font-bold">{item.price.toLocaleString()}</td>
+                                                            <td className="py-2 pr-2 font-medium truncate max-w-[200px]">{item.product}</td>
+                                                            <td className="py-2 text-center text-gray-600">{item.quantity}</td>
+                                                            <td className="py-2 text-right font-bold">{item.price.toLocaleString()}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
 
-                                        {/* Bottom Section */}
+                                        {/* Bottom Content (Totals) */}
                                         <div>
                                             <div className="space-y-1 border-t border-black pt-2">
                                                 <div className="flex justify-between text-xs">
@@ -288,7 +286,8 @@
                                                     <span className="text-gray-800">배송비</span>
                                                     <span className="font-bold">{shipFee.toLocaleString()}</span>
                                                 </div>
-                                                <div className="flex justify-between text-lg font-black mt-3 pt-2 border-t border-dashed border-gray-400">
+                                                
+                                                <div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-dashed border-gray-400">
                                                     <span>결제총액</span>
                                                     <span>{totalRequired.toLocaleString()} 원</span>
                                                 </div>
@@ -303,19 +302,18 @@
             );
         };
 
-        // --- COMPONENT: Top Summary Card ---
+        // --- COMPONENT: Top Summary Card (70:15:15) ---
         const SummaryDashboardCard = React.memo(({ totalRevenue, orderCount, shippingCount }) => {
             return (
                 <div className="relative overflow-hidden rounded-xl bg-slate-900 dark:bg-black text-white p-4 shadow-lg border border-slate-800 dark:border-slate-800 h-full flex items-center">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-brand-600 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
-                    
                     <div className="relative z-10 w-full flex flex-col lg:flex-row lg:items-center divide-y lg:divide-y-0 lg:divide-x divide-white/10">
                         <div className="lg:w-[70%] pb-4 lg:pb-0 lg:pr-6 flex flex-col justify-center">
                             <div className="flex items-center gap-1.5 mb-1">
                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-500"></span>
                                 <p className="text-slate-400 text-xs font-bold tracking-widest uppercase">총 예상 매출</p>
                             </div>
-                            <div className="flex items-baseline gap-1">
+                            <div className="flex items-baseline justify-end gap-1 mt-2">
                                 <p className="text-4xl lg:text-5xl font-black tracking-tight text-white leading-none">{totalRevenue.toLocaleString()}</p>
                                 <span className="text-lg text-slate-500 font-medium">원</span>
                             </div>
@@ -574,7 +572,7 @@
             };
             const handleCopyMemo = () => { if (!globalMemo) { showToast('복사할 메모가 없습니다.', 'error'); return; } const ta = document.createElement("textarea"); ta.value = globalMemo; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('메모 복사 완료'); };
             
-            // --- CUSTOM COPY RESULTS LOGIC (UPDATED V2.5 with Emoji) ---
+            // --- CUSTOM COPY RESULTS LOGIC (UPDATED V2.6) ---
             const handleCopyResults = () => { 
                 if (filteredOrders.length === 0) return; 
                 let text = ''; 
@@ -610,7 +608,11 @@
                         text += `미입금: ${totalUnpaid.toLocaleString()}원\n\n`; 
                         text += `카카오뱅크 김선정\n7942 18 01611 \n\n입금 부탁드립니다 🙏\n\n`; 
                     } else { 
-                        text += `완납 확인! 감사합니다 😍\n\n`; 
+                         if (cardTotal === 0) {
+                            text += `완납 확인! 감사합니다 😍\n\n`; 
+                        } else {
+                            text += `\n\n`;
+                        }
                     } 
                 }); 
                 const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('주문 내역 복사 완료'); 
@@ -623,7 +625,7 @@
                 if (filterText) { const lower = filterText.toLowerCase(); result = result.filter(o => (o.customer && o.customer.toLowerCase().includes(lower)) || (o.product && o.product.toLowerCase().includes(lower))); }
                 if (unpaidFilter) {
                     const grouped = orders.reduce((acc, o) => { const k = o.customer || 'u'; if(!acc[k]) acc[k] = {p:0, d:0, c:0, ship:false, fee:null}; acc[k].p += o.price; acc[k].d += o.deposit; acc[k].c += o.cardAmount; if(o.isShippingPaid) acc[k].ship = true; if(o.customShippingFee !== null) acc[k].fee = o.customShippingFee; return acc; }, {});
-                    result = result.filter(o => { const g = grouped[o.customer || 'u']; if (!g) return false; const ship = g.fee ?? shippingFee; const totalRequired = g.p + ship; const totalPaid = g.d + g.c; const shippingCredit = g.ship ? ship : 0; const personUnpaid = Math.max(0, totalRequired - totalPaid - shippingCredit); if (unpaidFilter === 'ship') { return !g.ship && ship > 0; } if (unpaidFilter === 'cash') { let cashUnpaid = 0; if (g.ship) { cashUnpaid = personUnpaid; } else { const unpaidAttribToShip = Math.min(personUnpaid, ship); cashUnpaid = personUnpaid - unpaidAttribToShip; } return cashUnpaid > 0; } return true; });
+                    result = result.filter(o => { const g = grouped[o.customer || 'u']; if (!g) return false; const ship = g.fee ?? shippingFee; const totalRequired = g.p + ship; const totalPaid = g.d + g.c; const shippingCredit = g.ship ? ship : 0; const personUnpaid = Math.max(0, totalRequired - totalPaid - shippingCredit); if (unpaidFilter === 'ship') { return !g.ship && ship > 0; } if (unpaidFilter === 'cash') { let cashUnpaid = 0; if (g.ship) { cashUnpaid = personUnpaid; } else { const unpaidAttribToShip = Math.min(personUnpaid, ship); res.shipUnpaid += unpaidAttribToShip; res.cashUnpaid += (personUnpaid - unpaidAttribToShip); } return cashUnpaid > 0; } return true; });
                 }
                 return result;
             }, [orders, filterText, unpaidFilter, shippingFee]);
