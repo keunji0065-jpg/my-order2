@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 자동화 v2.8 (Receipt Print Mode)</title>
+    <title>by.강은지 v2.9 (Print Fixed)</title>
     
     <!-- Daum Postcode -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -69,24 +69,62 @@
         input[type=number] { -moz-appearance: textfield; }
         
         /* Custom Scrollbar */
-        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .dark .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
-        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #475569; }
-        .dark .custom-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #a3a3a3; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #737373; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #525252; }
 
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* PRINT STYLES - The Secret Sauce for Individual Receipts */
+        /* === PRINT FIX: The Ultimate Solution === */
         @media print {
-            body * { visibility: hidden; }
-            #receipt-container, #receipt-container * { visibility: visible; }
-            #receipt-container { position: absolute; left: 0; top: 0; width: 100%; background: white; color: black; }
-            .receipt-page { page-break-inside: avoid; page-break-after: always; border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
-            .no-print { display: none !important; }
+            /* 1. Hide everything by default */
+            body > * { display: none !important; }
+            
+            /* 2. Unhide the React Root but hide its normal children (header, main) */
+            #root { display: block !important; }
+            header, main, .fixed, .no-print { display: none !important; }
+
+            /* 3. Force the receipt modal wrapper to be visible and fill the page */
+            .receipt-modal-overlay {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                z-index: 9999 !important;
+                background: white !important;
+                display: block !important;
+                overflow: visible !important; /* Critical for printing long lists */
+            }
+
+            /* 4. Ensure the inner container expands freely */
+            .receipt-content-container {
+                overflow: visible !important;
+                height: auto !important;
+                display: block !important;
+            }
+
+            /* 5. Page break rules for individual receipts */
+            .receipt-page {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-after: always;
+                break-after: page;
+                margin-bottom: 0 !important;
+                border: 1px solid #ddd !important;
+                box-shadow: none !important;
+            }
+            
+            /* Reset colors for printing */
+            * { 
+                color: black !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            .text-white { color: white !important; } /* Keep button text white if any */
         }
     </style>
 </head>
@@ -140,7 +178,7 @@
             return <i className={`${weightClass} ${map[name] || 'ph-question'} ${className}`} style={{ fontSize: size }}></i>;
         });
 
-        // --- COMPONENT: Receipt Modal (NEW FEATURE) ---
+        // --- COMPONENT: Receipt Modal (PRINT FIXED) ---
         const ReceiptModal = ({ isOpen, onClose, orders, shippingFee }) => {
             if (!isOpen) return null;
 
@@ -158,8 +196,9 @@
             };
 
             return (
-                <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col overflow-hidden print:bg-white print:relative print:z-auto print:inset-auto">
-                    {/* Header (Hidden on Print) */}
+                // Added 'receipt-modal-overlay' class for print targeting
+                <div className="receipt-modal-overlay fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col overflow-hidden">
+                    {/* Header (Hidden on Print via .no-print) */}
                     <div className="flex justify-between items-center p-4 bg-white dark:bg-dark-card border-b border-slate-200 dark:border-dark-border flex-none no-print">
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             <Icon name="Receipt" className="text-brand-600" size={24}/> 개별 구매내역서 (총 {Object.keys(grouped).length}명)
@@ -172,9 +211,9 @@
                         </div>
                     </div>
 
-                    {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-black custom-scroll" id="receipt-wrapper">
-                        <div id="receipt-container" className="max-w-3xl mx-auto space-y-6">
+                    {/* Scrollable Content - Added 'receipt-content-container' for print */}
+                    <div className="receipt-content-container flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-black custom-scroll">
+                        <div id="receipt-container" className="max-w-3xl mx-auto space-y-6 print:space-y-0">
                             {Object.entries(grouped).map(([name, items], idx) => {
                                 const shipFee = items[0].customShippingFee ?? shippingFee;
                                 const subTotal = items.reduce((sum, i) => sum + i.price, 0);
@@ -186,7 +225,7 @@
                                 const isPaid = unpaid === 0;
 
                                 return (
-                                    <div key={idx} className="receipt-page bg-white text-black p-8 rounded-xl shadow-sm max-w-xl mx-auto">
+                                    <div key={idx} className="receipt-page bg-white text-black p-8 rounded-xl shadow-sm max-w-xl mx-auto print:shadow-none print:border print:border-gray-300 print:mb-0">
                                         <div className="text-center border-b-2 border-black pb-4 mb-4">
                                             <h1 className="text-2xl font-black tracking-tight mb-1">ORDER RECEIPT</h1>
                                             <p className="text-sm font-bold text-gray-500">{new Date().toLocaleDateString()} 주문내역</p>
@@ -252,8 +291,7 @@
                                             </div>
                                         </div>
 
-                                        {/* Conditional Footer Message */}
-                                        <div className="bg-gray-50 p-4 rounded-lg text-center text-sm">
+                                        <div className="bg-gray-50 p-4 rounded-lg text-center text-sm print:bg-gray-100">
                                             {isPaid ? (
                                                 <p className="font-bold text-blue-600 flex items-center justify-center gap-1">
                                                     <Icon name="CheckCircle" weight="fill"/> 완납 확인! 감사합니다 😍
@@ -292,7 +330,6 @@
                             <span className="text-sm text-slate-500 font-medium">원</span>
                         </div>
                     </div>
-
                     <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-2 mt-1">
                         <div>
                             <p className="text-slate-500 text-[9px] font-bold uppercase">총 주문</p>
@@ -313,14 +350,7 @@
                 <div className="bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border p-3 h-full shadow-sm flex flex-col justify-center">
                     <div className="flex flex-col gap-1">
                         {items.map((item, idx) => (
-                            <div 
-                                key={idx} 
-                                onClick={item.onClick}
-                                className={`flex items-center justify-between py-1.5 px-2 rounded transition-all
-                                    ${item.onClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.99]' : ''} 
-                                    ${item.isActive ? 'bg-brand-50 dark:bg-brand-900/20 ring-1 ring-brand-200 dark:ring-brand-900/40' : ''}
-                                `}
-                            >
+                            <div key={idx} onClick={item.onClick} className={`flex items-center justify-between py-1.5 px-2 rounded transition-all ${item.onClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.99]' : ''} ${item.isActive ? 'bg-brand-50 dark:bg-brand-900/20 ring-1 ring-brand-200 dark:ring-brand-900/40' : ''}`}>
                                 <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tracking-tight">{item.label}</span>
                                 <div className={`text-sm font-bold ${item.valueColor || 'text-slate-800 dark:text-slate-200'} tracking-tight`}>
                                     {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
@@ -343,20 +373,11 @@
                 const cleanName = name.trim();
                 const newUnitPrice = Number(price);
                 const isUpdate = productHistory.hasOwnProperty(cleanName);
-
                 setProductHistory(prev => ({ ...prev, [cleanName]: newUnitPrice }));
-                
                 let updatedCount = 0;
-                setOrders(prevOrders => prevOrders.map(order => {
-                    if (order.product && order.product.trim() === cleanName) {
-                        updatedCount++;
-                        return { ...order, price: order.quantity * newUnitPrice };
-                    }
-                    return order;
-                }));
-
-                if (isUpdate) showToast(`${cleanName}: ${updatedCount}건의 주문 단가 업데이트 완료!`);
-                else showToast(`${cleanName}: 새 상품이 등록되었습니다.`);
+                setOrders(prevOrders => prevOrders.map(order => { if (order.product && order.product.trim() === cleanName) { updatedCount++; return { ...order, price: order.quantity * newUnitPrice }; } return order; }));
+                if (isUpdate) showToast(`${cleanName}: ${updatedCount}건 업데이트 완료!`);
+                else showToast(`${cleanName}: 등록 완료`);
                 setName(''); setPrice('');
             };
 
@@ -364,9 +385,7 @@
                 const newName = window.prompt(`'${oldName}' 상품의 이름을 변경하시겠습니까?`, oldName);
                 if (newName && newName.trim() !== "" && newName !== oldName) {
                     const cleanNewName = newName.trim();
-                    setProductHistory(prev => {
-                        const next = { ...prev }; delete next[oldName]; next[cleanNewName] = currentPrice; return next;
-                    });
+                    setProductHistory(prev => { const next = { ...prev }; delete next[oldName]; next[cleanNewName] = currentPrice; return next; });
                     setOrders(prev => prev.map(o => { if (o.product === oldName) return { ...o, product: cleanNewName }; return o; }));
                     showToast("상품명이 변경되었습니다.");
                 }
@@ -381,19 +400,19 @@
                         setProductHistory(prev => ({ ...prev, [pName]: newPrice }));
                         let count = 0;
                         setOrders(prev => prev.map(o => { if (o.product === pName) { count++; return { ...o, price: o.quantity * newPrice }; } return o; }));
-                        showToast(`${pName}: 단가 ${newPrice.toLocaleString()}원으로 변경됨.`);
-                    } else { showToast("잘못된 숫자 형식입니다.", "error"); }
+                        showToast(`${pName}: 단가 변경됨.`);
+                    } else { showToast("잘못된 숫자입니다.", "error"); }
                 }
             };
 
             const handleItemClick = (pName, pPrice) => { setName(pName); setPrice(pPrice); };
-            const handleDelete = (key) => { if(window.confirm(`'${key}' 상품을 삭제하시겠습니까?`)) setProductHistory(prev => { const next = { ...prev }; delete next[key]; return next; }); };
+            const handleDelete = (key) => { if(window.confirm(`'${key}' 삭제하시겠습니까?`)) setProductHistory(prev => { const next = { ...prev }; delete next[key]; return next; }); };
 
             return (
                 <div className="bg-white dark:bg-dark-card rounded border border-slate-200 dark:border-dark-border p-3 flex flex-col h-full hover:border-slate-300 transition-colors overflow-hidden">
                     <div className="flex items-center justify-between mb-2 flex-none">
                         <h2 className="text-xs font-bold flex items-center gap-1 text-slate-800 dark:text-dark-text uppercase tracking-wide"><Icon name="List" className="text-brand-600" size={14}/> 상품 관리</h2>
-                        <span className="text-[10px] text-slate-400 cursor-default">목록 클릭시 수정</span>
+                        <span className="text-[10px] text-slate-400 cursor-default">클릭하여 수정</span>
                     </div>
                     <div className="flex gap-1 mb-2 flex-none">
                         <input className="flex-1 p-1.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 transition-all dark:text-white" placeholder="상품명" value={name} onChange={e => setName(e.target.value)} />
@@ -408,9 +427,9 @@
                                 <ul className="space-y-0.5">
                                     {Object.entries(productHistory).map(([pName, pPrice], idx) => (
                                         <li key={pName} className={`flex justify-between items-center p-1.5 rounded group border border-transparent hover:border-brand-200 dark:hover:border-brand-800 transition-all cursor-pointer ${idx % 2 === 0 ? 'bg-slate-50/50 dark:bg-white/5' : 'bg-transparent'}`} onClick={() => handleItemClick(pName, pPrice)}>
-                                            <span className="font-medium text-xs text-slate-700 dark:text-dark-text truncate max-w-[60%] hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditName(pName, pPrice); }} title="클릭하여 이름 팝업 수정">{pName}</span>
+                                            <span className="font-medium text-xs text-slate-700 dark:text-dark-text truncate max-w-[60%] hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditName(pName, pPrice); }} title="이름 수정">{pName}</span>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditPrice(pName, pPrice); }} title="클릭하여 단가 팝업 수정">{pPrice.toLocaleString()}</span>
+                                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditPrice(pName, pPrice); }} title="단가 수정">{pPrice.toLocaleString()}</span>
                                                 <button onClick={(e) => { e.stopPropagation(); handleDelete(pName); }} className="text-slate-300 hover:text-red-500 opacity-50 group-hover:opacity-100 transition-all p-0.5"><Icon name="Trash2" size={12}/></button>
                                             </div>
                                         </li>
@@ -433,7 +452,7 @@
             return <button onClick={onClick} className={`${baseClass} ${colorClass} ${className}`}><Icon name={icon} size={14} weight="bold"/> {text}</button>;
         });
 
-        // --- ADDRESS & AUTOCOMPLETE COMPONENTS ---
+        // --- ADDRESS & AUTOCOMPLETE COMPONENTS (Untouched) ---
         const AddressEditor = ({ order, handleUpdateOrder, handleUpdateOrderBatch, setEditingAddressId, showToast }) => {
             const [rawAddressText, setRawAddressText] = useState('');
             const handleOpenAddressSearch = () => {
@@ -519,7 +538,7 @@
             const [editingShippingId, setEditingShippingId] = useState(null); 
             const [unpaidFilter, setUnpaidFilter] = useState(null); 
             const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
-            const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false); // NEW STATE FOR RECEIPT MODAL
+            const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
             
             const ordersRef = useRef(orders);
             const fileInputRef = useRef(null);
@@ -576,6 +595,8 @@
                 return colors[Math.abs(hash) % colors.length];
             };
             const handleCopyMemo = () => { if (!globalMemo) { showToast('복사할 메모가 없습니다.', 'error'); return; } const ta = document.createElement("textarea"); ta.value = globalMemo; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('메모 복사 완료'); };
+            
+            // --- CUSTOM COPY RESULTS LOGIC (UPDATED v2.4 with Emoji) ---
             const handleCopyResults = () => { 
                 if (filteredOrders.length === 0) return; 
                 let text = ''; 
@@ -603,6 +624,7 @@
                         text += `입금 ${displayDepositTotal.toLocaleString()}\n`; 
                     } 
                     text += ` -\n`; 
+                    
                     const shippingCredit = isShipPaid ? shipFee : 0; 
                     const totalUnpaid = Math.max(0, totalRequired - paidTotal - shippingCredit); 
                     
