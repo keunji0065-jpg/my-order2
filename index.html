@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>by.kangeunji v2.7 (Absolute Scroll Fix)</title>
+    <title>강은지 주문서 자동화 v2.8 (Receipt Print Mode)</title>
     
     <!-- Daum Postcode -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -68,7 +68,7 @@
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
         
-        /* Custom Scrollbar for better visibility */
+        /* Custom Scrollbar */
         .custom-scroll::-webkit-scrollbar { width: 8px; }
         .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -79,6 +79,15 @@
 
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* PRINT STYLES - The Secret Sauce for Individual Receipts */
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-container, #receipt-container * { visibility: visible; }
+            #receipt-container { position: absolute; left: 0; top: 0; width: 100%; background: white; color: black; }
+            .receipt-page { page-break-inside: avoid; page-break-after: always; border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-dark-text font-sans transition-colors duration-200">
@@ -125,11 +134,149 @@
                 Address: "ph-map-pin", User: "ph-user", Brain: "ph-brain", ChartBar: "ph-chart-bar", WarningCircle: "ph-warning-circle",
                 Wallet: "ph-wallet", TrendUp: "ph-trend-up", Coins: "ph-coins", Bank: "ph-bank", Receipt: "ph-receipt",
                 HandCoins: "ph-hand-coins", Calculator: "ph-calculator", Eraser: "ph-eraser", List: "ph-list",
-                CaretDown: "ph-caret-down", FileXls: "ph-file-xls", Sun: "ph-sun"
+                CaretDown: "ph-caret-down", FileXls: "ph-file-xls", Sun: "ph-sun", Printer: "ph-printer"
             };
             const weightClass = weight === 'bold' ? 'ph-bold' : 'ph';
             return <i className={`${weightClass} ${map[name] || 'ph-question'} ${className}`} style={{ fontSize: size }}></i>;
         });
+
+        // --- COMPONENT: Receipt Modal (NEW FEATURE) ---
+        const ReceiptModal = ({ isOpen, onClose, orders, shippingFee }) => {
+            if (!isOpen) return null;
+
+            const grouped = useMemo(() => {
+                return orders.reduce((acc, o) => {
+                    const key = o.customer || '미지정';
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(o);
+                    return acc;
+                }, {});
+            }, [orders]);
+
+            const handlePrint = () => {
+                window.print();
+            };
+
+            return (
+                <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col overflow-hidden print:bg-white print:relative print:z-auto print:inset-auto">
+                    {/* Header (Hidden on Print) */}
+                    <div className="flex justify-between items-center p-4 bg-white dark:bg-dark-card border-b border-slate-200 dark:border-dark-border flex-none no-print">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <Icon name="Receipt" className="text-brand-600" size={24}/> 개별 구매내역서 (총 {Object.keys(grouped).length}명)
+                        </h2>
+                        <div className="flex gap-2">
+                            <button onClick={handlePrint} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md font-bold flex items-center gap-2 transition-colors">
+                                <Icon name="Printer" size={18}/> 인쇄하기
+                            </button>
+                            <button onClick={onClose} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md font-bold transition-colors">닫기</button>
+                        </div>
+                    </div>
+
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-black custom-scroll" id="receipt-wrapper">
+                        <div id="receipt-container" className="max-w-3xl mx-auto space-y-6">
+                            {Object.entries(grouped).map(([name, items], idx) => {
+                                const shipFee = items[0].customShippingFee ?? shippingFee;
+                                const subTotal = items.reduce((sum, i) => sum + i.price, 0);
+                                const isShipPaid = items.some(i => i.isShippingPaid);
+                                const totalRequired = subTotal + shipFee;
+                                const paidTotal = items.reduce((sum, i) => sum + i.deposit + i.cardAmount, 0);
+                                const shippingCredit = isShipPaid ? shipFee : 0;
+                                const unpaid = Math.max(0, totalRequired - paidTotal - shippingCredit);
+                                const isPaid = unpaid === 0;
+
+                                return (
+                                    <div key={idx} className="receipt-page bg-white text-black p-8 rounded-xl shadow-sm max-w-xl mx-auto">
+                                        <div className="text-center border-b-2 border-black pb-4 mb-4">
+                                            <h1 className="text-2xl font-black tracking-tight mb-1">ORDER RECEIPT</h1>
+                                            <p className="text-sm font-bold text-gray-500">{new Date().toLocaleDateString()} 주문내역</p>
+                                        </div>
+
+                                        <div className="flex justify-between items-end mb-6">
+                                            <div>
+                                                <p className="text-xs text-gray-500 font-bold">CUSTOMER</p>
+                                                <p className="text-xl font-bold">{name} 님</p>
+                                            </div>
+                                            <div className="text-right">
+                                                 <span className={`px-2 py-1 rounded text-xs font-bold ${isPaid ? 'bg-black text-white' : 'bg-red-100 text-red-600 border border-red-200'}`}>
+                                                    {isPaid ? '결제완료' : '미입금'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <table className="w-full text-sm mb-6">
+                                            <thead>
+                                                <tr className="border-b border-black">
+                                                    <th className="text-left py-2">상품명</th>
+                                                    <th className="text-center py-2">수량</th>
+                                                    <th className="text-right py-2">금액</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {items.map((item, i) => (
+                                                    <tr key={i} className="border-b border-dashed border-gray-200">
+                                                        <td className="py-2 pr-2 font-medium">{item.product}</td>
+                                                        <td className="py-2 text-center text-gray-500">{item.quantity}</td>
+                                                        <td className="py-2 text-right font-bold">{item.price.toLocaleString()}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                        <div className="space-y-2 border-t border-black pt-4 mb-6">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">상품 합계</span>
+                                                <span className="font-bold">{subTotal.toLocaleString()} 원</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">배송비</span>
+                                                <span className="font-bold">{shipFee.toLocaleString()} 원</span>
+                                            </div>
+                                            {paidTotal > 0 && (
+                                                <div className="flex justify-between text-sm text-blue-600">
+                                                    <span>기수납액(입금/카드)</span>
+                                                    <span className="font-bold">- {paidTotal.toLocaleString()} 원</span>
+                                                </div>
+                                            )}
+                                            {shippingCredit > 0 && (
+                                                <div className="flex justify-between text-sm text-blue-600">
+                                                    <span>배송비 결제완료</span>
+                                                    <span className="font-bold">- {shippingCredit.toLocaleString()} 원</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-dashed border-gray-300">
+                                                <span>{isPaid ? '결제 총액' : '입금 요청액'}</span>
+                                                <span className={isPaid ? 'text-black' : 'text-red-600'}>
+                                                    {isPaid ? totalRequired.toLocaleString() : unpaid.toLocaleString()} 원
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Conditional Footer Message */}
+                                        <div className="bg-gray-50 p-4 rounded-lg text-center text-sm">
+                                            {isPaid ? (
+                                                <p className="font-bold text-blue-600 flex items-center justify-center gap-1">
+                                                    <Icon name="CheckCircle" weight="fill"/> 완납 확인! 감사합니다 😍
+                                                </p>
+                                            ) : (
+                                                <div className="text-gray-700">
+                                                    <p className="font-bold mb-1">입금 부탁드립니다 🙏</p>
+                                                    <p className="text-xs text-gray-500 mb-2">아래 계좌로 입금해 주세요</p>
+                                                    <div className="inline-block bg-white border border-gray-200 px-4 py-2 rounded text-left shadow-sm">
+                                                        <p className="text-xs text-gray-400 font-bold mb-0.5">카카오뱅크 김선정</p>
+                                                        <p className="font-mono font-bold text-lg tracking-wide text-brand-600">7942 18 01611</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         // --- COMPONENT: Top Summary Card ---
         const SummaryDashboardCard = React.memo(({ totalRevenue, orderCount, shippingCount }) => {
@@ -186,7 +333,7 @@
             );
         });
 
-        // --- COMPONENT: Inline Product Manager (ABSOLUTE SCROLL FIX) ---
+        // --- COMPONENT: Inline Product Manager ---
         const InlineProductManager = ({ productHistory, setProductHistory, setOrders, showToast }) => {
             const [name, setName] = useState('');
             const [price, setPrice] = useState('');
@@ -240,29 +387,19 @@
             };
 
             const handleItemClick = (pName, pPrice) => { setName(pName); setPrice(pPrice); };
-
-            const handleDelete = (key) => {
-                if(window.confirm(`'${key}' 상품을 삭제하시겠습니까?`)) {
-                    setProductHistory(prev => { const next = { ...prev }; delete next[key]; return next; });
-                }
-            };
+            const handleDelete = (key) => { if(window.confirm(`'${key}' 상품을 삭제하시겠습니까?`)) setProductHistory(prev => { const next = { ...prev }; delete next[key]; return next; }); };
 
             return (
                 <div className="bg-white dark:bg-dark-card rounded border border-slate-200 dark:border-dark-border p-3 flex flex-col h-full hover:border-slate-300 transition-colors overflow-hidden">
                     <div className="flex items-center justify-between mb-2 flex-none">
-                        <h2 className="text-xs font-bold flex items-center gap-1 text-slate-800 dark:text-dark-text uppercase tracking-wide">
-                            <Icon name="List" className="text-brand-600" size={14}/> 상품 관리
-                        </h2>
+                        <h2 className="text-xs font-bold flex items-center gap-1 text-slate-800 dark:text-dark-text uppercase tracking-wide"><Icon name="List" className="text-brand-600" size={14}/> 상품 관리</h2>
                         <span className="text-[10px] text-slate-400 cursor-default">목록 클릭시 수정</span>
                     </div>
-                    
                     <div className="flex gap-1 mb-2 flex-none">
                         <input className="flex-1 p-1.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 transition-all dark:text-white" placeholder="상품명" value={name} onChange={e => setName(e.target.value)} />
                         <input className="w-16 p-1.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 transition-all dark:text-white" type="number" placeholder="단가" value={price} onChange={e => setPrice(e.target.value)} />
                         <button onClick={handleSave} className="px-2 bg-slate-800 hover:bg-slate-900 text-white rounded text-[10px] font-bold whitespace-nowrap transition-colors">저장</button>
                     </div>
-
-                    {/* ABSOLUTE SCROLL FIX: This ensures scrolling works regardless of flex bugs */}
                     <div className="flex-1 relative">
                         <div className="absolute inset-0 overflow-y-auto custom-scroll pr-1">
                             {Object.entries(productHistory).length === 0 ? (
@@ -270,32 +407,11 @@
                             ) : (
                                 <ul className="space-y-0.5">
                                     {Object.entries(productHistory).map(([pName, pPrice], idx) => (
-                                        <li 
-                                            key={pName} 
-                                            className={`flex justify-between items-center p-1.5 rounded group border border-transparent hover:border-brand-200 dark:hover:border-brand-800 transition-all cursor-pointer ${idx % 2 === 0 ? 'bg-slate-50/50 dark:bg-white/5' : 'bg-transparent'}`}
-                                            onClick={() => handleItemClick(pName, pPrice)}
-                                        >
-                                            <span 
-                                                className="font-medium text-xs text-slate-700 dark:text-dark-text truncate max-w-[60%] hover:text-brand-600"
-                                                onClick={(e) => { e.stopPropagation(); handleEditName(pName, pPrice); }}
-                                                title="클릭하여 이름 팝업 수정"
-                                            >
-                                                {pName}
-                                            </span>
+                                        <li key={pName} className={`flex justify-between items-center p-1.5 rounded group border border-transparent hover:border-brand-200 dark:hover:border-brand-800 transition-all cursor-pointer ${idx % 2 === 0 ? 'bg-slate-50/50 dark:bg-white/5' : 'bg-transparent'}`} onClick={() => handleItemClick(pName, pPrice)}>
+                                            <span className="font-medium text-xs text-slate-700 dark:text-dark-text truncate max-w-[60%] hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditName(pName, pPrice); }} title="클릭하여 이름 팝업 수정">{pName}</span>
                                             <div className="flex items-center gap-2">
-                                                <span 
-                                                    className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold hover:text-brand-600"
-                                                    onClick={(e) => { e.stopPropagation(); handleEditPrice(pName, pPrice); }}
-                                                    title="클릭하여 단가 팝업 수정"
-                                                >
-                                                    {pPrice.toLocaleString()}
-                                                </span>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(pName); }} 
-                                                    className="text-slate-300 hover:text-red-500 opacity-50 group-hover:opacity-100 transition-all p-0.5"
-                                                >
-                                                    <Icon name="Trash2" size={12}/>
-                                                </button>
+                                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditPrice(pName, pPrice); }} title="클릭하여 단가 팝업 수정">{pPrice.toLocaleString()}</span>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDelete(pName); }} className="text-slate-300 hover:text-red-500 opacity-50 group-hover:opacity-100 transition-all p-0.5"><Icon name="Trash2" size={12}/></button>
                                             </div>
                                         </li>
                                     ))}
@@ -317,7 +433,7 @@
             return <button onClick={onClick} className={`${baseClass} ${colorClass} ${className}`}><Icon name={icon} size={14} weight="bold"/> {text}</button>;
         });
 
-        // --- ADDRESS & AUTOCOMPLETE COMPONENTS (Untouched) ---
+        // --- ADDRESS & AUTOCOMPLETE COMPONENTS ---
         const AddressEditor = ({ order, handleUpdateOrder, handleUpdateOrderBatch, setEditingAddressId, showToast }) => {
             const [rawAddressText, setRawAddressText] = useState('');
             const handleOpenAddressSearch = () => {
@@ -403,6 +519,8 @@
             const [editingShippingId, setEditingShippingId] = useState(null); 
             const [unpaidFilter, setUnpaidFilter] = useState(null); 
             const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
+            const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false); // NEW STATE FOR RECEIPT MODAL
+            
             const ordersRef = useRef(orders);
             const fileInputRef = useRef(null);
             const excelMenuRef = useRef(null); 
@@ -458,8 +576,6 @@
                 return colors[Math.abs(hash) % colors.length];
             };
             const handleCopyMemo = () => { if (!globalMemo) { showToast('복사할 메모가 없습니다.', 'error'); return; } const ta = document.createElement("textarea"); ta.value = globalMemo; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('메모 복사 완료'); };
-            
-            // --- CUSTOM COPY RESULTS LOGIC (UPDATED v2.4 with Emoji) ---
             const handleCopyResults = () => { 
                 if (filteredOrders.length === 0) return; 
                 let text = ''; 
@@ -487,7 +603,6 @@
                         text += `입금 ${displayDepositTotal.toLocaleString()}\n`; 
                     } 
                     text += ` -\n`; 
-                    
                     const shippingCredit = isShipPaid ? shipFee : 0; 
                     const totalUnpaid = Math.max(0, totalRequired - paidTotal - shippingCredit); 
                     
@@ -559,6 +674,7 @@
                                 <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1"></div>
                                 <button onClick={() => setIsProductManagerOpen(true)} className="px-2 py-1 text-slate-600 dark:text-slate-300 hover:text-brand-600 font-medium">상품관리</button>
                                 <button onClick={handleReset} className="px-2 py-1 text-slate-600 dark:text-slate-300 hover:text-brand-600 font-medium">초기화</button>
+                                <button onClick={() => setIsReceiptModalOpen(true)} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-all shadow-sm flex items-center gap-1 font-bold">영수증 출력</button>
                                 <div className="relative" ref={excelMenuRef}>
                                     <button onClick={() => setIsExcelMenuOpen(!isExcelMenuOpen)} className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded transition-all shadow-sm flex items-center gap-1 font-bold">엑셀 <Icon name="CaretDown" size={10} weight="bold" /></button>
                                     {isExcelMenuOpen && (
@@ -679,7 +795,7 @@
                             </div>
                         </div>
                     </main>
-                    {/* Original ProductManager modal removed as it's now inline */}
+                    <ReceiptModal isOpen={isReceiptModalOpen} onClose={() => setIsReceiptModalOpen(false)} orders={filteredOrders} shippingFee={shippingFee} />
                     {toast && (
                         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900 text-white rounded-full shadow-2xl flex items-center gap-2 animate-slide-up z-[100] border border-slate-800">
                             <Icon name={toast.type==='error'?'WarningCircle':'CheckCircle'} className={toast.type==='error'?'text-red-500':'text-emerald-400'} size={16} weight="bold"/> 
