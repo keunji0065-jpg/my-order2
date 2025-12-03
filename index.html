@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 자동화 v3.4 (Perfect A4 Split Print)</title>
+    <title>강은지 주문서 자동화 v3.6 (Slim Dashboard & Spacing)</title>
     
     <!-- Daum Postcode -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -78,16 +78,15 @@
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* === PRINT FIX v3.4: Absolute A4 Half Split === */
+        /* === PRINT FIX v3.5: Absolute A4 Half Split with No Customer Label === */
         @media print {
             @page {
                 size: A4;
-                margin: 0; /* Mandatory: Reset browser margins to 0 */
+                margin: 0;
             }
 
             body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             
-            /* Hide everything except the modal content */
             body > *:not(.receipt-modal-overlay) { display: none !important; }
             
             .receipt-modal-overlay {
@@ -114,36 +113,24 @@
             }
 
             .receipt-page {
-                /* Exact dimensions for 2-up on A4 */
                 width: 100% !important;
-                height: 148.5mm !important; /* Exactly half of 297mm */
-                
-                /* Safe padding inside the receipt */
+                height: 148.5mm !important; /* Half A4 */
                 padding: 15mm 20mm !important; 
-                
-                /* Box model */
                 box-sizing: border-box !important;
-                
-                /* Styling */
                 background: transparent !important;
-                border: none !important; /* Remove outer border, use dashed line for cut */
-                border-bottom: 1px dashed #000 !important; /* Cut line */
+                border: none !important;
+                border-bottom: 1px dashed #000 !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
                 margin: 0 !important;
                 color: black !important;
-                
-                /* Layout */
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: space-between !important;
-                
-                /* Page Break Logic */
                 page-break-inside: avoid !important; 
                 break-inside: avoid !important;
             }
             
-            /* Hide UI elements */
             .no-print { display: none !important; }
         }
     </style>
@@ -198,7 +185,7 @@
             return <i className={`${weightClass} ${map[name] || 'ph-question'} ${className}`} style={{ fontSize: size }}></i>;
         });
 
-        // --- COMPONENT: Receipt Modal (FIXED SIZE) ---
+        // --- COMPONENT: Receipt Modal (UPDATED: NO CUSTOMER LABEL) ---
         const ReceiptModal = ({ isOpen, onClose, orders, shippingFee }) => {
             if (!isOpen) return null;
 
@@ -217,7 +204,6 @@
 
             return (
                 <div className="receipt-modal-overlay fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col overflow-hidden">
-                    {/* Header (Hidden on Print) */}
                     <div className="flex justify-between items-center p-4 bg-white dark:bg-dark-card border-b border-slate-200 dark:border-dark-border flex-none no-print">
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             <Icon name="Receipt" className="text-brand-600" size={24}/> 개별 구매내역서 (총 {Object.keys(grouped).length}명)
@@ -230,52 +216,41 @@
                         </div>
                     </div>
 
-                    {/* Scrollable Content */}
                     <div className="receipt-content-container flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-black custom-scroll">
                         <div id="receipt-container" className="max-w-3xl mx-auto space-y-6 print:space-y-0">
                             {Object.entries(grouped).map(([name, items], idx) => {
                                 const shipFee = items[0].customShippingFee ?? shippingFee;
                                 const subTotal = items.reduce((sum, i) => sum + i.price, 0);
-                                const isShipPaid = items.some(i => i.isShippingPaid);
                                 const totalRequired = subTotal + shipFee;
-                                const paidTotal = items.reduce((sum, i) => sum + i.deposit + i.cardAmount, 0);
-                                const shippingCredit = isShipPaid ? shipFee : 0;
-                                const unpaid = Math.max(0, totalRequired - paidTotal - shippingCredit);
-                                const isPaid = unpaid === 0;
-
+                                
                                 return (
                                     <div key={idx} className="receipt-page bg-white text-black p-6 rounded-xl shadow-sm max-w-xl mx-auto border border-gray-200 print:rounded-none print:shadow-none">
-                                        {/* Top Content */}
                                         <div>
-                                            <div className="flex justify-between items-center mb-4 pb-2 border-b-2 border-black">
-                                                <div>
-                                                    <p className="text-xs text-gray-500 font-bold">CUSTOMER</p>
-                                                    <p className="text-xl font-black">{name} 님</p>
-                                                </div>
+                                            <div className="flex justify-between items-end mb-4 pb-2 border-b-2 border-black">
+                                                <p className="text-xl font-black leading-none">{name} 님</p>
                                                 <p className="text-xs text-gray-400">{new Date().toLocaleDateString()}</p>
                                             </div>
 
                                             <table className="w-full text-xs mb-4">
                                                 <thead>
                                                     <tr className="border-b border-gray-400">
-                                                        <th className="text-left py-2">상품명</th>
-                                                        <th className="text-center py-2 w-14">수량</th>
-                                                        <th className="text-right py-2 w-24">금액</th>
+                                                        <th className="text-left py-1.5">상품명</th>
+                                                        <th className="text-center py-1.5 w-14">수량</th>
+                                                        <th className="text-right py-1.5 w-24">금액</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {items.map((item, i) => (
                                                         <tr key={i} className="border-b border-dashed border-gray-200">
-                                                            <td className="py-2 pr-2 font-medium truncate max-w-[200px]">{item.product}</td>
-                                                            <td className="py-2 text-center text-gray-600">{item.quantity}</td>
-                                                            <td className="py-2 text-right font-bold">{item.price.toLocaleString()}</td>
+                                                            <td className="py-1.5 pr-2 font-medium truncate max-w-[200px]">{item.product}</td>
+                                                            <td className="py-1.5 text-center text-gray-600">{item.quantity}</td>
+                                                            <td className="py-1.5 text-right font-bold">{item.price.toLocaleString()}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
 
-                                        {/* Bottom Content (Totals) */}
                                         <div>
                                             <div className="space-y-1 border-t border-black pt-2">
                                                 <div className="flex justify-between text-xs">
@@ -287,7 +262,7 @@
                                                     <span className="font-bold">{shipFee.toLocaleString()}</span>
                                                 </div>
                                                 
-                                                <div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-dashed border-gray-400">
+                                                <div className="flex justify-between text-xl font-black mt-3 pt-2 border-t border-dashed border-gray-400">
                                                     <span>결제총액</span>
                                                     <span>{totalRequired.toLocaleString()} 원</span>
                                                 </div>
@@ -302,46 +277,58 @@
             );
         };
 
-        // --- COMPONENT: Top Summary Card (70:15:15) ---
+        // --- COMPONENT: Top Summary Card (UPDATED: 30% Reduced Height & Layout) ---
         const SummaryDashboardCard = React.memo(({ totalRevenue, orderCount, shippingCount }) => {
             return (
-                <div className="relative overflow-hidden rounded-xl bg-slate-900 dark:bg-black text-white p-4 shadow-lg border border-slate-800 dark:border-slate-800 h-full flex items-center">
+                // Height Reduced: padding reduced to px-3 py-1, height h-20 (80px)
+                <div className="relative overflow-hidden rounded-xl bg-slate-900 dark:bg-black text-white px-3 py-1 shadow-lg border border-slate-800 dark:border-slate-800 h-full flex items-center">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-brand-600 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
+                    
                     <div className="relative z-10 w-full flex flex-col lg:flex-row lg:items-center divide-y lg:divide-y-0 lg:divide-x divide-white/10">
-                        <div className="lg:w-[70%] pb-4 lg:pb-0 lg:pr-6 flex flex-col justify-center">
-                            <div className="flex items-center gap-1.5 mb-1">
+                        {/* 60% Width for Revenue */}
+                        <div className="lg:w-[60%] pb-1 lg:pb-0 lg:pr-4 flex flex-col justify-center">
+                            <div className="flex items-center gap-1 mb-0.5">
                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-500"></span>
-                                <p className="text-slate-400 text-xs font-bold tracking-widest uppercase">총 예상 매출</p>
+                                <p className="text-slate-400 text-[10px] font-bold tracking-widest uppercase">총 예상 매출</p>
                             </div>
-                            <div className="flex items-baseline justify-end gap-1 mt-2">
-                                <p className="text-4xl lg:text-5xl font-black tracking-tight text-white leading-none">{totalRevenue.toLocaleString()}</p>
-                                <span className="text-lg text-slate-500 font-medium">원</span>
+                            <div className="flex items-baseline justify-end gap-1">
+                                {/* Reduced Font Size: 3xl for slim height */}
+                                <p className="text-3xl font-black tracking-tight text-white leading-none">{totalRevenue.toLocaleString()}</p>
+                                <span className="text-sm text-slate-500 font-medium">원</span>
                             </div>
                         </div>
-                        <div className="lg:w-[15%] py-3 lg:py-0 lg:px-4 flex flex-col justify-center items-center border-b lg:border-b-0 border-white/10">
-                            <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">총 주문</p>
-                            <p className="text-3xl font-bold leading-none text-white">{orderCount} <span className="text-xs text-slate-600 font-normal">개</span></p>
+                        
+                        {/* 20% Width for Order Count */}
+                        <div className="lg:w-[20%] py-1 lg:py-0 lg:px-2 flex flex-col justify-center items-center border-b lg:border-b-0 border-white/10">
+                            <p className="text-slate-500 text-[9px] font-bold uppercase mb-0.5">총 주문</p>
+                            <p className="text-2xl lg:text-3xl font-bold leading-none text-white whitespace-nowrap tracking-tight">
+                                {orderCount}<span className="text-[10px] text-slate-600 font-normal ml-0.5">개</span>
+                            </p>
                         </div>
-                        <div className="lg:w-[15%] pt-3 lg:pt-0 lg:pl-4 flex flex-col justify-center items-center">
-                            <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">배송 예정</p>
-                            <p className="text-3xl font-bold leading-none text-brand-400">{shippingCount} <span className="text-xs text-slate-600 font-normal">건</span></p>
+                        
+                        {/* 20% Width for Shipping Count */}
+                        <div className="lg:w-[20%] pt-1 lg:pt-0 lg:pl-2 flex flex-col justify-center items-center">
+                            <p className="text-slate-500 text-[9px] font-bold uppercase mb-0.5">배송 예정</p>
+                            <p className="text-2xl lg:text-3xl font-bold leading-none text-brand-400 whitespace-nowrap tracking-tight">
+                                {shippingCount}<span className="text-[10px] text-slate-600 font-normal ml-0.5">건</span>
+                            </p>
                         </div>
                     </div>
                 </div>
             );
         });
 
-        // --- COMPONENT: Detail List Card ---
+        // --- COMPONENT: Detail List Card (Compact) ---
         const DetailListCard = React.memo(({ title, items }) => {
             return (
-                <div className="bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border p-3 h-full shadow-sm flex flex-col justify-center">
-                    <div className="flex flex-col gap-1">
+                <div className="bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border py-1 px-2 h-full shadow-sm flex flex-col justify-center">
+                    <div className="flex flex-col gap-0">
                         {items.map((item, idx) => (
-                            <div key={idx} onClick={item.onClick} className={`flex items-center justify-between py-1.5 px-2 rounded transition-all ${item.onClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.99]' : ''} ${item.isActive ? 'bg-brand-50 dark:bg-brand-900/20 ring-1 ring-brand-200 dark:ring-brand-900/40' : ''}`}>
+                            <div key={idx} onClick={item.onClick} className={`flex items-center justify-between py-1 px-2 rounded transition-all ${item.onClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.99]' : ''} ${item.isActive ? 'bg-brand-50 dark:bg-brand-900/20 ring-1 ring-brand-200 dark:ring-brand-900/40' : ''}`}>
                                 <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tracking-tight">{item.label}</span>
                                 <div className={`text-sm font-bold ${item.valueColor || 'text-slate-800 dark:text-slate-200'} tracking-tight`}>
                                     {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
-                                    <span className="text-[11px] font-normal text-slate-400 ml-0.5">원</span>
+                                    <span className="text-[10px] font-normal text-slate-400 ml-0.5">원</span>
                                 </div>
                             </div>
                         ))}
@@ -572,7 +559,7 @@
             };
             const handleCopyMemo = () => { if (!globalMemo) { showToast('복사할 메모가 없습니다.', 'error'); return; } const ta = document.createElement("textarea"); ta.value = globalMemo; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('메모 복사 완료'); };
             
-            // --- CUSTOM COPY RESULTS LOGIC (UPDATED V2.6) ---
+            // --- CUSTOM COPY RESULTS LOGIC (UPDATED V2.5 with Emoji) ---
             const handleCopyResults = () => { 
                 if (filteredOrders.length === 0) return; 
                 let text = ''; 
@@ -694,11 +681,11 @@
                         </div>
                     </header>
 
-                    <main className="max-w-[1920px] mx-auto w-full px-4 py-4 flex flex-col gap-4">
+                    <main className="max-w-[1920px] mx-auto w-full px-4 py-4 flex flex-col gap-8">
                         <datalist id="product-options">{Object.entries(productHistory).map(([product, price]) => (<option key={product} value={product} label={`${price.toLocaleString()}원`} />))}</datalist>
                         
                         {/* Compact Top Section: Summary + 2 Detail Lists */}
-                        <div className="flex-none grid grid-cols-1 lg:grid-cols-4 gap-3 h-auto lg:h-32">
+                        <div className="flex-none grid grid-cols-1 lg:grid-cols-4 gap-3 h-auto lg:h-20">
                             <div className="lg:col-span-2 h-full"><SummaryDashboardCard totalRevenue={stats.totalRev} orderCount={stats.qty} shippingCount={stats.shippingCount} /></div>
                             <div className="lg:col-span-1 h-full">
                                 <DetailListCard items={[{ label: "카드매출", value: stats.cardRev, valueColor: "text-slate-800 dark:text-slate-200" }, { label: "현금매출", value: stats.cashRev, valueColor: "text-slate-800 dark:text-slate-200" }, { label: "배송비매출", value: stats.shipRev, valueColor: "text-slate-800 dark:text-slate-200" }]} />
