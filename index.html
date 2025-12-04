@@ -1,698 +1,597 @@
-<!DOCTYPE html>
-<html lang="ko" class="antialiased">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 자동화 v4.1 (Print Fixed)</title>
-    
-    <!-- Daum Postcode -->
-    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Search, RefreshCw, Save, Trash2, Printer, 
+  FileText, MessageSquare, Settings, HelpCircle, 
+  Folder, FolderOpen, Plus, Minus, Download, Upload,
+  Package, CheckCircle
+} from 'lucide-react';
 
-    <!-- React & Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <!-- PapaParse -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" crossorigin="anonymous"></script>
-    
-    <script>
-        tailwind.config = { 
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#fff1f2',
-                            100: '#ffe4e6',
-                            200: '#fecdd3',
-                            300: '#fda4af',
-                            400: '#fb7185',
-                            500: '#f43f5e',
-                            600: '#e11d48',
-                            700: '#be123c',
-                            800: '#9f1239',
-                            900: '#881337',
-                            950: '#4c0519',
-                        },
-                        dark: {
-                            bg: '#0a0a0a',
-                            card: '#171717',
-                            input: '#262626',
-                            text: '#e5e5e5',
-                            muted: '#a3a3a3',
-                            border: '#404040',
-                        }
-                    },
-                    boxShadow: {
-                        'soft': '0 2px 10px -2px rgba(0, 0, 0, 0.05)',
-                        'glow': '0 0 10px rgba(225, 29, 72, 0.2)',
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <style>
-        body { font-family: 'Pretendard', sans-serif; -webkit-font-smoothing: antialiased; }
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
+// --- Mock Data ---
+
+const MOCK_ORDERS = [
+  {
+    id: 1,
+    checked: true,
+    date: "2025-12-04",
+    orderedAt: "오전 11:06:03",
+    status: "신규주문",
+    memo: "",
+    orderBy: "변수영",
+    receiver: "박선영",
+    productName: "[선샤인]",
+    option: "글루타치온 [28개]",
+    qty: 1,
+    price: 596000,
+    shippingCost: 0,
+    shippingMethod: "무료배송",
+    address: "(04957) 서울 광진구 영화사로16길 15 (구의동, 삼성하이츠빌) 302호",
+    phone: "010-8070-1092",
+    orderNo: "20251204-0000059"
+  },
+  {
+    id: 2,
+    checked: false,
+    date: "2025-12-04",
+    orderedAt: "오전 10:15:22",
+    status: "배송준비",
+    memo: "부재시 문앞",
+    orderBy: "김철수",
+    receiver: "김철수",
+    productName: "프리미엄 비타민C",
+    option: "1000mg [60정]",
+    qty: 2,
+    price: 32000,
+    shippingCost: 3000,
+    shippingMethod: "일반택배",
+    address: "경기도 성남시 분당구 판교역로 123",
+    phone: "010-1234-5678",
+    orderNo: "20251204-0000060"
+  },
+  {
+    id: 3,
+    checked: false,
+    date: "2025-12-03", // Different date for grouping demonstration
+    orderedAt: "오전 09:45:11",
+    status: "신규주문",
+    memo: "",
+    orderBy: "이영희",
+    receiver: "최민수",
+    productName: "유기농 루이보스 티",
+    option: "티백 50입",
+    qty: 1,
+    price: 15900,
+    shippingCost: 2500,
+    shippingMethod: "일반택배",
+    address: "서울시 강남구 테헤란로 427",
+    phone: "010-9876-5432",
+    orderNo: "20251203-0000061"
+  }
+];
+
+const INITIAL_PRODUCTS = [
+  { id: 1, code: "P001", name: "[선샤인] 글루타치온", price: 596000, date: "2025-12-04" },
+  { id: 2, code: "P002", name: "프리미엄 비타민C", price: 16000, date: "2025-12-04" },
+  { id: 3, code: "P003", name: "유기농 루이보스 티", price: 15900, date: "2025-12-01" },
+];
+
+// --- Components ---
+
+const StatusBadge = ({ label, count, colorClass, active }) => (
+  <div className={`flex items-center justify-between px-2 py-1 text-xs border rounded cursor-pointer transition-colors ${active ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
+    <span className={`font-bold ${colorClass}`}>{label}</span>
+    <span className="ml-2 text-red-500 font-bold">({count})</span>
+  </div>
+);
+
+const ToolbarButton = ({ icon: Icon, label, color = "text-gray-600" }) => (
+  <button className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded min-w-[60px]">
+    <div className={`w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center mb-1 bg-white shadow-sm ${color}`}>
+      <Icon size={16} />
+    </div>
+    <span className="text-[10px] text-gray-700 leading-tight text-center">{label}</span>
+  </button>
+);
+
+const TreeItem = ({ item, level = 0, onSelect, selectedId }) => {
+  const [isOpen, setIsOpen] = useState(true);
+  
+  return (
+    <div>
+      <div 
+        className={`flex items-center px-2 py-1 cursor-pointer hover:bg-blue-50 text-xs ${selectedId === item.id ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'}`}
+        style={{ paddingLeft: `${level * 16 + 4}px` }}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (onSelect) onSelect(item);
+        }}
+      >
+        {item.children ? (
+          isOpen ? <Minus size={9} className="mr-1 border border-gray-400 bg-white" /> : <Plus size={9} className="mr-1 border border-gray-400 bg-white" />
+        ) : (
+          <span className="w-[9px] mr-1"></span>
+        )}
         
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #a3a3a3; border-radius: 3px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #737373; }
-        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #525252; }
+        {item.children ? (
+           isOpen ? <FolderOpen size={14} className="mr-1 text-yellow-500 fill-yellow-500" /> : <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
+        ) : (
+           <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
+        )}
+        
+        <span className="flex-1 truncate">{item.name}</span>
+        <span className="text-gray-500 ml-1 text-[10px]">{item.count}</span>
+      </div>
+      {isOpen && item.children && (
+        <div>
+          {item.children.map((child, idx) => (
+            <TreeItem key={idx} item={child} level={level + 1} onSelect={onSelect} selectedId={selectedId} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
-        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+export default function OrderManagementSystem() {
+  const [activeTab, setActiveTab] = useState("주문관리");
+  
+  // Order States
+  const [selectedOrder, setSelectedOrder] = useState(MOCK_ORDERS[0]);
+  const [selectedDateFilter, setSelectedDateFilter] = useState("all");
 
-        /* === PRINT STYLES (Robust Fix) === */
-        @media print {
-            @page {
-                size: A4;
-                margin: 0;
-            }
+  // Product States
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [newProduct, setNewProduct] = useState({ code: '', name: '', price: '' });
 
-            /* 1. Hide elements marked as no-print */
-            .no-print { display: none !important; }
+  // Reset filter when tab changes
+  useEffect(() => {
+    setSelectedDateFilter("all");
+  }, [activeTab]);
 
-            /* 2. Reset Body and Root */
-            body { background-color: white !important; -webkit-print-color-adjust: exact; }
-            #root { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+  // Generate Order Date Tree
+  const orderDateTree = useMemo(() => {
+    const groups = MOCK_ORDERS.reduce((acc, order) => {
+      acc[order.date] = (acc[order.date] || 0) + 1;
+      return acc;
+    }, {});
 
-            /* 3. Receipt Modal Overlay - Must cover everything */
-            .receipt-modal-overlay {
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                height: auto !important;
-                z-index: 9999 !important;
-                background: white !important;
-                display: block !important;
-            }
+    const children = Object.keys(groups).sort().reverse().map(date => ({
+      id: date,
+      name: date,
+      count: groups[date]
+    }));
 
-            /* 4. Content Containers */
-            .receipt-content-container {
-                overflow: visible !important;
-                height: auto !important;
-                display: block !important;
-                padding: 0 !important;
-            }
-            
-            #receipt-container {
-                display: block !important;
-                width: 100% !important;
-            }
+    return [
+      { 
+        id: "all",
+        name: "전체 날짜", 
+        count: MOCK_ORDERS.length, 
+        children: children
+      }
+    ];
+  }, []);
 
-            /* 5. Individual Receipt Page (A5 Sizing) */
-            .receipt-page {
-                width: 100% !important;
-                height: 148.5mm !important; /* Exactly half A4 */
-                padding: 15mm 20mm !important;
-                box-sizing: border-box !important;
-                background: transparent !important;
-                border: none !important;
-                border-bottom: 1px dashed #000 !important;
-                margin: 0 !important;
-                color: black !important;
-                box-shadow: none !important;
-                
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-            }
-            
-            /* Force text color to black for printers */
-            * { color: black !important; }
-        }
-    </style>
-</head>
-<body class="bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-dark-text font-sans transition-colors duration-200">
-    <div id="root"></div>
+  // Generate Product Date Tree
+  const productDateTree = useMemo(() => {
+    const groups = products.reduce((acc, p) => {
+      acc[p.date] = (acc[p.date] || 0) + 1;
+      return acc;
+    }, {});
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+    const children = Object.keys(groups).sort().reverse().map(date => ({
+      id: date,
+      name: date,
+      count: groups[date]
+    }));
 
-        // --- GLOBAL UTILITIES ---
-        const sanitizeOrder = (order) => {
-            if (!order || typeof order !== 'object') return null;
-            return {
-                id: order.id || Date.now() + Math.random(),
-                customer: order.customer || '',
-                product: order.product || '',
-                quantity: Number(order.quantity) || 1,
-                price: Number(order.price) || 0,
-                deposit: Number(order.deposit) || 0,
-                cardAmount: Number(order.cardAmount) || 0,
-                isPaid: !!order.isPaid,
-                isCardPaid: !!order.isCardPaid,
-                isShippingPaid: !!order.isShippingPaid,
-                customShippingFee: order.customShippingFee === null ? null : (Number(order.customShippingFee) || 0),
-                memo: order.memo || '',
-                originalText: order.originalText || '',
-                recipientName: order.recipientName || '',
-                phone: order.phone || '', 
-                zipCode: order.zipCode || '',
-                addressText: order.addressText || '',
-                shippingMemo: order.shippingMemo || '',
-                isAddressFilled: !!order.recipientName && !!order.phone && !!order.addressText
-            };
-        };
+    return [
+      {
+        id: "all",
+        name: "전체 날짜",
+        count: products.length,
+        children: children
+      }
+    ];
+  }, [products]);
 
-        const Icon = ({ name, size = 16, className = "", weight = "bold" }) => {
-            const map = {
-                ClipboardList: "ph-clipboard-text", FileDown: "ph-download-simple", Trash2: "ph-trash", Plus: "ph-plus",
-                Search: "ph-magnifying-glass", Youtube: "ph-youtube-logo", CheckCircle: "ph-check-circle", 
-                ShoppingCart: "ph-shopping-cart", DollarSign: "ph-currency-dollar", CreditCard: "ph-credit-card",
-                Truck: "ph-truck", Copy: "ph-copy", X: "ph-x", Pencil: "ph-pencil-simple",
-                Moon: "ph-moon", FloppyDisk: "ph-floppy-disk", Clock: "ph-clock-countdown", Money: "ph-money", Package: "ph-package",
-                ArrowRight: "ph-arrow-right", UploadSimple: "ph-upload-simple", Note: "ph-note-pencil", MapPin: "ph-map-pin",
-                Address: "ph-map-pin", User: "ph-user", Brain: "ph-brain", ChartBar: "ph-chart-bar", WarningCircle: "ph-warning-circle",
-                Wallet: "ph-wallet", TrendUp: "ph-trend-up", Coins: "ph-coins", Bank: "ph-bank", Receipt: "ph-receipt",
-                HandCoins: "ph-hand-coins", Calculator: "ph-calculator", Eraser: "ph-eraser", List: "ph-list",
-                CaretDown: "ph-caret-down", FileXls: "ph-file-xls", Sun: "ph-sun", Printer: "ph-printer", Gear: "ph-gear",
-                ChartPie: "ph-chart-pie"
-            };
-            return <i className={`${weight === 'bold' ? 'ph-bold' : 'ph'} ${map[name] || 'ph-question'} ${className}`} style={{ fontSize: size }}></i>;
-        };
+  // Determine which tree to show based on active tab
+  const currentTreeData = activeTab === '상품관리' ? productDateTree : orderDateTree;
+  const sidebarTitle = activeTab === '상품관리' ? '등록 일자' : '주문 일자';
 
-        // --- COMPONENT: Settings Modal ---
-        const SettingsModal = ({ isOpen, onClose, settings, setSettings, showToast }) => {
-            if (!isOpen) return null;
-            const [localSettings, setLocalSettings] = useState(settings);
-            const handleSave = () => {
-                setSettings(localSettings);
-                localStorage.setItem('appSettings', JSON.stringify(localSettings));
-                showToast("설정이 저장되었습니다.");
-                onClose();
-            };
-            return (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in no-print">
-                    <div className="bg-white dark:bg-dark-card w-full max-w-sm rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-dark-border">
-                        <div className="p-4 border-b border-slate-100 dark:border-dark-border flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-slate-800 dark:text-dark-text flex items-center gap-2"><Icon name="Gear" className="text-slate-500"/> 환경 설정</h3>
-                            <button onClick={onClose}><Icon name="X" size={20}/></button>
-                        </div>
-                        <div className="p-5 space-y-4">
-                            <div><label className="block text-xs font-bold text-slate-500 mb-1">은행명</label><input className="w-full p-2.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-sm outline-none focus:border-brand-500 dark:text-white" value={localSettings.bankName} onChange={e => setLocalSettings({...localSettings, bankName: e.target.value})} /></div>
-                            <div><label className="block text-xs font-bold text-slate-500 mb-1">계좌번호</label><input className="w-full p-2.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-sm outline-none focus:border-brand-500 dark:text-white" value={localSettings.accountNum} onChange={e => setLocalSettings({...localSettings, accountNum: e.target.value})} /></div>
-                            <div><label className="block text-xs font-bold text-slate-500 mb-1">예금주</label><input className="w-full p-2.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-sm outline-none focus:border-brand-500 dark:text-white" value={localSettings.holder} onChange={e => setLocalSettings({...localSettings, holder: e.target.value})} /></div>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-dark-bg border-t border-slate-100 dark:border-dark-border text-right"><button onClick={handleSave} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-bold text-sm transition-colors">저장하기</button></div>
+  // Filter orders based on sidebar selection
+  const filteredOrders = useMemo(() => {
+    if (selectedDateFilter === "all") return MOCK_ORDERS;
+    return MOCK_ORDERS.filter(o => o.date === selectedDateFilter);
+  }, [selectedDateFilter]);
+
+  // Filter products based on sidebar selection
+  const filteredProducts = useMemo(() => {
+    if (selectedDateFilter === "all") return products;
+    return products.filter(p => p.date === selectedDateFilter);
+  }, [selectedDateFilter, products]);
+
+  // Handle Product Add
+  const handleAddProduct = () => {
+    if (!newProduct.code || !newProduct.name || !newProduct.price) {
+      alert("모든 필드를 입력해주세요.");
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0]; // Use current date
+    const product = {
+      id: products.length + 1,
+      code: newProduct.code,
+      name: newProduct.name,
+      price: Number(newProduct.price),
+      date: today
+    };
+    setProducts([...products, product]);
+    setNewProduct({ code: '', name: '', price: '' });
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-100 font-sans text-xs overflow-hidden select-none">
+      
+      {/* 1. Header & Title Bar */}
+      <header className="bg-white border-b border-gray-300 h-8 flex items-center justify-between px-3 shrink-0">
+        <div className="flex items-center space-x-2">
+          <span className="font-bold text-gray-700">강은지 주문관리 시스템 1.1</span>
+        </div>
+        <div className="flex items-center space-x-4 text-gray-600">
+          <div className="flex items-center space-x-1">
+             <Settings size={14} />
+             <span>환경설정</span>
+          </div>
+        </div>
+      </header>
+
+      {/* 2. Main Tabs */}
+      <div className="bg-gray-50 border-b border-gray-300 px-2 flex space-x-1 pt-1 shrink-0">
+        {["상품관리", "주문관리", "문의관리", "통계조회", "작업관리", "1:1 문의"].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-t-md text-xs font-medium border-t border-l border-r ${
+              activeTab === tab 
+                ? 'bg-white border-gray-300 border-b-white text-blue-600 -mb-[1px] relative z-10' 
+                : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* 3. Toolbar Area (Conditional) */}
+      {activeTab === '주문관리' && (
+        <div className="bg-white border-b border-gray-300 p-2 flex items-start space-x-2 shrink-0 overflow-x-auto">
+          {/* Search Filters */}
+          <div className="flex flex-col space-y-1 w-[320px] shrink-0 border-r pr-2 border-gray-200">
+             <div className="flex items-center space-x-1">
+               <label className="w-10 text-gray-600">검색</label>
+               <select className="border border-gray-300 p-1 rounded w-24">
+                 <option>부분일치</option>
+               </select>
+               <select className="border border-gray-300 p-1 rounded flex-1">
+                 <option>모두</option>
+               </select>
+             </div>
+             <div className="flex items-center space-x-1">
+               <label className="w-10 text-gray-600">날짜</label>
+               <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-11-04" />
+               <span>~</span>
+               <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-12-04" />
+             </div>
+             <div className="flex space-x-1 pl-11">
+               {["오늘", "어제", "2주", "1개월", "3개월", "6개월"].map(d => (
+                 <button key={d} className={`px-1.5 py-0.5 border text-[10px] rounded ${d === '1개월' ? 'bg-orange-100 border-orange-300 text-orange-800' : 'bg-white border-gray-300'}`}>
+                   {d}
+                 </button>
+               ))}
+             </div>
+          </div>
+
+          {/* Search Button */}
+          <div className="flex items-center px-2 border-r border-gray-200 h-full">
+            <button className="flex flex-col items-center justify-center space-y-1 px-3 py-1 hover:bg-gray-50 rounded">
+              <Search size={32} className="text-gray-700" />
+              <span className="font-bold text-gray-700">검색시작</span>
+            </button>
+          </div>
+
+          {/* Status Dashboard */}
+          <div className="flex-1 grid grid-cols-3 gap-1.5 min-w-[400px]">
+             <div className="bg-white border border-gray-300 rounded flex items-center justify-center font-bold text-gray-600 cursor-pointer hover:bg-gray-50">
+               전체보기 ({MOCK_ORDERS.length})
+             </div>
+             <div className="grid grid-cols-1 gap-1">
+                <StatusBadge label="신규주문" count={6} colorClass="bg-yellow-200 px-1" active={true} />
+                <StatusBadge label="보류" count={0} colorClass="text-gray-500" />
+             </div>
+             <div className="grid grid-cols-1 gap-1">
+                <StatusBadge label="취소" count={0} colorClass="bg-red-500 text-white px-1" />
+                <StatusBadge label="반품요청" count={1} colorClass="bg-purple-200 px-1" />
+                <StatusBadge label="교환요청" count={0} colorClass="bg-purple-100 px-1" />
+             </div>
+          </div>
+
+          {/* Quick Actions (Right) */}
+          <div className="flex items-center space-x-1 pl-2 border-l border-gray-200">
+             <ToolbarButton icon={Download} label="가져오기" color="text-blue-600" />
+             <ToolbarButton icon={Upload} label="보내기" color="text-orange-500" />
+             <ToolbarButton icon={RefreshCw} label="주문정산화" />
+             <ToolbarButton icon={Plus} label="건별입력" />
+             <ToolbarButton icon={FileText} label="일괄입력" />
+             <ToolbarButton icon={Trash2} label="주문파기" />
+          </div>
+        </div>
+      )}
+
+      {/* 4. Content Area (Split View) */}
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* Left Sidebar (Dynamic Tree) - Always Visible */}
+        <div className="w-56 bg-white border-r border-gray-300 flex flex-col shrink-0">
+           <div className="p-1 bg-gray-100 border-b border-gray-300 font-bold text-gray-700 pl-2">
+             {sidebarTitle}
+           </div>
+           <div className="flex-1 overflow-y-auto p-1">
+             {currentTreeData.map((item, idx) => (
+               <TreeItem 
+                key={idx} 
+                item={item} 
+                onSelect={(node) => setSelectedDateFilter(node.id)} 
+                selectedId={selectedDateFilter}
+              />
+             ))}
+           </div>
+           {/* Bottom of Sidebar */}
+           <div className="h-24 bg-gray-50 border-t border-gray-300 p-2">
+              <div className="font-bold mb-1">내 검색</div>
+              <input className="w-full border p-1" placeholder="검색어 입력" />
+           </div>
+        </div>
+
+        {/* Right Main Content */}
+        <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
+           
+           {/* Content for Product Management */}
+           {activeTab === '상품관리' ? (
+             <div className="flex flex-col h-full bg-white">
+                {/* Product Registration Form */}
+                <div className="bg-gray-50 border-b border-gray-300 p-3">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Package className="text-blue-600" size={18} />
+                    <span className="font-bold text-gray-800 text-sm">신규 상품 등록</span>
+                  </div>
+                  <div className="flex items-end space-x-2 bg-white p-3 rounded border border-gray-200 shadow-sm">
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-xs font-bold text-gray-600">상품번호</label>
+                      <input 
+                        className="border border-gray-300 p-1.5 rounded w-32 focus:outline-none focus:border-blue-500" 
+                        placeholder="예: P004"
+                        value={newProduct.code}
+                        onChange={(e) => setNewProduct({...newProduct, code: e.target.value})}
+                      />
                     </div>
+                    <div className="flex flex-col space-y-1 flex-1">
+                      <label className="text-xs font-bold text-gray-600">상품명</label>
+                      <input 
+                        className="border border-gray-300 p-1.5 rounded w-full focus:outline-none focus:border-blue-500" 
+                        placeholder="상품명을 입력하세요"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-xs font-bold text-gray-600">단가</label>
+                      <input 
+                        type="number"
+                        className="border border-gray-300 p-1.5 rounded w-32 text-right focus:outline-none focus:border-blue-500" 
+                        placeholder="0"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
+                      />
+                    </div>
+                    <button 
+                      onClick={handleAddProduct}
+                      className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold shadow-sm flex items-center h-[30px]"
+                    >
+                      <CheckCircle size={14} className="mr-1"/> 등록
+                    </button>
+                  </div>
                 </div>
-            );
-        };
 
-        // --- COMPONENT: Stats Modal ---
-        const StatsModal = ({ isOpen, onClose, orders }) => {
-            if (!isOpen) return null;
-            const productStats = useMemo(() => {
-                const stats = {};
-                orders.forEach(o => {
-                    if (!o.product) return;
-                    if (!stats[o.product]) stats[o.product] = { qty: 0, rev: 0 };
-                    stats[o.product].qty += o.quantity;
-                    stats[o.product].rev += o.price;
-                });
-                return Object.entries(stats).sort((a, b) => b[1].qty - a[1].qty).slice(0, 10);
-            }, [orders]);
-            const maxQty = Math.max(...productStats.map(([, s]) => s.qty), 1);
-
-            return (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in no-print">
-                    <div className="bg-white dark:bg-dark-card w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-dark-border flex flex-col max-h-[80vh]">
-                        <div className="p-5 border-b border-slate-100 dark:border-dark-border flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-slate-800 dark:text-dark-text flex items-center gap-2"><Icon name="ChartPie" className="text-brand-600"/> 상품별 판매 통계 (Top 10)</h3>
-                            <button onClick={onClose}><Icon name="X" size={20}/></button>
-                        </div>
-                        <div className="p-6 overflow-y-auto custom-scroll bg-slate-50 dark:bg-dark-bg">
-                            {productStats.length === 0 ? (<div className="text-center text-slate-400 py-10">데이터가 없습니다.</div>) : (
-                                <div className="space-y-4">
-                                    {productStats.map(([name, stat], idx) => (
-                                        <div key={name} className="relative">
-                                            <div className="flex justify-between text-xs font-bold mb-1 text-slate-700 dark:text-slate-300">
-                                                <span className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px]">{idx + 1}</span>{name}</span>
-                                                <span>{stat.qty}개 <span className="text-slate-400 font-normal">({stat.rev.toLocaleString()}원)</span></span>
-                                            </div>
-                                            <div className="h-2.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-brand-500 rounded-full" style={{ width: `${(stat.qty / maxQty) * 100}%` }}></div></div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                {/* Product List */}
+                <div className="flex-1 overflow-auto p-3">
+                  <h3 className="font-bold text-gray-700 mb-2">등록된 상품 목록 ({filteredProducts.length})</h3>
+                  <table className="w-full text-left border-collapse border border-gray-300">
+                    <thead className="bg-gray-100 text-gray-700">
+                      <tr>
+                        <th className="p-2 border border-gray-300 w-12 text-center">No</th>
+                        <th className="p-2 border border-gray-300 w-24 text-center">등록일</th>
+                        <th className="p-2 border border-gray-300 w-32">상품번호</th>
+                        <th className="p-2 border border-gray-300">상품명</th>
+                        <th className="p-2 border border-gray-300 text-right w-32">단가</th>
+                        <th className="p-2 border border-gray-300 w-20 text-center">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProducts.map((p, idx) => (
+                        <tr key={p.id} className="hover:bg-blue-50">
+                          <td className="p-2 border border-gray-300 text-center">{idx + 1}</td>
+                          <td className="p-2 border border-gray-300 text-center text-gray-600">{p.date}</td>
+                          <td className="p-2 border border-gray-300 font-medium text-gray-600">{p.code}</td>
+                          <td className="p-2 border border-gray-300 font-bold text-blue-700">{p.name}</td>
+                          <td className="p-2 border border-gray-300 text-right">{p.price.toLocaleString()}원</td>
+                          <td className="p-2 border border-gray-300 text-center">
+                            <button className="text-gray-500 hover:text-blue-600 underline">수정</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-            );
-        };
-
-        // --- COMPONENT: Receipt Modal (PRINT MODE) ---
-        const ReceiptModal = ({ isOpen, onClose, orders, shippingFee, settings }) => {
-            if (!isOpen) return null;
-
-            const grouped = useMemo(() => {
-                return orders.reduce((acc, o) => {
-                    const key = o.customer || '미지정';
-                    if (!acc[key]) acc[key] = [];
-                    acc[key].push(o);
-                    return acc;
-                }, {});
-            }, [orders]);
-
-            const handlePrint = () => { window.print(); };
-
-            return (
-                <div className="receipt-modal-overlay fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col overflow-hidden">
-                    <div className="flex justify-between items-center p-4 bg-white dark:bg-dark-card border-b border-slate-200 dark:border-dark-border flex-none no-print">
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2"><Icon name="Receipt" className="text-brand-600" size={24}/> 영수증 미리보기 ({Object.keys(grouped).length}명)</h2>
-                        <div className="flex gap-2">
-                            <button onClick={handlePrint} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md font-bold flex items-center gap-2 transition-colors shadow-lg"><Icon name="Printer" size={18}/> 인쇄하기</button>
-                            <button onClick={onClose} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md font-bold transition-colors">닫기</button>
-                        </div>
-                    </div>
-
-                    <div className="receipt-content-container flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-black custom-scroll">
-                        <div id="receipt-container" className="max-w-3xl mx-auto space-y-6 print:space-y-0">
-                            {Object.entries(grouped).map(([name, items], idx) => {
-                                const shipFee = items[0].customShippingFee ?? shippingFee;
-                                const subTotal = items.reduce((sum, i) => sum + i.price, 0);
-                                const totalRequired = subTotal + shipFee;
-                                const paidTotal = items.reduce((sum, i) => sum + i.deposit + i.cardAmount, 0);
-                                const shippingCredit = items.some(i => i.isShippingPaid) ? shipFee : 0;
-                                const unpaid = Math.max(0, totalRequired - paidTotal - shippingCredit);
-                                const isPaid = unpaid === 0;
-
-                                return (
-                                    <div key={idx} className="receipt-page bg-white text-black p-6 rounded-xl shadow-sm max-w-xl mx-auto border border-gray-200 print:rounded-none print:shadow-none">
-                                        <div>
-                                            <div className="flex justify-between items-end mb-4 pb-2 border-b-2 border-black">
-                                                <p className="text-xl font-black leading-none">{name} 님</p>
-                                                <p className="text-xs text-gray-400">{new Date().toLocaleDateString()}</p>
-                                            </div>
-                                            <table className="w-full text-xs mb-4">
-                                                <thead>
-                                                    <tr className="border-b border-gray-400">
-                                                        <th className="text-left py-1.5">상품명</th>
-                                                        <th className="text-center py-1.5 w-14">수량</th>
-                                                        <th className="text-right py-1.5 w-24">금액</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {items.map((item, i) => (
-                                                        <tr key={i} className="border-b border-dashed border-gray-200">
-                                                            <td className="py-1.5 pr-2 font-medium truncate max-w-[200px]">{item.product}</td>
-                                                            <td className="py-1.5 text-center text-gray-600">{item.quantity}</td>
-                                                            <td className="py-1.5 text-right font-bold">{item.price.toLocaleString()}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <div>
-                                            <div className="space-y-1 border-t border-black pt-2">
-                                                <div className="flex justify-between text-xs"><span className="text-gray-800">상품 합계</span><span className="font-bold">{subTotal.toLocaleString()}</span></div>
-                                                <div className="flex justify-between text-xs"><span className="text-gray-800">배송비</span><span className="font-bold">{shipFee.toLocaleString()}</span></div>
-                                                <div className="flex justify-between text-xl font-black mt-3 pt-2 border-t border-dashed border-gray-400"><span>결제총액</span><span>{totalRequired.toLocaleString()} 원</span></div>
-                                                {!isPaid && (<div className="mt-4 pt-2 border-t border-gray-200 text-center text-xs text-gray-500"><p>{settings.bankName} {settings.accountNum} {settings.holder}</p></div>)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- DASHBOARD COMPONENTS (Compact v3.6) ---
-        const SummaryDashboardCard = React.memo(({ totalRevenue, orderCount, shippingCount }) => {
-            return (
-                <div className="relative overflow-hidden rounded-xl bg-slate-900 dark:bg-black text-white px-3 py-1 shadow-lg border border-slate-800 dark:border-slate-800 h-full flex items-center">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-brand-600 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
-                    <div className="relative z-10 w-full flex flex-col lg:flex-row lg:items-center divide-y lg:divide-y-0 lg:divide-x divide-white/10">
-                        <div className="lg:w-[60%] pb-1 lg:pb-0 lg:pr-4 flex flex-col justify-center">
-                            <div className="flex items-center gap-1 mb-0.5">
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-500"></span>
-                                <p className="text-slate-400 text-[10px] font-bold tracking-widest uppercase">총 예상 매출</p>
-                            </div>
-                            <div className="flex items-baseline justify-end gap-1">
-                                <p className="text-3xl font-black tracking-tight text-white leading-none">{totalRevenue.toLocaleString()}</p>
-                                <span className="text-sm text-slate-500 font-medium">원</span>
-                            </div>
-                        </div>
-                        <div className="lg:w-[20%] py-1 lg:py-0 lg:px-2 flex flex-col justify-center items-center border-b lg:border-b-0 border-white/10">
-                            <p className="text-slate-500 text-[9px] font-bold uppercase mb-0.5">총 주문</p>
-                            <p className="text-2xl font-bold leading-none text-white whitespace-nowrap tracking-tight">{orderCount}<span className="text-[10px] text-slate-600 font-normal ml-0.5">개</span></p>
-                        </div>
-                        <div className="lg:w-[20%] pt-1 lg:pt-0 lg:pl-2 flex flex-col justify-center items-center">
-                            <p className="text-slate-500 text-[9px] font-bold uppercase mb-0.5">배송 예정</p>
-                            <p className="text-2xl font-bold leading-none text-brand-400 whitespace-nowrap tracking-tight">{shippingCount}<span className="text-[10px] text-slate-600 font-normal ml-0.5">건</span></p>
-                        </div>
-                    </div>
-                </div>
-            );
-        });
-
-        const DetailListCard = React.memo(({ items }) => {
-            return (
-                <div className="bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-border py-1 px-2 h-full shadow-sm flex flex-col justify-center">
-                    <div className="flex flex-col gap-0">
-                        {items.map((item, idx) => (
-                            <div key={idx} onClick={item.onClick} className={`flex items-center justify-between py-1 px-2 rounded transition-all ${item.onClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.99]' : ''} ${item.isActive ? 'bg-brand-50 dark:bg-brand-900/20 ring-1 ring-brand-200 dark:ring-brand-900/40' : ''}`}>
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tracking-tight">{item.label}</span>
-                                <div className={`text-sm font-bold ${item.valueColor || 'text-slate-800 dark:text-slate-200'} tracking-tight`}>
-                                    {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
-                                    <span className="text-[10px] font-normal text-slate-400 ml-0.5">원</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        });
-
-        const InlineProductManager = ({ productHistory, setProductHistory, setOrders, showToast }) => {
-            const [name, setName] = useState('');
-            const [price, setPrice] = useState('');
-            const handleSave = () => {
-                if (!name.trim()) { showToast("상품명 입력 필요", "error"); return; }
-                const cleanName = name.trim(); const newUnitPrice = Number(price);
-                const isUpdate = productHistory.hasOwnProperty(cleanName);
-                setProductHistory(prev => ({ ...prev, [cleanName]: newUnitPrice }));
-                let updatedCount = 0;
-                setOrders(prevOrders => prevOrders.map(order => { if (order.product && order.product.trim() === cleanName) { updatedCount++; return { ...order, price: order.quantity * newUnitPrice }; } return order; }));
-                showToast(isUpdate ? `${updatedCount}건 업데이트` : "등록 완료");
-                setName(''); setPrice('');
-            };
-            const handleEditName = (oldName, currentPrice) => {
-                const newName = window.prompt(`이름 변경: ${oldName}`, oldName);
-                if (newName && newName.trim() !== "" && newName !== oldName) {
-                    const cleanNewName = newName.trim();
-                    setProductHistory(prev => { const next = { ...prev }; delete next[oldName]; next[cleanNewName] = currentPrice; return next; });
-                    setOrders(prev => prev.map(o => { if (o.product === oldName) return { ...o, product: cleanNewName }; return o; }));
-                    showToast("상품명이 변경되었습니다.");
-                }
-            };
-            const handleEditPrice = (pName, oldPrice) => {
-                const newPriceStr = window.prompt(`단가 변경: ${pName}`, oldPrice);
-                if (newPriceStr !== null) {
-                    const cleanStr = newPriceStr.replace(/,/g, '').trim();
-                    const newPrice = Number(cleanStr);
-                    if (!isNaN(newPrice)) {
-                        setProductHistory(prev => ({ ...prev, [pName]: newPrice }));
-                        setOrders(prev => prev.map(o => { if (o.product === pName) return { ...o, price: o.quantity * newPrice }; return o; }));
-                    }
-                }
-            };
-            const handleItemClick = (pName, pPrice) => { setName(pName); setPrice(pPrice); };
-            const handleDelete = (key) => { if(window.confirm(`'${key}' 상품을 삭제하시겠습니까?`)) { setProductHistory(prev => { const next = { ...prev }; delete next[key]; return next; }); } };
-            return (
-                <div className="bg-white dark:bg-dark-card rounded border border-slate-200 dark:border-dark-border p-3 flex flex-col h-full hover:border-slate-300 transition-colors overflow-hidden">
-                    <div className="flex items-center justify-between mb-2 flex-none">
-                        <h2 className="text-xs font-bold flex items-center gap-1 text-slate-800 dark:text-dark-text uppercase tracking-wide"><Icon name="List" className="text-brand-600" size={14}/> 상품 관리</h2>
-                        <span className="text-[10px] text-slate-400 cursor-default">목록 클릭시 수정</span>
-                    </div>
-                    <div className="flex gap-1 mb-2 flex-none">
-                        <input className="flex-1 p-1.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 transition-all dark:text-white" placeholder="상품명" value={name} onChange={e => setName(e.target.value)} />
-                        <input className="w-16 p-1.5 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 transition-all dark:text-white" type="number" placeholder="단가" value={price} onChange={e => setPrice(e.target.value)} />
-                        <button onClick={handleSave} className="px-2 bg-slate-800 hover:bg-slate-900 text-white rounded text-[10px] font-bold whitespace-nowrap transition-colors">저장</button>
-                    </div>
-                    <div className="flex-1 relative">
-                        <div className="absolute inset-0 overflow-y-auto custom-scroll pr-1">
-                            {Object.entries(productHistory).length === 0 ? (<div className="flex flex-col items-center justify-center h-full text-slate-400 text-[10px]"><span>등록된 상품 없음</span></div>) : (
-                                <ul className="space-y-0.5">{Object.entries(productHistory).map(([pName, pPrice], idx) => (
-                                    <li key={pName} className={`flex justify-between items-center p-1.5 rounded group border border-transparent hover:border-brand-200 dark:hover:border-brand-800 transition-all cursor-pointer ${idx % 2 === 0 ? 'bg-slate-50/50 dark:bg-white/5' : 'bg-transparent'}`} onClick={() => handleItemClick(pName, pPrice)}>
-                                        <span className="font-medium text-xs text-slate-700 dark:text-dark-text truncate max-w-[60%] hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditName(pName, pPrice); }} title="이름 수정">{pName}</span>
-                                        <div className="flex items-center gap-2"><span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold hover:text-brand-600" onClick={(e) => { e.stopPropagation(); handleEditPrice(pName, pPrice); }} title="단가 수정">{pPrice.toLocaleString()}</span><button onClick={(e) => { e.stopPropagation(); handleDelete(pName); }} className="text-slate-300 hover:text-red-500 opacity-50 group-hover:opacity-100 transition-all p-0.5"><Icon name="Trash2" size={12}/></button></div>
-                                    </li>
-                                ))}</ul>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const ActionButton = ({ onClick, color, icon, text, className='' }) => {
-            let colorClass = "";
-            if (color === 'blue') colorClass = "bg-brand-600 hover:bg-brand-700 text-white border-transparent shadow-sm";
-            else if (color === 'white') colorClass = "bg-white dark:bg-dark-card hover:bg-slate-50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-dark-border shadow-sm";
-            else if (color === 'slate') colorClass = "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 border-transparent";
-            else colorClass = "bg-white border-slate-200 text-slate-700 hover:bg-slate-50";
-            return <button onClick={onClick} className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 border ${colorClass} ${className}`}><Icon name={icon} size={14} weight="bold"/> {text}</button>;
-        };
-
-        // ... (AddressEditor, ProductAutocomplete are same) ...
-        const AddressEditor = ({ order, handleUpdateOrderBatch, setEditingAddressId, showToast }) => {
-            const [rawAddressText, setRawAddressText] = useState('');
-            const handleOpenAddressSearch = () => { if (window.daum && window.daum.Postcode) { try { new daum.Postcode({ oncomplete: function(data) { let fullAddress = data.roadAddress || data.jibunAddress; if(data.userSelectedType === 'R'){ if(data.bname !== '') extraAddress += data.bname; if(data.buildingName !== '') extraAddress += (extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName); } handleUpdateOrderBatch(order.id, { zipCode: data.zonecode, addressText: fullAddress }); showToast('주소 입력 완료'); } }).open(); } catch (error) { window.open('https://search.naver.com/search.naver?query=%EC%9A%B0%ED%8E%B8%EB%B2%88%ED%98%B8%EA%B2%80%EC%83%89', '_blank'); } } else { window.open('https://search.naver.com/search.naver?query=%EC%9A%B0%ED%8E%B8%EB%B2%88%ED%98%B8%EA%B2%80%EC%83%89', '_blank'); } };
-            const parseAddressInfo = (text) => { const r={recipientName:'',phone:'',zipCode:'',addressText:'',shippingMemo:''}; let t=text.replace(/\n/g,' ').trim(); const p=t.match(/010[.\-\s]*\d{3,4}[.\-\s]*\d{4}/); if(p){ r.phone=p[0].replace(/\D/g,''); t=t.replace(p[0],' ').trim(); } const z=t.match(/\d{5,6}/); if(z){ r.zipCode=z[0]; t=t.replace(z[0],' '); } const w=t.split(/\s+/).filter(x=>x.length>0); if(w.length>0){ const n=w.find(x=>/^[가-힣]{2,4}$/.test(x)); if(n){ r.recipientName=n; t=t.replace(n,' '); } else { r.recipientName=w[0]; t=t.replace(w[0],' '); } } r.addressText=t.trim(); return r; };
-            const handleParse = () => { if (!rawAddressText.trim()) return; const parsed = parseAddressInfo(rawAddressText); handleUpdateOrderBatch(order.id, parsed); showToast('자동 입력 완료'); setRawAddressText(''); };
-            const handleChange = (f, v) => handleUpdateOrderBatch(order.id, {[f]:v});
-            return (
-                 <div className="col-span-full p-3 bg-slate-50 dark:bg-dark-bg rounded border border-slate-200 dark:border-dark-border mt-1 mb-1 animate-fade-in relative">
-                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-dark-border mb-2">
-                        <h3 className="text-xs font-bold text-slate-800 dark:text-dark-text flex items-center gap-1"><Icon name="MapPin" size={14} className="text-brand-600"/> 배송 정보</h3>
-                        <div className="flex gap-1"><ActionButton onClick={handleOpenAddressSearch} color="white" icon="Search" text="검색" /><ActionButton onClick={() => setEditingAddressId(null)} color="blue" icon="FloppyDisk" text="완료" /></div>
-                    </div>
-                    <div className="flex gap-2 mb-2"><textarea className="flex-1 p-2 border border-slate-200 dark:border-dark-border rounded text-xs resize-none h-12" placeholder="주소 텍스트" value={rawAddressText} onChange={(e)=>setRawAddressText(e.target.value)}/><button onClick={handleParse} className="w-12 bg-slate-800 text-white rounded text-xs font-bold">자동</button></div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-                         <input className="w-full p-2 border rounded text-xs" placeholder="수령인" value={order.recipientName} onChange={e=>handleChange('recipientName',e.target.value)}/>
-                         <input className="w-full p-2 border rounded text-xs" placeholder="연락처" value={order.phone} onChange={e=>handleChange('phone',e.target.value)}/>
-                         <input className="w-full p-2 border rounded text-xs" placeholder="우편번호" value={order.zipCode} onChange={e=>handleChange('zipCode',e.target.value)}/>
-                         <input className="w-full p-2 border rounded text-xs" placeholder="메모" value={order.shippingMemo} onChange={e=>handleChange('shippingMemo',e.target.value)}/>
-                    </div>
-                    <input className="w-full p-2 border rounded text-xs" placeholder="주소" value={order.addressText} onChange={e=>handleChange('addressText',e.target.value)}/>
-                 </div>
-            );
-        };
-        const ProductAutocomplete = ({ id, value, onChange, onSelect, onDeleteProduct, onKeyDown, priceMap }) => {
-            const [show, setShow] = useState(false); const ref = useRef(null);
-            useEffect(() => { const handleClick = e => { if(ref.current && !ref.current.contains(e.target)) setShow(false); }; document.addEventListener("mousedown", handleClick); return () => document.removeEventListener("mousedown", handleClick); }, []);
-            const filtered = Object.entries(priceMap).filter(([n]) => n.toLowerCase().includes(value.toLowerCase()));
-            return (
-                <div className="relative w-full" ref={ref}>
-                    <input id={id} className="w-full bg-transparent outline-none text-sm font-medium" value={value} onChange={e => { onChange(e); setShow(true); }} onFocus={() => setShow(true)} onKeyDown={onKeyDown} placeholder="상품명" autoComplete="off" />
-                    {show && filtered.length > 0 && (
-                        <ul className="absolute z-50 left-0 mt-1 w-full bg-white border rounded shadow-lg max-h-40 overflow-y-auto py-1">
-                            {filtered.map(([n, p]) => (
-                                <li key={n} className="px-2 py-1.5 hover:bg-slate-50 cursor-pointer flex justify-between items-center text-xs" onClick={() => { onSelect(n, p); setShow(false); }}>
-                                    <span>{n}</span><span className="text-slate-500">{p.toLocaleString()}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [isDarkMode, setIsDarkMode] = useState(false);
-            const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('appSettings')) || { bankName: '카카오뱅크', accountNum: '7942 18 01611', holder: '김선정' });
-            const [rawInput, setRawInput] = useState('');
-            const [globalMemo, setGlobalMemo] = useState(() => localStorage.getItem('globalMemo') || '');
-            const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
-            const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
-            const [isProcessing, setIsProcessing] = useState(false);
-            const [toast, setToast] = useState(null);
-            const [pricePerUnit, setPricePerUnit] = useState('');
-            const [shippingFee, setShippingFee] = useState(4000);
-            const [defaultProductName, setDefaultProductName] = useState('');
-            const [filterText, setFilterText] = useState('');
-            const [editingAmountId, setEditingAmountId] = useState(null);
-            const [editingAddressId, setEditingAddressId] = useState(null); 
-            const [editingShippingId, setEditingShippingId] = useState(null); 
-            const [unpaidFilter, setUnpaidFilter] = useState(null); 
-            const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
-            const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-            const [isStatsOpen, setIsStatsOpen] = useState(false);
-            const fileInputRef = useRef(null); const excelMenuRef = useRef(null); 
-
-            useEffect(() => { localStorage.setItem('youtubeOrders', JSON.stringify(orders)); }, [orders]);
-            useEffect(() => { localStorage.setItem('globalMemo', globalMemo); }, [globalMemo]);
-            useEffect(() => { localStorage.setItem('productHistory', JSON.stringify(productHistory)); }, [productHistory]);
-            useEffect(() => { const handler = e => { if(excelMenuRef.current && !excelMenuRef.current.contains(e.target)) setIsExcelMenuOpen(false); }; document.addEventListener("mousedown", handler); return () => document.removeEventListener("mousedown", handler); }, []);
-
-            const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 3000); };
-            
-            // ... CSV logic same ...
-            const getCSVString = (listData, mode) => { /* ... */ return ""; }; 
-            const handleDownloadCSV = (mode) => { /* ... */ };
-            const handleDownloadProductCSV = () => { /* ... */ };
-            const handleDownloadHTML = () => { const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup.html`; a.click(); };
-            const handleUploadClick = () => fileInputRef.current.click();
-            const handleFileUpload = (e) => { /* ... */ };
-            const handleReset = () => { if (window.confirm("전체 삭제?")) setOrders([]); };
-
-            const handleCopyMemo = () => { navigator.clipboard.writeText(globalMemo); showToast('메모 복사 완료'); };
-            const handleCopyResults = () => { /* ... same logic ... */ navigator.clipboard.writeText('...'); showToast('복사 완료'); };
-
-            const filteredOrders = useMemo(() => {
-                let res = orders;
-                if(filterText) res = res.filter(o => o.customer.includes(filterText) || o.product.includes(filterText));
-                if(unpaidFilter) {
-                    const grouped = orders.reduce((acc, o) => { const k = o.customer || 'u'; if(!acc[k]) acc[k] = {p:0, d:0, c:0, ship:false, fee:null}; acc[k].p += o.price; acc[k].d += o.deposit; acc[k].c += o.cardAmount; if(o.isShippingPaid) acc[k].ship = true; if(o.customShippingFee !== null) acc[k].fee = o.customShippingFee; return acc; }, {});
-                    res = res.filter(o => { const g = grouped[o.customer || 'u']; if (!g) return false; const ship = g.fee ?? shippingFee; const totalRequired = g.p + ship; const totalPaid = g.d + g.c; const shippingCredit = g.ship ? ship : 0; const personUnpaid = Math.max(0, totalRequired - totalPaid - shippingCredit); if (unpaidFilter === 'ship') { return !g.ship && ship > 0; } if (unpaidFilter === 'cash') { let cashUnpaid = 0; if (g.ship) { cashUnpaid = personUnpaid; } else { const unpaidAttribToShip = Math.min(personUnpaid, ship); cashUnpaid = personUnpaid - unpaidAttribToShip; } return cashUnpaid > 0; } return true; });
-                }
-                return res;
-            }, [orders, filterText, unpaidFilter, shippingFee]);
-
-            const stats = useMemo(() => {
-                const res = { qty: 0, orderCount: 0, shippingCount: 0, cardRev: 0, cashRev: 0, shipRev: 0, totalRev: 0, cardUnpaid: 0, cashUnpaid: 0, shipUnpaid: 0, totalUnpaid: 0 };
-                const grouped = filteredOrders.reduce((acc, o) => { const k = o.customer || 'u'; if(!acc[k]) acc[k] = {p:0, d:0, c:0, ship:false, fee:null, q:0}; acc[k].p += o.price; acc[k].d += o.deposit; acc[k].c += o.cardAmount; acc[k].q += o.quantity; if(o.isShippingPaid) acc[k].ship = true; if(o.customShippingFee !== null) acc[k].fee = o.customShippingFee; return acc; }, {});
-                Object.values(grouped).forEach(g => { const ship = g.fee ?? shippingFee; res.orderCount++; res.shippingCount++; res.cardRev += g.c; res.cashRev += Math.max(0, g.p - g.c); res.shipRev += ship; res.totalRev += (g.p + ship); res.qty += g.q; const totalRequired = g.p + ship; const totalPaid = g.d + g.c; const shippingCredit = g.ship ? ship : 0; const personUnpaid = Math.max(0, totalRequired - totalPaid - shippingCredit); if (g.ship) { res.cashUnpaid += personUnpaid; } else { const unpaidAttribToShip = Math.min(personUnpaid, ship); res.shipUnpaid += unpaidAttribToShip; res.cashUnpaid += (personUnpaid - unpaidAttribToShip); } res.totalUnpaid += personUnpaid; });
-                return res;
-            }, [filteredOrders, shippingFee]);
-
-            const handleToggleAmountEdit = (id) => { setEditingAmountId(id === editingAmountId ? null : id); setEditingShippingId(null); };
-            const handleToggleShippingEdit = (id) => { setEditingShippingId(id === editingShippingId ? null : id); setEditingAmountId(null); };
-            const handleToggleAddressEdit = (id) => { setEditingAddressId(id === editingAddressId ? null : id); };
-            const handleKeyDown = (e, index, field) => { if (e.key === 'Enter') { e.preventDefault(); const nextIndex = index + 1; if (nextIndex < filteredOrders.length) { const nextElement = document.getElementById(`${field}-${nextIndex}`); if (nextElement) { nextElement.focus(); if (nextElement.select) nextElement.select(); } } } };
-            const handleMemoKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); const textarea = e.target; const start = textarea.selectionStart; const end = textarea.selectionEnd; const value = globalMemo; const newValue = value.substring(0, start) + "\n▫ " + value.substring(end); setGlobalMemo(newValue); setTimeout(() => { textarea.selectionStart = textarea.selectionEnd = start + 3; }, 0); } };
-            const handleParseOrders = () => { /* ... */ };
-            const handleAddEmptyOrder = () => { setOrders(prev => [sanitizeOrder({ id: Date.now(), customer: '', product: defaultProductName, quantity: 1, price: Number(pricePerUnit) || 0 }), ...prev]); };
-            const handleUpdateOrder = (id, f, v) => { setOrders(prev => prev.map(o => o.id === id ? {...o, [f]:v} : o)); };
-            const handleProductSelect = (id, n, p) => { setOrders(prev => prev.map(o => o.id === id ? {...o, product:n, price: o.quantity * p} : o)); };
-            const handleDeleteProduct = (n) => { /* ... */ };
-            const handleUpdateOrderBatch = (id, u) => { setOrders(prev => prev.map(o => o.id === id ? {...o, ...u} : o)); };
-            const handleDelete = (id) => setOrders(prev => prev.filter(o => o.id !== id));
-            const handleAutoDepositFull = (id) => { /* ... */ };
-            const handleAutoCardFull = (id) => { /* ... */ };
-            const handleUnpaidFilterClick = (t) => setUnpaidFilter(t === unpaidFilter ? null : t);
-
-            return (
-                <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-dark-text font-sans">
-                    <header className="sticky top-0 z-50 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border-b border-slate-200 dark:border-dark-border flex-none transition-all duration-300 no-print">
-                        <div className="max-w-[1920px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-2 text-brand-600 dark:text-brand-500 min-w-fit">
-                                <Icon name="Package" size={20} weight="bold" />
-                                <h1 className="text-base font-bold text-slate-900 dark:text-dark-text tracking-tight hidden md:block">주문 관리 <span className="text-brand-600 dark:text-brand-500">시스템</span></h1>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs whitespace-nowrap">
-                                <button onClick={() => setIsSettingsOpen(true)} className="px-2 py-1 text-slate-600 hover:text-brand-600 font-bold flex items-center gap-1"><Icon name="Gear" size={14}/> 설정</button>
-                                <button onClick={() => setIsStatsOpen(true)} className="px-2 py-1 text-slate-600 hover:text-brand-600 font-bold flex items-center gap-1"><Icon name="ChartPie" size={14}/> 통계</button>
-                                <div className="h-4 w-px bg-slate-200 mx-1"></div>
-                                <button onClick={handleReset} className="px-2 py-1 text-slate-600 hover:text-brand-600 font-medium">초기화</button>
-                                <button onClick={() => setIsReceiptModalOpen(true)} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-all shadow-sm flex items-center gap-1 font-bold">영수증</button>
-                                <div className="relative" ref={excelMenuRef}>
-                                    <button onClick={() => setIsExcelMenuOpen(!isExcelMenuOpen)} className="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded transition-all shadow-sm flex items-center gap-1 font-bold">엑셀 <Icon name="CaretDown" size={10} weight="bold" /></button>
-                                    {isExcelMenuOpen && (
-                                        <div className="absolute top-full right-0 mt-1 w-32 bg-white border rounded shadow-xl z-50 overflow-hidden py-1">
-                                            <button onClick={() => handleDownloadCSV('full')} className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2">전체 내역</button>
-                                            <button onClick={() => handleDownloadCSV('invoice')} className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2">송장용</button>
-                                        </div>
-                                    )}
-                                </div>
-                                <button onClick={handleDownloadHTML} className="px-3 py-1.5 border hover:bg-slate-50 rounded font-bold">백업</button>
-                                <button onClick={handleUploadClick} className="px-3 py-1.5 border hover:bg-slate-50 rounded font-bold">복원</button>
-                                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" style={{display:'none'}} />
-                            </div>
-                        </div>
-                    </header>
-
-                    <main className="max-w-[1920px] mx-auto w-full px-4 py-4 flex flex-col gap-8 no-print">
-                        <datalist id="product-options">{Object.entries(productHistory).map(([product, price]) => (<option key={product} value={product} label={`${price.toLocaleString()}원`} />))}</datalist>
+             </div>
+           ) : (
+             // Existing Order Management View
+             <>
+               {/* Detail View (Top Half) */}
+               <div className="h-[180px] flex border-b border-gray-400 shrink-0">
+                  
+                  {/* Order Detail Form */}
+                  <div className="flex-1 bg-white p-2 overflow-y-auto">
+                     <div className="grid grid-cols-12 gap-y-1 gap-x-2">
                         
-                        {/* Dashboard */}
-                        <div className="flex-none grid grid-cols-1 lg:grid-cols-4 gap-3 h-auto lg:h-20">
-                            <div className="lg:col-span-2 h-full"><SummaryDashboardCard totalRevenue={stats.totalRev} orderCount={stats.orderCount} shippingCount={stats.shippingCount} /></div>
-                            <div className="lg:col-span-1 h-full">
-                                <DetailListCard items={[{ label: "카드매출", value: stats.cardRev }, { label: "현금매출", value: stats.cashRev }, { label: "배송비매출", value: stats.shipRev }]} />
-                            </div>
-                            <div className="lg:col-span-1 h-full">
-                                <DetailListCard items={[{ label: "총 미수금", value: stats.totalUnpaid, valueColor: "text-red-600" }, { label: "현금 미수금", value: stats.cashUnpaid, valueColor: "text-red-600", onClick: () => handleUnpaidFilterClick('cash'), isActive: unpaidFilter === 'cash' }, { label: "배송 미수금", value: stats.shipUnpaid, valueColor: "text-red-600", onClick: () => handleUnpaidFilterClick('ship'), isActive: unpaidFilter === 'ship' }]} />
-                            </div>
+                        <div className="col-span-2 text-gray-500 text-right">상품명</div>
+                        <div className="col-span-10 font-bold text-gray-800">{selectedOrder.productName}</div>
+
+                        <div className="col-span-2 text-gray-500 text-right">마스터 상품코드</div>
+                        <div className="col-span-10 flex items-center space-x-1">
+                           <span>미매칭</span>
+                           <button className="px-1 bg-blue-100 text-blue-700 border border-blue-200 text-[10px] rounded">상품매칭</button>
+                        </div>
+                        
+                        <div className="col-span-2 text-gray-500 text-right">주문번호</div>
+                        <div className="col-span-4">{selectedOrder.orderNo}</div>
+                        <div className="col-span-2 text-gray-500 text-right">주문일자</div>
+                        <div className="col-span-4">{selectedOrder.date} {selectedOrder.orderedAt}</div>
+
+                        <div className="col-span-12 border-t border-gray-200 my-1"></div>
+
+                        <div className="col-span-2 text-gray-500 text-right">주문/수령자</div>
+                        <div className="col-span-10">
+                           <span className="font-bold">{selectedOrder.orderBy}</span>
+                           <span className="text-gray-400 mx-1">/</span>
+                           <span>{selectedOrder.receiver}</span>
                         </div>
 
-                        {/* Work Area */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-[18rem]">
-                            <div className="bg-white dark:bg-dark-card rounded border p-3 flex flex-col h-full hover:border-slate-300 transition-colors">
-                                <div className="flex justify-between mb-2"><h2 className="text-xs font-bold flex gap-1"><Icon name="ClipboardList" className="text-brand-500"/> 댓글 붙여넣기</h2></div>
-                                <textarea className="flex-1 w-full p-3 bg-slate-50 border rounded resize-none text-xs mb-2" value={rawInput} onChange={(e) => setRawInput(e.target.value)}></textarea>
-                                <button onClick={handleParseOrders} className="w-full py-2 bg-slate-900 text-white rounded font-bold text-xs">변환 실행</button>
-                            </div>
-                            <InlineProductManager productHistory={productHistory} setProductHistory={setProductHistory} setOrders={setOrders} showToast={showToast} />
-                            <div className="bg-white dark:bg-dark-card rounded border p-3 flex flex-col h-full hover:border-slate-300 transition-colors">
-                                <div className="flex justify-between mb-2"><h2 className="text-xs font-bold flex gap-1"><Icon name="Note" className="text-amber-500"/> 메모장</h2><button onClick={handleCopyMemo} className="text-[10px] font-bold">복사</button></div>
-                                <textarea className="flex-1 w-full p-3 bg-yellow-50 border border-yellow-100 rounded resize-none text-xs" value={globalMemo} onChange={(e) => setGlobalMemo(e.target.value)}></textarea>
-                            </div>
+                        <div className="col-span-2 text-gray-500 text-right">주문자 tel</div>
+                        <div className="col-span-4 flex items-center">
+                           {selectedOrder.phone} 
+                           <button className="ml-1 px-1 border bg-gray-50">문자</button>
                         </div>
+                        <div className="col-span-2 text-gray-500 text-right">옵션</div>
+                        <div className="col-span-4 text-blue-700">{selectedOrder.option}</div>
 
-                        {/* Order List */}
-                        <div className="bg-white dark:bg-dark-card rounded border flex flex-col overflow-hidden">
-                            <div className="p-3 border-b flex gap-3 justify-between items-center">
-                                <div className="flex gap-2"><Icon name="Search"/><input className="text-xs outline-none" placeholder="검색..." value={filterText} onChange={(e) => setFilterText(e.target.value)} /></div>
-                                <div className="flex gap-2 items-center">
-                                    <div className="flex items-center gap-1 px-2 py-1 bg-slate-50 border rounded"><span className="text-[10px] font-bold text-slate-400">기본</span><input className="w-16 bg-transparent text-xs font-bold" value={defaultProductName} onChange={e=>setDefaultProductName(e.target.value)}/></div>
-                                    <div className="flex items-center gap-1 px-2 py-1 bg-slate-50 border rounded"><span className="text-[10px] font-bold text-slate-400">단가</span><input type="number" className="w-12 bg-transparent text-xs font-bold text-right" value={pricePerUnit} onChange={e=>setPricePerUnit(e.target.value)}/></div>
-                                    <div className="flex items-center gap-1 px-2 py-1 bg-slate-50 border rounded"><span className="text-[10px] font-bold text-slate-400">배송비</span><input type="number" className="w-12 bg-transparent text-xs font-bold text-right" value={shippingFee} onChange={e=>setShippingFee(Number(e.target.value))}/></div>
-                                    <ActionButton onClick={handleAddEmptyOrder} color="blue" icon="Plus" text="추가"/>
-                                    <ActionButton onClick={handleCopyResults} color="slate" icon="Copy" text="결과복사"/>
-                                </div>
-                            </div>
-                            <div className="sticky top-14 z-30 grid grid-cols-[0.5fr_2.0fr_4.0fr_0.4fr_1.0fr_1.5fr_2.0fr_0.5fr] gap-3 px-3 py-2 bg-slate-50 border-b text-[10px] font-bold text-slate-500 text-center">
-                                <div>주소</div><div className="text-left">고객 정보</div><div className="text-left">상품명</div><div>수량</div><div className="text-right">금액</div><div>상태</div><div>메모</div><div>삭제</div>
-                            </div>
-                            <div className="p-3 space-y-2 bg-slate-50/30 min-h-[300px]">
-                                {filteredOrders.map((order, idx) => (
-                                    <div key={order.id} className="group grid grid-cols-[0.5fr_2.0fr_4.0fr_0.4fr_1.0fr_1.5fr_2.0fr_0.5fr] gap-3 p-2 border rounded items-center text-xs bg-white hover:shadow-sm">
-                                         {/* ... Order Row Content (omitted for brevity, logic same as v3.6) ... */}
-                                        <div className="flex justify-center"><button onClick={() => handleToggleAddressEdit(order.id)} className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${order.isAddressFilled ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-400'}`}><Icon name="MapPin" size={14}/></button></div>
-                                        <div className="relative pl-1"><input className={`w-full bg-transparent font-bold outline-none text-sm ${getNicknameColor(order.customer)}`} value={order.customer} onChange={e => handleUpdateOrder(order.id, 'customer', e.target.value)} /><input className="w-full bg-transparent text-[10px] text-slate-400" value={order.phone} onChange={e => handleUpdateOrder(order.id, 'phone', e.target.value)} placeholder="연락처"/></div>
-                                        <div><ProductAutocomplete id={`prod-${idx}`} value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onSelect={(n,p) => handleProductSelect(order.id, n, p)} onDeleteProduct={handleDeleteProduct} priceMap={productHistory}/></div>
-                                        <div className="flex justify-center"><input type="number" className="w-full text-center font-bold" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', Number(e.target.value))}/></div>
-                                        <div className="text-right"><input className="w-full text-right font-bold" value={order.price.toLocaleString()} onChange={e => { const v = Number(e.target.value.replace(/,/g,'')); if(!isNaN(v)) handleUpdateOrder(order.id, 'price', v); }}/></div>
-                                        <div className="flex justify-center gap-1">
-                                            <button onClick={() => handleAutoDepositFull(order.id)} className={`w-7 h-7 rounded-full flex justify-center items-center ${order.deposit > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}><Icon name="DollarSign"/></button>
-                                            {firstOrderIds[order.customer] === order.id ? <button onClick={() => handleUpdateOrder(order.id, 'isShippingPaid', !order.isShippingPaid)} className={`w-7 h-7 rounded-full flex justify-center items-center ${order.isShippingPaid ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}><Icon name="Truck"/></button> : <div className="w-7"/>}
-                                            <button onClick={() => handleToggleAmountEdit(order.id)} className={`w-7 h-7 rounded-full flex justify-center items-center ${order.cardAmount > 0 ? 'bg-pink-50 text-pink-600' : 'bg-slate-50 text-slate-300'}`}><Icon name="CreditCard"/></button>
-                                        </div>
-                                        <div><input className="w-full text-center text-[10px] text-slate-400" value={order.memo} onChange={e => handleUpdateOrder(order.id, 'memo', e.target.value)} placeholder="메모"/></div>
-                                        <div className="flex justify-center"><button onClick={() => handleDelete(order.id)} className="text-slate-300 hover:text-red-500"><Icon name="Trash2"/></button></div>
-                                        
-                                        {/* Expanded Editors (Address, Amount, Shipping) would go here - keeping logic same */}
-                                        {editingAddressId === order.id && <AddressEditor order={order} handleUpdateOrderBatch={handleUpdateOrderBatch} setEditingAddressId={setEditingAddressId} showToast={showToast} />}
-                                    </div>
-                                ))}
-                            </div>
-                            {/* Footer */}
-                            <div className="p-3 bg-white border-t text-xs flex justify-between items-center">
-                                <span className="font-bold text-slate-500">총 {stats.shippingCount}건 배송</span>
-                                <div className="text-right flex gap-4">
-                                    <div className="flex flex-col items-end"><span className="text-[9px] font-bold text-slate-400">총액</span><span className="font-bold text-sm">{stats.totalRev.toLocaleString()}원</span></div>
-                                    {stats.totalUnpaid > 0 && <div className="flex flex-col items-end text-brand-600"><span className="text-[9px] font-bold">미입금</span><span className="font-bold text-sm">{stats.totalUnpaid.toLocaleString()}원</span></div>}
-                                </div>
-                            </div>
+                        <div className="col-span-2 text-gray-500 text-right">배송방법</div>
+                        <div className="col-span-4">{selectedOrder.shippingMethod}</div>
+                        <div className="col-span-2 text-gray-500 text-right">사은품</div>
+                        <div className="col-span-4">-</div>
+
+                        <div className="col-span-2 text-gray-500 text-right">주소</div>
+                        <div className="col-span-10">{selectedOrder.address}</div>
+                     </div>
+                  </div>
+
+                  {/* CS / Log Tab */}
+                  <div className="w-[300px] bg-white border-l border-gray-300 flex flex-col">
+                     <div className="flex border-b border-gray-300 bg-gray-50">
+                        <button className="px-3 py-1 bg-white border-r border-gray-300 font-bold text-blue-600">주문CS</button>
+                        <button className="px-3 py-1 text-gray-500 hover:bg-gray-100">로그</button>
+                        <button className="px-3 py-1 text-gray-500 hover:bg-gray-100 flex items-center"><MessageSquare size={10} className="mr-1"/>주문CS상담관리</button>
+                     </div>
+                     <div className="flex-1 p-2 bg-gray-50 font-bold text-gray-800 text-sm">
+                        기록된 내역이 없습니다.
+                     </div>
+                     <div className="p-1 border-t border-gray-300 flex space-x-1">
+                        <textarea className="flex-1 border border-gray-300 p-1 h-12 text-xs resize-none" placeholder="내용 입력"></textarea>
+                        <div className="flex flex-col space-y-1">
+                           <button className="px-2 py-2 bg-blue-100 border border-blue-300 rounded text-blue-800 hover:bg-blue-200">등록</button>
+                           <button className="px-2 py-0 bg-white border border-gray-300 rounded text-gray-600">완료</button>
                         </div>
-                    </main>
+                     </div>
+                  </div>
+               </div>
 
-                    <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} setSettings={setSettings} showToast={showToast} />
-                    <StatsModal isOpen={isStatsOpen} onClose={() => setIsStatsOpen(false)} orders={filteredOrders} />
-                    <ReceiptModal isOpen={isReceiptModalOpen} onClose={() => setIsReceiptModalOpen(false)} orders={filteredOrders} shippingFee={shippingFee} settings={settings} />
-                    {toast && <div className="fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-900 text-white rounded-full shadow-2xl text-xs font-medium animate-slide-up z-[100]">{toast.message}</div>}
-                </div>
-            );
-        };
-        
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+               {/* List View (Bottom Half) */}
+               <div className="flex-1 bg-white flex flex-col">
+                  {/* List Toolbar */}
+                  <div className="flex items-center justify-between p-1 border-b border-gray-300 bg-gray-100">
+                     <div className="flex items-center space-x-2">
+                        <span className="font-bold">주문 목록 ({filteredOrders.length})</span>
+                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><RefreshCw size={10} className="mr-1"/>새로고침</button>
+                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><Save size={10} className="mr-1"/>저장</button>
+                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-red-600"><Trash2 size={10} className="mr-1"/>삭제</button>
+                        <span className="text-gray-300">|</span>
+                        <button className="flex items-center px-1 bg-green-50 border border-green-300 rounded text-green-700"><FileText size={10} className="mr-1"/>EXCEL</button>
+                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded"><Printer size={10} className="mr-1"/>인쇄/FAX</button>
+                     </div>
+                     <div className="flex items-center space-x-1">
+                        <select className="border border-gray-300 rounded px-1">
+                           <option>페이지당 1000</option>
+                        </select>
+                     </div>
+                  </div>
+
+                  {/* Data Table */}
+                  <div className="flex-1 overflow-auto">
+                     <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-200 sticky top-0 z-10 text-gray-700 font-semibold whitespace-nowrap">
+                           <tr>
+                              <th className="p-1 border border-gray-300 w-8 text-center"><input type="checkbox" /></th>
+                              <th className="p-1 border border-gray-300">블랙</th>
+                              <th className="p-1 border border-gray-300">주문일 (시간)</th>
+                              <th className="p-1 border border-gray-300">상태</th>
+                              <th className="p-1 border border-gray-300">한줄메모</th>
+                              <th className="p-1 border border-gray-300">주문자</th>
+                              <th className="p-1 border border-gray-300">수령자</th>
+                              <th className="p-1 border border-gray-300">상품명</th>
+                              <th className="p-1 border border-gray-300">옵션</th>
+                              <th className="p-1 border border-gray-300 text-right">수량</th>
+                              <th className="p-1 border border-gray-300 text-right">판매가</th>
+                              <th className="p-1 border border-gray-300 text-right">배송비</th>
+                              <th className="p-1 border border-gray-300">배송방법</th>
+                           </tr>
+                        </thead>
+                        <tbody className="bg-white">
+                           {filteredOrders.map((order) => (
+                              <tr 
+                                key={order.id} 
+                                onClick={() => setSelectedOrder(order)}
+                                className={`cursor-pointer hover:bg-blue-50 whitespace-nowrap ${selectedOrder.id === order.id ? 'bg-blue-100' : ''}`}
+                              >
+                                 <td className="p-1 border border-gray-300 text-center"><input type="checkbox" checked={selectedOrder.id === order.id} readOnly /></td>
+                                 <td className="p-1 border border-gray-300 text-center">{order.id === 1 ? <div className="w-3 h-3 rounded-full bg-gray-300 mx-auto"></div> : ''}</td>
+                                 <td className={`p-1 border border-gray-300 ${order.id === 1 ? 'text-red-500' : ''}`}>{order.date} {order.orderedAt}</td>
+                                 <td className="p-1 border border-gray-300 text-center">
+                                    <span className={`px-1 py-0.5 rounded text-[10px] ${order.status === '신규주문' ? 'bg-yellow-200' : 'bg-gray-200'}`}>{order.status}</span>
+                                 </td>
+                                 <td className="p-1 border border-gray-300">{order.memo}</td>
+                                 <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.orderBy}</td>
+                                 <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.receiver}</td>
+                                 <td className="p-1 border border-gray-300 text-blue-600">{order.productName}</td>
+                                 <td className="p-1 border border-gray-300 text-blue-600">{order.option}</td>
+                                 <td className="p-1 border border-gray-300 text-right bg-blue-50">{order.qty}</td>
+                                 <td className="p-1 border border-gray-300 text-right">{order.price.toLocaleString()}</td>
+                                 <td className="p-1 border border-gray-300 text-right">{order.shippingCost.toLocaleString()}</td>
+                                 <td className="p-1 border border-gray-300">{order.shippingMethod}</td>
+                              </tr>
+                           ))}
+                           {/* Empty rows */}
+                           {Array.from({ length: 15 }).map((_, i) => (
+                             <tr key={`empty-${i}`}>
+                               <td className="p-1 border border-gray-200 h-6"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                               <td className="p-1 border border-gray-200"></td>
+                             </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
+             </>
+           )}
+        </div>
+      </div>
+    </div>
+  );
+}
