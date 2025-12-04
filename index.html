@@ -1,597 +1,521 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Search, RefreshCw, Save, Trash2, Printer, 
-  FileText, MessageSquare, Settings, HelpCircle, 
-  Folder, FolderOpen, Plus, Minus, Download, Upload,
-  Package, CheckCircle
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>강은지 주문관리 시스템 1.1</title>
+    <!-- Tailwind CSS (스타일) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 웹 폰트 적용 (선택사항) */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-// --- Mock Data ---
+    <!-- React 및 라이브러리 로드 (ES Modules) -->
+    <script type="module">
+        import React, { useState, useMemo, useEffect } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import { 
+          Search, RefreshCw, Save, Trash2, Printer, 
+          FileText, MessageSquare, Settings, HelpCircle, 
+          Folder, FolderOpen, Plus, Minus, Download, Upload,
+          Package, CheckCircle
+        } from 'https://esm.sh/lucide-react@0.292.0';
 
-const MOCK_ORDERS = [
-  {
-    id: 1,
-    checked: true,
-    date: "2025-12-04",
-    orderedAt: "오전 11:06:03",
-    status: "신규주문",
-    memo: "",
-    orderBy: "변수영",
-    receiver: "박선영",
-    productName: "[선샤인]",
-    option: "글루타치온 [28개]",
-    qty: 1,
-    price: 596000,
-    shippingCost: 0,
-    shippingMethod: "무료배송",
-    address: "(04957) 서울 광진구 영화사로16길 15 (구의동, 삼성하이츠빌) 302호",
-    phone: "010-8070-1092",
-    orderNo: "20251204-0000059"
-  },
-  {
-    id: 2,
-    checked: false,
-    date: "2025-12-04",
-    orderedAt: "오전 10:15:22",
-    status: "배송준비",
-    memo: "부재시 문앞",
-    orderBy: "김철수",
-    receiver: "김철수",
-    productName: "프리미엄 비타민C",
-    option: "1000mg [60정]",
-    qty: 2,
-    price: 32000,
-    shippingCost: 3000,
-    shippingMethod: "일반택배",
-    address: "경기도 성남시 분당구 판교역로 123",
-    phone: "010-1234-5678",
-    orderNo: "20251204-0000060"
-  },
-  {
-    id: 3,
-    checked: false,
-    date: "2025-12-03", // Different date for grouping demonstration
-    orderedAt: "오전 09:45:11",
-    status: "신규주문",
-    memo: "",
-    orderBy: "이영희",
-    receiver: "최민수",
-    productName: "유기농 루이보스 티",
-    option: "티백 50입",
-    qty: 1,
-    price: 15900,
-    shippingCost: 2500,
-    shippingMethod: "일반택배",
-    address: "서울시 강남구 테헤란로 427",
-    phone: "010-9876-5432",
-    orderNo: "20251203-0000061"
-  }
-];
+        // --- Mock Data ---
 
-const INITIAL_PRODUCTS = [
-  { id: 1, code: "P001", name: "[선샤인] 글루타치온", price: 596000, date: "2025-12-04" },
-  { id: 2, code: "P002", name: "프리미엄 비타민C", price: 16000, date: "2025-12-04" },
-  { id: 3, code: "P003", name: "유기농 루이보스 티", price: 15900, date: "2025-12-01" },
-];
+        const MOCK_ORDERS = [
+          {
+            id: 1,
+            checked: true,
+            date: "2025-12-04",
+            orderedAt: "오전 11:06:03",
+            status: "신규주문",
+            memo: "",
+            orderBy: "변수영",
+            receiver: "박선영",
+            productName: "[선샤인]",
+            option: "글루타치온 [28개]",
+            qty: 1,
+            price: 596000,
+            shippingCost: 0,
+            shippingMethod: "무료배송",
+            address: "(04957) 서울 광진구 영화사로16길 15 (구의동, 삼성하이츠빌) 302호",
+            phone: "010-8070-1092",
+            orderNo: "20251204-0000059"
+          },
+          {
+            id: 2,
+            checked: false,
+            date: "2025-12-04",
+            orderedAt: "오전 10:15:22",
+            status: "배송준비",
+            memo: "부재시 문앞",
+            orderBy: "김철수",
+            receiver: "김철수",
+            productName: "프리미엄 비타민C",
+            option: "1000mg [60정]",
+            qty: 2,
+            price: 32000,
+            shippingCost: 3000,
+            shippingMethod: "일반택배",
+            address: "경기도 성남시 분당구 판교역로 123",
+            phone: "010-1234-5678",
+            orderNo: "20251204-0000060"
+          },
+          {
+            id: 3,
+            checked: false,
+            date: "2025-12-03", // Different date for grouping demonstration
+            orderedAt: "오전 09:45:11",
+            status: "신규주문",
+            memo: "",
+            orderBy: "이영희",
+            receiver: "최민수",
+            productName: "유기농 루이보스 티",
+            option: "티백 50입",
+            qty: 1,
+            price: 15900,
+            shippingCost: 2500,
+            shippingMethod: "일반택배",
+            address: "서울시 강남구 테헤란로 427",
+            phone: "010-9876-5432",
+            orderNo: "20251203-0000061"
+          }
+        ];
 
-// --- Components ---
+        const INITIAL_PRODUCTS = [
+          { id: 1, code: "P001", name: "[선샤인] 글루타치온", price: 596000, date: "2025-12-04" },
+          { id: 2, code: "P002", name: "프리미엄 비타민C", price: 16000, date: "2025-12-04" },
+          { id: 3, code: "P003", name: "유기농 루이보스 티", price: 15900, date: "2025-12-01" },
+        ];
 
-const StatusBadge = ({ label, count, colorClass, active }) => (
-  <div className={`flex items-center justify-between px-2 py-1 text-xs border rounded cursor-pointer transition-colors ${active ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
-    <span className={`font-bold ${colorClass}`}>{label}</span>
-    <span className="ml-2 text-red-500 font-bold">({count})</span>
-  </div>
-);
+        // --- Components ---
 
-const ToolbarButton = ({ icon: Icon, label, color = "text-gray-600" }) => (
-  <button className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded min-w-[60px]">
-    <div className={`w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center mb-1 bg-white shadow-sm ${color}`}>
-      <Icon size={16} />
-    </div>
-    <span className="text-[10px] text-gray-700 leading-tight text-center">{label}</span>
-  </button>
-);
+        const StatusBadge = ({ label, count, colorClass, active }) => (
+          React.createElement("div", { className: `flex items-center justify-between px-2 py-1 text-xs border rounded cursor-pointer transition-colors ${active ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-300 hover:bg-gray-50'}` },
+            React.createElement("span", { className: `font-bold ${colorClass}` }, label),
+            React.createElement("span", { className: "ml-2 text-red-500 font-bold" }, `(${count})`)
+          )
+        );
 
-const TreeItem = ({ item, level = 0, onSelect, selectedId }) => {
-  const [isOpen, setIsOpen] = useState(true);
-  
-  return (
-    <div>
-      <div 
-        className={`flex items-center px-2 py-1 cursor-pointer hover:bg-blue-50 text-xs ${selectedId === item.id ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'}`}
-        style={{ paddingLeft: `${level * 16 + 4}px` }}
-        onClick={() => {
-          setIsOpen(!isOpen);
-          if (onSelect) onSelect(item);
-        }}
-      >
-        {item.children ? (
-          isOpen ? <Minus size={9} className="mr-1 border border-gray-400 bg-white" /> : <Plus size={9} className="mr-1 border border-gray-400 bg-white" />
-        ) : (
-          <span className="w-[9px] mr-1"></span>
-        )}
-        
-        {item.children ? (
-           isOpen ? <FolderOpen size={14} className="mr-1 text-yellow-500 fill-yellow-500" /> : <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
-        ) : (
-           <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
-        )}
-        
-        <span className="flex-1 truncate">{item.name}</span>
-        <span className="text-gray-500 ml-1 text-[10px]">{item.count}</span>
-      </div>
-      {isOpen && item.children && (
-        <div>
-          {item.children.map((child, idx) => (
-            <TreeItem key={idx} item={child} level={level + 1} onSelect={onSelect} selectedId={selectedId} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+        // JSX를 사용할 수 없는 환경이므로 React.createElement를 사용하거나
+        // babel-standalone을 써야 하지만, 여기서는 가장 안정적인 실행을 위해
+        // 브라우저가 바로 이해하는 방식으로 변환된 코드를 제공합니다.
+        // 하지만 위 방식은 수정이 어려우므로, Babel Standalone을 사용하여 JSX를 그대로 씁니다.
+    </script>
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState("주문관리");
-  
-  // Order States
-  const [selectedOrder, setSelectedOrder] = useState(MOCK_ORDERS[0]);
-  const [selectedDateFilter, setSelectedDateFilter] = useState("all");
+    <!-- Babel Standalone (브라우저에서 JSX 실행) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  // Product States
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [newProduct, setNewProduct] = useState({ code: '', name: '', price: '' });
+    <script type="text/babel" data-type="module">
+        import React, { useState, useMemo, useEffect } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import { 
+          Search, RefreshCw, Save, Trash2, Printer, 
+          FileText, MessageSquare, Settings, HelpCircle, 
+          Folder, FolderOpen, Plus, Minus, Download, Upload,
+          Package, CheckCircle
+        } from 'https://esm.sh/lucide-react@0.292.0';
 
-  // Reset filter when tab changes
-  useEffect(() => {
-    setSelectedDateFilter("all");
-  }, [activeTab]);
+        // --- Mock Data (위와 동일) ---
+        const MOCK_ORDERS = [
+          { id: 1, checked: true, date: "2025-12-04", orderedAt: "오전 11:06:03", status: "신규주문", memo: "", orderBy: "변수영", receiver: "박선영", productName: "[선샤인]", option: "글루타치온 [28개]", qty: 1, price: 596000, shippingCost: 0, shippingMethod: "무료배송", address: "(04957) 서울 광진구 영화사로16길 15 (구의동, 삼성하이츠빌) 302호", phone: "010-8070-1092", orderNo: "20251204-0000059" },
+          { id: 2, checked: false, date: "2025-12-04", orderedAt: "오전 10:15:22", status: "배송준비", memo: "부재시 문앞", orderBy: "김철수", receiver: "김철수", productName: "프리미엄 비타민C", option: "1000mg [60정]", qty: 2, price: 32000, shippingCost: 3000, shippingMethod: "일반택배", address: "경기도 성남시 분당구 판교역로 123", phone: "010-1234-5678", orderNo: "20251204-0000060" },
+          { id: 3, checked: false, date: "2025-12-03", orderedAt: "오전 09:45:11", status: "신규주문", memo: "", orderBy: "이영희", receiver: "최민수", productName: "유기농 루이보스 티", option: "티백 50입", qty: 1, price: 15900, shippingCost: 2500, shippingMethod: "일반택배", address: "서울시 강남구 테헤란로 427", phone: "010-9876-5432", orderNo: "20251203-0000061" }
+        ];
 
-  // Generate Order Date Tree
-  const orderDateTree = useMemo(() => {
-    const groups = MOCK_ORDERS.reduce((acc, order) => {
-      acc[order.date] = (acc[order.date] || 0) + 1;
-      return acc;
-    }, {});
+        const INITIAL_PRODUCTS = [
+          { id: 1, code: "P001", name: "[선샤인] 글루타치온", price: 596000, date: "2025-12-04" },
+          { id: 2, code: "P002", name: "프리미엄 비타민C", price: 16000, date: "2025-12-04" },
+          { id: 3, code: "P003", name: "유기농 루이보스 티", price: 15900, date: "2025-12-01" },
+        ];
 
-    const children = Object.keys(groups).sort().reverse().map(date => ({
-      id: date,
-      name: date,
-      count: groups[date]
-    }));
+        // --- Components ---
 
-    return [
-      { 
-        id: "all",
-        name: "전체 날짜", 
-        count: MOCK_ORDERS.length, 
-        children: children
-      }
-    ];
-  }, []);
-
-  // Generate Product Date Tree
-  const productDateTree = useMemo(() => {
-    const groups = products.reduce((acc, p) => {
-      acc[p.date] = (acc[p.date] || 0) + 1;
-      return acc;
-    }, {});
-
-    const children = Object.keys(groups).sort().reverse().map(date => ({
-      id: date,
-      name: date,
-      count: groups[date]
-    }));
-
-    return [
-      {
-        id: "all",
-        name: "전체 날짜",
-        count: products.length,
-        children: children
-      }
-    ];
-  }, [products]);
-
-  // Determine which tree to show based on active tab
-  const currentTreeData = activeTab === '상품관리' ? productDateTree : orderDateTree;
-  const sidebarTitle = activeTab === '상품관리' ? '등록 일자' : '주문 일자';
-
-  // Filter orders based on sidebar selection
-  const filteredOrders = useMemo(() => {
-    if (selectedDateFilter === "all") return MOCK_ORDERS;
-    return MOCK_ORDERS.filter(o => o.date === selectedDateFilter);
-  }, [selectedDateFilter]);
-
-  // Filter products based on sidebar selection
-  const filteredProducts = useMemo(() => {
-    if (selectedDateFilter === "all") return products;
-    return products.filter(p => p.date === selectedDateFilter);
-  }, [selectedDateFilter, products]);
-
-  // Handle Product Add
-  const handleAddProduct = () => {
-    if (!newProduct.code || !newProduct.name || !newProduct.price) {
-      alert("모든 필드를 입력해주세요.");
-      return;
-    }
-    const today = new Date().toISOString().split('T')[0]; // Use current date
-    const product = {
-      id: products.length + 1,
-      code: newProduct.code,
-      name: newProduct.name,
-      price: Number(newProduct.price),
-      date: today
-    };
-    setProducts([...products, product]);
-    setNewProduct({ code: '', name: '', price: '' });
-  };
-
-  return (
-    <div className="flex flex-col h-screen bg-gray-100 font-sans text-xs overflow-hidden select-none">
-      
-      {/* 1. Header & Title Bar */}
-      <header className="bg-white border-b border-gray-300 h-8 flex items-center justify-between px-3 shrink-0">
-        <div className="flex items-center space-x-2">
-          <span className="font-bold text-gray-700">강은지 주문관리 시스템 1.1</span>
-        </div>
-        <div className="flex items-center space-x-4 text-gray-600">
-          <div className="flex items-center space-x-1">
-             <Settings size={14} />
-             <span>환경설정</span>
+        const StatusBadge = ({ label, count, colorClass, active }) => (
+          <div className={`flex items-center justify-between px-2 py-1 text-xs border rounded cursor-pointer transition-colors ${active ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
+            <span className={`font-bold ${colorClass}`}>{label}</span>
+            <span className="ml-2 text-red-500 font-bold">({count})</span>
           </div>
-        </div>
-      </header>
+        );
 
-      {/* 2. Main Tabs */}
-      <div className="bg-gray-50 border-b border-gray-300 px-2 flex space-x-1 pt-1 shrink-0">
-        {["상품관리", "주문관리", "문의관리", "통계조회", "작업관리", "1:1 문의"].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-t-md text-xs font-medium border-t border-l border-r ${
-              activeTab === tab 
-                ? 'bg-white border-gray-300 border-b-white text-blue-600 -mb-[1px] relative z-10' 
-                : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            {tab}
+        const ToolbarButton = ({ icon: Icon, label, color = "text-gray-600" }) => (
+          <button className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded min-w-[60px]">
+            <div className={`w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center mb-1 bg-white shadow-sm ${color}`}>
+              <Icon size={16} />
+            </div>
+            <span className="text-[10px] text-gray-700 leading-tight text-center">{label}</span>
           </button>
-        ))}
-      </div>
+        );
 
-      {/* 3. Toolbar Area (Conditional) */}
-      {activeTab === '주문관리' && (
-        <div className="bg-white border-b border-gray-300 p-2 flex items-start space-x-2 shrink-0 overflow-x-auto">
-          {/* Search Filters */}
-          <div className="flex flex-col space-y-1 w-[320px] shrink-0 border-r pr-2 border-gray-200">
-             <div className="flex items-center space-x-1">
-               <label className="w-10 text-gray-600">검색</label>
-               <select className="border border-gray-300 p-1 rounded w-24">
-                 <option>부분일치</option>
-               </select>
-               <select className="border border-gray-300 p-1 rounded flex-1">
-                 <option>모두</option>
-               </select>
-             </div>
-             <div className="flex items-center space-x-1">
-               <label className="w-10 text-gray-600">날짜</label>
-               <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-11-04" />
-               <span>~</span>
-               <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-12-04" />
-             </div>
-             <div className="flex space-x-1 pl-11">
-               {["오늘", "어제", "2주", "1개월", "3개월", "6개월"].map(d => (
-                 <button key={d} className={`px-1.5 py-0.5 border text-[10px] rounded ${d === '1개월' ? 'bg-orange-100 border-orange-300 text-orange-800' : 'bg-white border-gray-300'}`}>
-                   {d}
-                 </button>
-               ))}
-             </div>
-          </div>
+        const TreeItem = ({ item, level = 0, onSelect, selectedId }) => {
+          const [isOpen, setIsOpen] = useState(true);
+          
+          return (
+            <div>
+              <div 
+                className={`flex items-center px-2 py-1 cursor-pointer hover:bg-blue-50 text-xs ${selectedId === item.id ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'}`}
+                style={{ paddingLeft: `${level * 16 + 4}px` }}
+                onClick={() => {
+                  setIsOpen(!isOpen);
+                  if (onSelect) onSelect(item);
+                }}
+              >
+                {item.children ? (
+                  isOpen ? <Minus size={9} className="mr-1 border border-gray-400 bg-white" /> : <Plus size={9} className="mr-1 border border-gray-400 bg-white" />
+                ) : (
+                  <span className="w-[9px] mr-1"></span>
+                )}
+                
+                {item.children ? (
+                   isOpen ? <FolderOpen size={14} className="mr-1 text-yellow-500 fill-yellow-500" /> : <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
+                ) : (
+                   <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
+                )}
+                
+                <span className="flex-1 truncate">{item.name}</span>
+                <span className="text-gray-500 ml-1 text-[10px]">{item.count}</span>
+              </div>
+              {isOpen && item.children && (
+                <div>
+                  {item.children.map((child, idx) => (
+                    <TreeItem key={idx} item={child} level={level + 1} onSelect={onSelect} selectedId={selectedId} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        };
 
-          {/* Search Button */}
-          <div className="flex items-center px-2 border-r border-gray-200 h-full">
-            <button className="flex flex-col items-center justify-center space-y-1 px-3 py-1 hover:bg-gray-50 rounded">
-              <Search size={32} className="text-gray-700" />
-              <span className="font-bold text-gray-700">검색시작</span>
-            </button>
-          </div>
+        function App() {
+          const [activeTab, setActiveTab] = useState("주문관리");
+          const [selectedOrder, setSelectedOrder] = useState(MOCK_ORDERS[0]);
+          const [selectedDateFilter, setSelectedDateFilter] = useState("all");
+          const [products, setProducts] = useState(INITIAL_PRODUCTS);
+          const [newProduct, setNewProduct] = useState({ code: '', name: '', price: '' });
 
-          {/* Status Dashboard */}
-          <div className="flex-1 grid grid-cols-3 gap-1.5 min-w-[400px]">
-             <div className="bg-white border border-gray-300 rounded flex items-center justify-center font-bold text-gray-600 cursor-pointer hover:bg-gray-50">
-               전체보기 ({MOCK_ORDERS.length})
-             </div>
-             <div className="grid grid-cols-1 gap-1">
-                <StatusBadge label="신규주문" count={6} colorClass="bg-yellow-200 px-1" active={true} />
-                <StatusBadge label="보류" count={0} colorClass="text-gray-500" />
-             </div>
-             <div className="grid grid-cols-1 gap-1">
-                <StatusBadge label="취소" count={0} colorClass="bg-red-500 text-white px-1" />
-                <StatusBadge label="반품요청" count={1} colorClass="bg-purple-200 px-1" />
-                <StatusBadge label="교환요청" count={0} colorClass="bg-purple-100 px-1" />
-             </div>
-          </div>
+          useEffect(() => {
+            setSelectedDateFilter("all");
+          }, [activeTab]);
 
-          {/* Quick Actions (Right) */}
-          <div className="flex items-center space-x-1 pl-2 border-l border-gray-200">
-             <ToolbarButton icon={Download} label="가져오기" color="text-blue-600" />
-             <ToolbarButton icon={Upload} label="보내기" color="text-orange-500" />
-             <ToolbarButton icon={RefreshCw} label="주문정산화" />
-             <ToolbarButton icon={Plus} label="건별입력" />
-             <ToolbarButton icon={FileText} label="일괄입력" />
-             <ToolbarButton icon={Trash2} label="주문파기" />
-          </div>
-        </div>
-      )}
+          const orderDateTree = useMemo(() => {
+            const groups = MOCK_ORDERS.reduce((acc, order) => {
+              acc[order.date] = (acc[order.date] || 0) + 1;
+              return acc;
+            }, {});
+            const children = Object.keys(groups).sort().reverse().map(date => ({ id: date, name: date, count: groups[date] }));
+            return [{ id: "all", name: "전체 날짜", count: MOCK_ORDERS.length, children: children }];
+          }, []);
 
-      {/* 4. Content Area (Split View) */}
-      <div className="flex flex-1 overflow-hidden">
-        
-        {/* Left Sidebar (Dynamic Tree) - Always Visible */}
-        <div className="w-56 bg-white border-r border-gray-300 flex flex-col shrink-0">
-           <div className="p-1 bg-gray-100 border-b border-gray-300 font-bold text-gray-700 pl-2">
-             {sidebarTitle}
-           </div>
-           <div className="flex-1 overflow-y-auto p-1">
-             {currentTreeData.map((item, idx) => (
-               <TreeItem 
-                key={idx} 
-                item={item} 
-                onSelect={(node) => setSelectedDateFilter(node.id)} 
-                selectedId={selectedDateFilter}
-              />
-             ))}
-           </div>
-           {/* Bottom of Sidebar */}
-           <div className="h-24 bg-gray-50 border-t border-gray-300 p-2">
-              <div className="font-bold mb-1">내 검색</div>
-              <input className="w-full border p-1" placeholder="검색어 입력" />
-           </div>
-        </div>
+          const productDateTree = useMemo(() => {
+            const groups = products.reduce((acc, p) => {
+              acc[p.date] = (acc[p.date] || 0) + 1;
+              return acc;
+            }, {});
+            const children = Object.keys(groups).sort().reverse().map(date => ({ id: date, name: date, count: groups[date] }));
+            return [{ id: "all", name: "전체 날짜", count: products.length, children: children }];
+          }, [products]);
 
-        {/* Right Main Content */}
-        <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
-           
-           {/* Content for Product Management */}
-           {activeTab === '상품관리' ? (
-             <div className="flex flex-col h-full bg-white">
-                {/* Product Registration Form */}
-                <div className="bg-gray-50 border-b border-gray-300 p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Package className="text-blue-600" size={18} />
-                    <span className="font-bold text-gray-800 text-sm">신규 상품 등록</span>
-                  </div>
-                  <div className="flex items-end space-x-2 bg-white p-3 rounded border border-gray-200 shadow-sm">
-                    <div className="flex flex-col space-y-1">
-                      <label className="text-xs font-bold text-gray-600">상품번호</label>
-                      <input 
-                        className="border border-gray-300 p-1.5 rounded w-32 focus:outline-none focus:border-blue-500" 
-                        placeholder="예: P004"
-                        value={newProduct.code}
-                        onChange={(e) => setNewProduct({...newProduct, code: e.target.value})}
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-1 flex-1">
-                      <label className="text-xs font-bold text-gray-600">상품명</label>
-                      <input 
-                        className="border border-gray-300 p-1.5 rounded w-full focus:outline-none focus:border-blue-500" 
-                        placeholder="상품명을 입력하세요"
-                        value={newProduct.name}
-                        onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-1">
-                      <label className="text-xs font-bold text-gray-600">단가</label>
-                      <input 
-                        type="number"
-                        className="border border-gray-300 p-1.5 rounded w-32 text-right focus:outline-none focus:border-blue-500" 
-                        placeholder="0"
-                        value={newProduct.price}
-                        onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
-                      />
-                    </div>
-                    <button 
-                      onClick={handleAddProduct}
-                      className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold shadow-sm flex items-center h-[30px]"
-                    >
-                      <CheckCircle size={14} className="mr-1"/> 등록
-                    </button>
+          const currentTreeData = activeTab === '상품관리' ? productDateTree : orderDateTree;
+          const sidebarTitle = activeTab === '상품관리' ? '등록 일자' : '주문 일자';
+
+          const filteredOrders = useMemo(() => {
+            if (selectedDateFilter === "all") return MOCK_ORDERS;
+            return MOCK_ORDERS.filter(o => o.date === selectedDateFilter);
+          }, [selectedDateFilter]);
+
+          const filteredProducts = useMemo(() => {
+            if (selectedDateFilter === "all") return products;
+            return products.filter(p => p.date === selectedDateFilter);
+          }, [selectedDateFilter, products]);
+
+          const handleAddProduct = () => {
+            if (!newProduct.code || !newProduct.name || !newProduct.price) {
+              alert("모든 필드를 입력해주세요.");
+              return;
+            }
+            const today = new Date().toISOString().split('T')[0];
+            const product = {
+              id: products.length + 1,
+              code: newProduct.code,
+              name: newProduct.name,
+              price: Number(newProduct.price),
+              date: today
+            };
+            setProducts([...products, product]);
+            setNewProduct({ code: '', name: '', price: '' });
+          };
+
+          return (
+            <div className="flex flex-col h-screen bg-gray-100 font-sans text-xs overflow-hidden select-none">
+              <header className="bg-white border-b border-gray-300 h-8 flex items-center justify-between px-3 shrink-0">
+                <div className="flex items-center space-x-2">
+                  <span className="font-bold text-gray-700">강은지 주문관리 시스템 1.1</span>
+                </div>
+                <div className="flex items-center space-x-4 text-gray-600">
+                  <div className="flex items-center space-x-1">
+                     <Settings size={14} />
+                     <span>환경설정</span>
                   </div>
                 </div>
+              </header>
 
-                {/* Product List */}
-                <div className="flex-1 overflow-auto p-3">
-                  <h3 className="font-bold text-gray-700 mb-2">등록된 상품 목록 ({filteredProducts.length})</h3>
-                  <table className="w-full text-left border-collapse border border-gray-300">
-                    <thead className="bg-gray-100 text-gray-700">
-                      <tr>
-                        <th className="p-2 border border-gray-300 w-12 text-center">No</th>
-                        <th className="p-2 border border-gray-300 w-24 text-center">등록일</th>
-                        <th className="p-2 border border-gray-300 w-32">상품번호</th>
-                        <th className="p-2 border border-gray-300">상품명</th>
-                        <th className="p-2 border border-gray-300 text-right w-32">단가</th>
-                        <th className="p-2 border border-gray-300 w-20 text-center">관리</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredProducts.map((p, idx) => (
-                        <tr key={p.id} className="hover:bg-blue-50">
-                          <td className="p-2 border border-gray-300 text-center">{idx + 1}</td>
-                          <td className="p-2 border border-gray-300 text-center text-gray-600">{p.date}</td>
-                          <td className="p-2 border border-gray-300 font-medium text-gray-600">{p.code}</td>
-                          <td className="p-2 border border-gray-300 font-bold text-blue-700">{p.name}</td>
-                          <td className="p-2 border border-gray-300 text-right">{p.price.toLocaleString()}원</td>
-                          <td className="p-2 border border-gray-300 text-center">
-                            <button className="text-gray-500 hover:text-blue-600 underline">수정</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-             </div>
-           ) : (
-             // Existing Order Management View
-             <>
-               {/* Detail View (Top Half) */}
-               <div className="h-[180px] flex border-b border-gray-400 shrink-0">
-                  
-                  {/* Order Detail Form */}
-                  <div className="flex-1 bg-white p-2 overflow-y-auto">
-                     <div className="grid grid-cols-12 gap-y-1 gap-x-2">
-                        
-                        <div className="col-span-2 text-gray-500 text-right">상품명</div>
-                        <div className="col-span-10 font-bold text-gray-800">{selectedOrder.productName}</div>
+              <div className="bg-gray-50 border-b border-gray-300 px-2 flex space-x-1 pt-1 shrink-0">
+                {["상품관리", "주문관리", "문의관리", "통계조회", "작업관리", "1:1 문의"].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded-t-md text-xs font-medium border-t border-l border-r ${
+                      activeTab === tab 
+                        ? 'bg-white border-gray-300 border-b-white text-blue-600 -mb-[1px] relative z-10' 
+                        : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
 
-                        <div className="col-span-2 text-gray-500 text-right">마스터 상품코드</div>
-                        <div className="col-span-10 flex items-center space-x-1">
-                           <span>미매칭</span>
-                           <button className="px-1 bg-blue-100 text-blue-700 border border-blue-200 text-[10px] rounded">상품매칭</button>
-                        </div>
-                        
-                        <div className="col-span-2 text-gray-500 text-right">주문번호</div>
-                        <div className="col-span-4">{selectedOrder.orderNo}</div>
-                        <div className="col-span-2 text-gray-500 text-right">주문일자</div>
-                        <div className="col-span-4">{selectedOrder.date} {selectedOrder.orderedAt}</div>
-
-                        <div className="col-span-12 border-t border-gray-200 my-1"></div>
-
-                        <div className="col-span-2 text-gray-500 text-right">주문/수령자</div>
-                        <div className="col-span-10">
-                           <span className="font-bold">{selectedOrder.orderBy}</span>
-                           <span className="text-gray-400 mx-1">/</span>
-                           <span>{selectedOrder.receiver}</span>
-                        </div>
-
-                        <div className="col-span-2 text-gray-500 text-right">주문자 tel</div>
-                        <div className="col-span-4 flex items-center">
-                           {selectedOrder.phone} 
-                           <button className="ml-1 px-1 border bg-gray-50">문자</button>
-                        </div>
-                        <div className="col-span-2 text-gray-500 text-right">옵션</div>
-                        <div className="col-span-4 text-blue-700">{selectedOrder.option}</div>
-
-                        <div className="col-span-2 text-gray-500 text-right">배송방법</div>
-                        <div className="col-span-4">{selectedOrder.shippingMethod}</div>
-                        <div className="col-span-2 text-gray-500 text-right">사은품</div>
-                        <div className="col-span-4">-</div>
-
-                        <div className="col-span-2 text-gray-500 text-right">주소</div>
-                        <div className="col-span-10">{selectedOrder.address}</div>
-                     </div>
-                  </div>
-
-                  {/* CS / Log Tab */}
-                  <div className="w-[300px] bg-white border-l border-gray-300 flex flex-col">
-                     <div className="flex border-b border-gray-300 bg-gray-50">
-                        <button className="px-3 py-1 bg-white border-r border-gray-300 font-bold text-blue-600">주문CS</button>
-                        <button className="px-3 py-1 text-gray-500 hover:bg-gray-100">로그</button>
-                        <button className="px-3 py-1 text-gray-500 hover:bg-gray-100 flex items-center"><MessageSquare size={10} className="mr-1"/>주문CS상담관리</button>
-                     </div>
-                     <div className="flex-1 p-2 bg-gray-50 font-bold text-gray-800 text-sm">
-                        기록된 내역이 없습니다.
-                     </div>
-                     <div className="p-1 border-t border-gray-300 flex space-x-1">
-                        <textarea className="flex-1 border border-gray-300 p-1 h-12 text-xs resize-none" placeholder="내용 입력"></textarea>
-                        <div className="flex flex-col space-y-1">
-                           <button className="px-2 py-2 bg-blue-100 border border-blue-300 rounded text-blue-800 hover:bg-blue-200">등록</button>
-                           <button className="px-2 py-0 bg-white border border-gray-300 rounded text-gray-600">완료</button>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-
-               {/* List View (Bottom Half) */}
-               <div className="flex-1 bg-white flex flex-col">
-                  {/* List Toolbar */}
-                  <div className="flex items-center justify-between p-1 border-b border-gray-300 bg-gray-100">
-                     <div className="flex items-center space-x-2">
-                        <span className="font-bold">주문 목록 ({filteredOrders.length})</span>
-                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><RefreshCw size={10} className="mr-1"/>새로고침</button>
-                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><Save size={10} className="mr-1"/>저장</button>
-                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-red-600"><Trash2 size={10} className="mr-1"/>삭제</button>
-                        <span className="text-gray-300">|</span>
-                        <button className="flex items-center px-1 bg-green-50 border border-green-300 rounded text-green-700"><FileText size={10} className="mr-1"/>EXCEL</button>
-                        <button className="flex items-center px-1 bg-white border border-gray-300 rounded"><Printer size={10} className="mr-1"/>인쇄/FAX</button>
+              {activeTab === '주문관리' && (
+                <div className="bg-white border-b border-gray-300 p-2 flex items-start space-x-2 shrink-0 overflow-x-auto">
+                  <div className="flex flex-col space-y-1 w-[320px] shrink-0 border-r pr-2 border-gray-200">
+                     <div className="flex items-center space-x-1">
+                       <label className="w-10 text-gray-600">검색</label>
+                       <select className="border border-gray-300 p-1 rounded w-24"><option>부분일치</option></select>
+                       <select className="border border-gray-300 p-1 rounded flex-1"><option>모두</option></select>
                      </div>
                      <div className="flex items-center space-x-1">
-                        <select className="border border-gray-300 rounded px-1">
-                           <option>페이지당 1000</option>
-                        </select>
+                       <label className="w-10 text-gray-600">날짜</label>
+                       <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-11-04" />
+                       <span>~</span>
+                       <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-12-04" />
+                     </div>
+                     <div className="flex space-x-1 pl-11">
+                       {["오늘", "어제", "2주", "1개월", "3개월", "6개월"].map(d => (
+                         <button key={d} className={`px-1.5 py-0.5 border text-[10px] rounded ${d === '1개월' ? 'bg-orange-100 border-orange-300 text-orange-800' : 'bg-white border-gray-300'}`}>{d}</button>
+                       ))}
                      </div>
                   </div>
 
-                  {/* Data Table */}
-                  <div className="flex-1 overflow-auto">
-                     <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-200 sticky top-0 z-10 text-gray-700 font-semibold whitespace-nowrap">
-                           <tr>
-                              <th className="p-1 border border-gray-300 w-8 text-center"><input type="checkbox" /></th>
-                              <th className="p-1 border border-gray-300">블랙</th>
-                              <th className="p-1 border border-gray-300">주문일 (시간)</th>
-                              <th className="p-1 border border-gray-300">상태</th>
-                              <th className="p-1 border border-gray-300">한줄메모</th>
-                              <th className="p-1 border border-gray-300">주문자</th>
-                              <th className="p-1 border border-gray-300">수령자</th>
-                              <th className="p-1 border border-gray-300">상품명</th>
-                              <th className="p-1 border border-gray-300">옵션</th>
-                              <th className="p-1 border border-gray-300 text-right">수량</th>
-                              <th className="p-1 border border-gray-300 text-right">판매가</th>
-                              <th className="p-1 border border-gray-300 text-right">배송비</th>
-                              <th className="p-1 border border-gray-300">배송방법</th>
-                           </tr>
-                        </thead>
-                        <tbody className="bg-white">
-                           {filteredOrders.map((order) => (
-                              <tr 
-                                key={order.id} 
-                                onClick={() => setSelectedOrder(order)}
-                                className={`cursor-pointer hover:bg-blue-50 whitespace-nowrap ${selectedOrder.id === order.id ? 'bg-blue-100' : ''}`}
-                              >
-                                 <td className="p-1 border border-gray-300 text-center"><input type="checkbox" checked={selectedOrder.id === order.id} readOnly /></td>
-                                 <td className="p-1 border border-gray-300 text-center">{order.id === 1 ? <div className="w-3 h-3 rounded-full bg-gray-300 mx-auto"></div> : ''}</td>
-                                 <td className={`p-1 border border-gray-300 ${order.id === 1 ? 'text-red-500' : ''}`}>{order.date} {order.orderedAt}</td>
-                                 <td className="p-1 border border-gray-300 text-center">
-                                    <span className={`px-1 py-0.5 rounded text-[10px] ${order.status === '신규주문' ? 'bg-yellow-200' : 'bg-gray-200'}`}>{order.status}</span>
-                                 </td>
-                                 <td className="p-1 border border-gray-300">{order.memo}</td>
-                                 <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.orderBy}</td>
-                                 <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.receiver}</td>
-                                 <td className="p-1 border border-gray-300 text-blue-600">{order.productName}</td>
-                                 <td className="p-1 border border-gray-300 text-blue-600">{order.option}</td>
-                                 <td className="p-1 border border-gray-300 text-right bg-blue-50">{order.qty}</td>
-                                 <td className="p-1 border border-gray-300 text-right">{order.price.toLocaleString()}</td>
-                                 <td className="p-1 border border-gray-300 text-right">{order.shippingCost.toLocaleString()}</td>
-                                 <td className="p-1 border border-gray-300">{order.shippingMethod}</td>
-                              </tr>
-                           ))}
-                           {/* Empty rows */}
-                           {Array.from({ length: 15 }).map((_, i) => (
-                             <tr key={`empty-${i}`}>
-                               <td className="p-1 border border-gray-200 h-6"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                               <td className="p-1 border border-gray-200"></td>
-                             </tr>
-                           ))}
-                        </tbody>
-                     </table>
+                  <div className="flex items-center px-2 border-r border-gray-200 h-full">
+                    <button className="flex flex-col items-center justify-center space-y-1 px-3 py-1 hover:bg-gray-50 rounded">
+                      <Search size={32} className="text-gray-700" />
+                      <span className="font-bold text-gray-700">검색시작</span>
+                    </button>
                   </div>
-               </div>
-             </>
-           )}
-        </div>
-      </div>
-    </div>
-  );
-}
+
+                  <div className="flex-1 grid grid-cols-3 gap-1.5 min-w-[400px]">
+                     <div className="bg-white border border-gray-300 rounded flex items-center justify-center font-bold text-gray-600 cursor-pointer hover:bg-gray-50">전체보기 ({MOCK_ORDERS.length})</div>
+                     <div className="grid grid-cols-1 gap-1">
+                        <StatusBadge label="신규주문" count={6} colorClass="bg-yellow-200 px-1" active={true} />
+                        <StatusBadge label="보류" count={0} colorClass="text-gray-500" />
+                     </div>
+                     <div className="grid grid-cols-1 gap-1">
+                        <StatusBadge label="취소" count={0} colorClass="bg-red-500 text-white px-1" />
+                        <StatusBadge label="반품요청" count={1} colorClass="bg-purple-200 px-1" />
+                        <StatusBadge label="교환요청" count={0} colorClass="bg-purple-100 px-1" />
+                     </div>
+                  </div>
+
+                  <div className="flex items-center space-x-1 pl-2 border-l border-gray-200">
+                     <ToolbarButton icon={Download} label="가져오기" color="text-blue-600" />
+                     <ToolbarButton icon={Upload} label="보내기" color="text-orange-500" />
+                     <ToolbarButton icon={RefreshCw} label="주문정산화" />
+                     <ToolbarButton icon={Plus} label="건별입력" />
+                     <ToolbarButton icon={FileText} label="일괄입력" />
+                     <ToolbarButton icon={Trash2} label="주문파기" />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-1 overflow-hidden">
+                <div className="w-56 bg-white border-r border-gray-300 flex flex-col shrink-0">
+                   <div className="p-1 bg-gray-100 border-b border-gray-300 font-bold text-gray-700 pl-2">{sidebarTitle}</div>
+                   <div className="flex-1 overflow-y-auto p-1">
+                     {currentTreeData.map((item, idx) => (
+                       <TreeItem key={idx} item={item} onSelect={(node) => setSelectedDateFilter(node.id)} selectedId={selectedDateFilter} />
+                     ))}
+                   </div>
+                   <div className="h-24 bg-gray-50 border-t border-gray-300 p-2">
+                      <div className="font-bold mb-1">내 검색</div>
+                      <input className="w-full border p-1" placeholder="검색어 입력" />
+                   </div>
+                </div>
+
+                <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
+                   {activeTab === '상품관리' ? (
+                     <div className="flex flex-col h-full bg-white">
+                        <div className="bg-gray-50 border-b border-gray-300 p-3">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Package className="text-blue-600" size={18} />
+                            <span className="font-bold text-gray-800 text-sm">신규 상품 등록</span>
+                          </div>
+                          <div className="flex items-end space-x-2 bg-white p-3 rounded border border-gray-200 shadow-sm">
+                            <div className="flex flex-col space-y-1">
+                              <label className="text-xs font-bold text-gray-600">상품번호</label>
+                              <input className="border border-gray-300 p-1.5 rounded w-32 focus:outline-none focus:border-blue-500" placeholder="예: P004" value={newProduct.code} onChange={(e) => setNewProduct({...newProduct, code: e.target.value})} />
+                            </div>
+                            <div className="flex flex-col space-y-1 flex-1">
+                              <label className="text-xs font-bold text-gray-600">상품명</label>
+                              <input className="border border-gray-300 p-1.5 rounded w-full focus:outline-none focus:border-blue-500" placeholder="상품명을 입력하세요" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} />
+                            </div>
+                            <div className="flex flex-col space-y-1">
+                              <label className="text-xs font-bold text-gray-600">단가</label>
+                              <input type="number" className="border border-gray-300 p-1.5 rounded w-32 text-right focus:outline-none focus:border-blue-500" placeholder="0" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} />
+                            </div>
+                            <button onClick={handleAddProduct} className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold shadow-sm flex items-center h-[30px]">
+                              <CheckCircle size={14} className="mr-1"/> 등록
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex-1 overflow-auto p-3">
+                          <h3 className="font-bold text-gray-700 mb-2">등록된 상품 목록 ({filteredProducts.length})</h3>
+                          <table className="w-full text-left border-collapse border border-gray-300">
+                            <thead className="bg-gray-100 text-gray-700">
+                              <tr>
+                                <th className="p-2 border border-gray-300 w-12 text-center">No</th>
+                                <th className="p-2 border border-gray-300 w-24 text-center">등록일</th>
+                                <th className="p-2 border border-gray-300 w-32">상품번호</th>
+                                <th className="p-2 border border-gray-300">상품명</th>
+                                <th className="p-2 border border-gray-300 text-right w-32">단가</th>
+                                <th className="p-2 border border-gray-300 w-20 text-center">관리</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredProducts.map((p, idx) => (
+                                <tr key={p.id} className="hover:bg-blue-50">
+                                  <td className="p-2 border border-gray-300 text-center">{idx + 1}</td>
+                                  <td className="p-2 border border-gray-300 text-center text-gray-600">{p.date}</td>
+                                  <td className="p-2 border border-gray-300 font-medium text-gray-600">{p.code}</td>
+                                  <td className="p-2 border border-gray-300 font-bold text-blue-700">{p.name}</td>
+                                  <td className="p-2 border border-gray-300 text-right">{p.price.toLocaleString()}원</td>
+                                  <td className="p-2 border border-gray-300 text-center"><button className="text-gray-500 hover:text-blue-600 underline">수정</button></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                     </div>
+                   ) : (
+                     <>
+                       <div className="h-[180px] flex border-b border-gray-400 shrink-0">
+                          <div className="flex-1 bg-white p-2 overflow-y-auto">
+                             <div className="grid grid-cols-12 gap-y-1 gap-x-2">
+                                <div className="col-span-2 text-gray-500 text-right">상품명</div>
+                                <div className="col-span-10 font-bold text-gray-800">{selectedOrder.productName}</div>
+                                <div className="col-span-2 text-gray-500 text-right">마스터 상품코드</div>
+                                <div className="col-span-10 flex items-center space-x-1"><span>미매칭</span><button className="px-1 bg-blue-100 text-blue-700 border border-blue-200 text-[10px] rounded">상품매칭</button></div>
+                                <div className="col-span-2 text-gray-500 text-right">주문번호</div>
+                                <div className="col-span-4">{selectedOrder.orderNo}</div>
+                                <div className="col-span-2 text-gray-500 text-right">주문일자</div>
+                                <div className="col-span-4">{selectedOrder.date} {selectedOrder.orderedAt}</div>
+                                <div className="col-span-12 border-t border-gray-200 my-1"></div>
+                                <div className="col-span-2 text-gray-500 text-right">주문/수령자</div>
+                                <div className="col-span-10"><span className="font-bold">{selectedOrder.orderBy}</span><span className="text-gray-400 mx-1">/</span><span>{selectedOrder.receiver}</span></div>
+                                <div className="col-span-2 text-gray-500 text-right">주문자 tel</div>
+                                <div className="col-span-4 flex items-center">{selectedOrder.phone}<button className="ml-1 px-1 border bg-gray-50">문자</button></div>
+                                <div className="col-span-2 text-gray-500 text-right">옵션</div>
+                                <div className="col-span-4 text-blue-700">{selectedOrder.option}</div>
+                                <div className="col-span-2 text-gray-500 text-right">배송방법</div>
+                                <div className="col-span-4">{selectedOrder.shippingMethod}</div>
+                                <div className="col-span-2 text-gray-500 text-right">사은품</div>
+                                <div className="col-span-4">-</div>
+                                <div className="col-span-2 text-gray-500 text-right">주소</div>
+                                <div className="col-span-10">{selectedOrder.address}</div>
+                             </div>
+                          </div>
+                          <div className="w-[300px] bg-white border-l border-gray-300 flex flex-col">
+                             <div className="flex border-b border-gray-300 bg-gray-50">
+                                <button className="px-3 py-1 bg-white border-r border-gray-300 font-bold text-blue-600">주문CS</button>
+                                <button className="px-3 py-1 text-gray-500 hover:bg-gray-100">로그</button>
+                                <button className="px-3 py-1 text-gray-500 hover:bg-gray-100 flex items-center"><MessageSquare size={10} className="mr-1"/>주문CS상담관리</button>
+                             </div>
+                             <div className="flex-1 p-2 bg-gray-50 font-bold text-gray-800 text-sm">기록된 내역이 없습니다.</div>
+                             <div className="p-1 border-t border-gray-300 flex space-x-1">
+                                <textarea className="flex-1 border border-gray-300 p-1 h-12 text-xs resize-none" placeholder="내용 입력"></textarea>
+                                <div className="flex flex-col space-y-1">
+                                   <button className="px-2 py-2 bg-blue-100 border border-blue-300 rounded text-blue-800 hover:bg-blue-200">등록</button>
+                                   <button className="px-2 py-0 bg-white border border-gray-300 rounded text-gray-600">완료</button>
+                                </div>
+                             </div>
+                          </div>
+                       </div>
+                       <div className="flex-1 bg-white flex flex-col">
+                          <div className="flex items-center justify-between p-1 border-b border-gray-300 bg-gray-100">
+                             <div className="flex items-center space-x-2">
+                                <span className="font-bold">주문 목록 ({filteredOrders.length})</span>
+                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><RefreshCw size={10} className="mr-1"/>새로고침</button>
+                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><Save size={10} className="mr-1"/>저장</button>
+                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-red-600"><Trash2 size={10} className="mr-1"/>삭제</button>
+                                <span className="text-gray-300">|</span>
+                                <button className="flex items-center px-1 bg-green-50 border border-green-300 rounded text-green-700"><FileText size={10} className="mr-1"/>EXCEL</button>
+                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded"><Printer size={10} className="mr-1"/>인쇄/FAX</button>
+                             </div>
+                             <div className="flex items-center space-x-1">
+                                <select className="border border-gray-300 rounded px-1"><option>페이지당 1000</option></select>
+                             </div>
+                          </div>
+                          <div className="flex-1 overflow-auto">
+                             <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-200 sticky top-0 z-10 text-gray-700 font-semibold whitespace-nowrap">
+                                   <tr>
+                                      <th className="p-1 border border-gray-300 w-8 text-center"><input type="checkbox" /></th>
+                                      <th className="p-1 border border-gray-300">블랙</th>
+                                      <th className="p-1 border border-gray-300">주문일 (시간)</th>
+                                      <th className="p-1 border border-gray-300">상태</th>
+                                      <th className="p-1 border border-gray-300">한줄메모</th>
+                                      <th className="p-1 border border-gray-300">주문자</th>
+                                      <th className="p-1 border border-gray-300">수령자</th>
+                                      <th className="p-1 border border-gray-300">상품명</th>
+                                      <th className="p-1 border border-gray-300">옵션</th>
+                                      <th className="p-1 border border-gray-300 text-right">수량</th>
+                                      <th className="p-1 border border-gray-300 text-right">판매가</th>
+                                      <th className="p-1 border border-gray-300 text-right">배송비</th>
+                                      <th className="p-1 border border-gray-300">배송방법</th>
+                                   </tr>
+                                </thead>
+                                <tbody className="bg-white">
+                                   {filteredOrders.map((order) => (
+                                      <tr key={order.id} onClick={() => setSelectedOrder(order)} className={`cursor-pointer hover:bg-blue-50 whitespace-nowrap ${selectedOrder.id === order.id ? 'bg-blue-100' : ''}`}>
+                                         <td className="p-1 border border-gray-300 text-center"><input type="checkbox" checked={selectedOrder.id === order.id} readOnly /></td>
+                                         <td className="p-1 border border-gray-300 text-center">{order.id === 1 ? <div className="w-3 h-3 rounded-full bg-gray-300 mx-auto"></div> : ''}</td>
+                                         <td className={`p-1 border border-gray-300 ${order.id === 1 ? 'text-red-500' : ''}`}>{order.date} {order.orderedAt}</td>
+                                         <td className="p-1 border border-gray-300 text-center"><span className={`px-1 py-0.5 rounded text-[10px] ${order.status === '신규주문' ? 'bg-yellow-200' : 'bg-gray-200'}`}>{order.status}</span></td>
+                                         <td className="p-1 border border-gray-300">{order.memo}</td>
+                                         <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.orderBy}</td>
+                                         <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.receiver}</td>
+                                         <td className="p-1 border border-gray-300 text-blue-600">{order.productName}</td>
+                                         <td className="p-1 border border-gray-300 text-blue-600">{order.option}</td>
+                                         <td className="p-1 border border-gray-300 text-right bg-blue-50">{order.qty}</td>
+                                         <td className="p-1 border border-gray-300 text-right">{order.price.toLocaleString()}</td>
+                                         <td className="p-1 border border-gray-300 text-right">{order.shippingCost.toLocaleString()}</td>
+                                         <td className="p-1 border border-gray-300">{order.shippingMethod}</td>
+                                      </tr>
+                                   ))}
+                                   {Array.from({ length: 15 }).map((_, i) => (
+                                     <tr key={`empty-${i}`}>
+                                       <td className="p-1 border border-gray-200 h-6"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td>
+                                     </tr>
+                                   ))}
+                                </tbody>
+                             </table>
+                          </div>
+                       </div>
+                     </>
+                   )}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
