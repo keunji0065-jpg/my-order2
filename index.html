@@ -3,515 +3,632 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문관리 시스템 1.1</title>
-    <!-- Tailwind CSS (스타일) -->
+    <title>강은지 주문관리 시스템 1.1 PRO</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Daum Postcode API -->
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+    <!-- Babel (JSX 변환용) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <style>
-        /* 웹 폰트 적용 (선택사항) */
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; }
+        
+        .resizer {
+            position: absolute; right: 0; top: 0; height: 100%; width: 5px;
+            background: rgba(0, 0, 0, 0.05); cursor: col-resize; user-select: none; touch-action: none; z-index: 10;
+        }
+        .resizer:hover, .resizing { background: #3b82f6; }
+        
+        .sidebar-resizer {
+            position: absolute; right: -2px; top: 0; height: 100%; width: 4px;
+            cursor: col-resize; z-index: 20; transition: background 0.2s;
+        }
+        .sidebar-resizer:hover, .sidebar-resizing { background: #3b82f6; }
+
+        th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        /* Inline Edit Inputs in Table */
+        .table-input {
+            width: 100%; background: transparent; border: none; outline: none;
+            font-size: 12px; padding: 4px 2px; /* 클릭하기 좋게 패딩 약간 증가 */
+        }
+        .table-input:focus { 
+            border-bottom: 2px solid #3b82f6; 
+            background: #eff6ff; 
+            border-radius: 2px;
+        }
+        
+        .input-label {
+            font-size: 11px; color: #6b7280; font-weight: 700; margin-bottom: 2px; display: block;
+        }
+        .input-field {
+            width: 100%; border: 1px solid #d1d5db; padding: 4px; font-size: 12px; border-radius: 2px; outline: none; transition: border-color 0.15s;
+        }
+        .input-field:focus { border-color: #3b82f6; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- React 및 라이브러리 로드 (ES Modules) -->
-    <script type="module">
-        import React, { useState, useMemo, useEffect } from 'https://esm.sh/react@18.2.0';
-        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
-        import { 
-          Search, RefreshCw, Save, Trash2, Printer, 
-          FileText, MessageSquare, Settings, HelpCircle, 
-          Folder, FolderOpen, Plus, Minus, Download, Upload,
-          Package, CheckCircle
-        } from 'https://esm.sh/lucide-react@0.292.0';
-
-        // --- Mock Data ---
-
-        const MOCK_ORDERS = [
-          {
-            id: 1,
-            checked: true,
-            date: "2025-12-04",
-            orderedAt: "오전 11:06:03",
-            status: "신규주문",
-            memo: "",
-            orderBy: "변수영",
-            receiver: "박선영",
-            productName: "[선샤인]",
-            option: "글루타치온 [28개]",
-            qty: 1,
-            price: 596000,
-            shippingCost: 0,
-            shippingMethod: "무료배송",
-            address: "(04957) 서울 광진구 영화사로16길 15 (구의동, 삼성하이츠빌) 302호",
-            phone: "010-8070-1092",
-            orderNo: "20251204-0000059"
-          },
-          {
-            id: 2,
-            checked: false,
-            date: "2025-12-04",
-            orderedAt: "오전 10:15:22",
-            status: "배송준비",
-            memo: "부재시 문앞",
-            orderBy: "김철수",
-            receiver: "김철수",
-            productName: "프리미엄 비타민C",
-            option: "1000mg [60정]",
-            qty: 2,
-            price: 32000,
-            shippingCost: 3000,
-            shippingMethod: "일반택배",
-            address: "경기도 성남시 분당구 판교역로 123",
-            phone: "010-1234-5678",
-            orderNo: "20251204-0000060"
-          },
-          {
-            id: 3,
-            checked: false,
-            date: "2025-12-03", // Different date for grouping demonstration
-            orderedAt: "오전 09:45:11",
-            status: "신규주문",
-            memo: "",
-            orderBy: "이영희",
-            receiver: "최민수",
-            productName: "유기농 루이보스 티",
-            option: "티백 50입",
-            qty: 1,
-            price: 15900,
-            shippingCost: 2500,
-            shippingMethod: "일반택배",
-            address: "서울시 강남구 테헤란로 427",
-            phone: "010-9876-5432",
-            orderNo: "20251203-0000061"
-          }
-        ];
-
-        const INITIAL_PRODUCTS = [
-          { id: 1, code: "P001", name: "[선샤인] 글루타치온", price: 596000, date: "2025-12-04" },
-          { id: 2, code: "P002", name: "프리미엄 비타민C", price: 16000, date: "2025-12-04" },
-          { id: 3, code: "P003", name: "유기농 루이보스 티", price: 15900, date: "2025-12-01" },
-        ];
-
-        // --- Components ---
-
-        const StatusBadge = ({ label, count, colorClass, active }) => (
-          React.createElement("div", { className: `flex items-center justify-between px-2 py-1 text-xs border rounded cursor-pointer transition-colors ${active ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-300 hover:bg-gray-50'}` },
-            React.createElement("span", { className: `font-bold ${colorClass}` }, label),
-            React.createElement("span", { className: "ml-2 text-red-500 font-bold" }, `(${count})`)
-          )
-        );
-
-        // JSX를 사용할 수 없는 환경이므로 React.createElement를 사용하거나
-        // babel-standalone을 써야 하지만, 여기서는 가장 안정적인 실행을 위해
-        // 브라우저가 바로 이해하는 방식으로 변환된 코드를 제공합니다.
-        // 하지만 위 방식은 수정이 어려우므로, Babel Standalone을 사용하여 JSX를 그대로 씁니다.
-    </script>
-
-    <!-- Babel Standalone (브라우저에서 JSX 실행) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <script type="text/babel" data-type="module">
-        import React, { useState, useMemo, useEffect } from 'https://esm.sh/react@18.2.0';
+        import React, { useState, useMemo, useEffect, useCallback, useRef } from 'https://esm.sh/react@18.2.0';
         import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
         import { 
-          Search, RefreshCw, Save, Trash2, Printer, 
-          FileText, MessageSquare, Settings, HelpCircle, 
-          Folder, FolderOpen, Plus, Minus, Download, Upload,
-          Package, CheckCircle
+            Search, RefreshCw, Save, Trash2, Printer, FileText, MessageSquare, 
+            Settings, HelpCircle, Folder, FolderOpen, Plus, Minus, Download, 
+            Upload, Package, CheckCircle, BarChart2, ArrowRight, User, Phone, MapPin, Send, ClipboardList, Calendar, TrendingUp, Users, ShoppingBag, Filter
         } from 'https://esm.sh/lucide-react@0.292.0';
 
-        // --- Mock Data (위와 동일) ---
-        const MOCK_ORDERS = [
-          { id: 1, checked: true, date: "2025-12-04", orderedAt: "오전 11:06:03", status: "신규주문", memo: "", orderBy: "변수영", receiver: "박선영", productName: "[선샤인]", option: "글루타치온 [28개]", qty: 1, price: 596000, shippingCost: 0, shippingMethod: "무료배송", address: "(04957) 서울 광진구 영화사로16길 15 (구의동, 삼성하이츠빌) 302호", phone: "010-8070-1092", orderNo: "20251204-0000059" },
-          { id: 2, checked: false, date: "2025-12-04", orderedAt: "오전 10:15:22", status: "배송준비", memo: "부재시 문앞", orderBy: "김철수", receiver: "김철수", productName: "프리미엄 비타민C", option: "1000mg [60정]", qty: 2, price: 32000, shippingCost: 3000, shippingMethod: "일반택배", address: "경기도 성남시 분당구 판교역로 123", phone: "010-1234-5678", orderNo: "20251204-0000060" },
-          { id: 3, checked: false, date: "2025-12-03", orderedAt: "오전 09:45:11", status: "신규주문", memo: "", orderBy: "이영희", receiver: "최민수", productName: "유기농 루이보스 티", option: "티백 50입", qty: 1, price: 15900, shippingCost: 2500, shippingMethod: "일반택배", address: "서울시 강남구 테헤란로 427", phone: "010-9876-5432", orderNo: "20251203-0000061" }
-        ];
-
-        const INITIAL_PRODUCTS = [
-          { id: 1, code: "P001", name: "[선샤인] 글루타치온", price: 596000, date: "2025-12-04" },
-          { id: 2, code: "P002", name: "프리미엄 비타민C", price: 16000, date: "2025-12-04" },
-          { id: 3, code: "P003", name: "유기농 루이보스 티", price: 15900, date: "2025-12-01" },
+        const INITIAL_ORDERS = [
+            { id: 1, checked: false, date: "2025-12-04", orderedAt: "오전 11:06:03", status: "신규주문", memo: "", orderBy: "홍길동", receiver: "홍길동", productName: "[선샤인] 글루타치온", option: "28개입", qty: 1, price: 59000, shippingCost: 0, shippingMethod: "무료배송", address: "서울 강남구 테헤란로 123", phone: "010-1234-5678", orderNo: "20251204-00001", csLogs: [] },
+            { id: 2, checked: false, date: "2025-12-04", orderedAt: "오후 02:15:22", status: "배송중", memo: "문앞", orderBy: "김철수", receiver: "김철수", productName: "프리미엄 비타민C", option: "60정", qty: 2, price: 32000, shippingCost: 3000, shippingMethod: "일반택배", address: "경기 성남시 분당구 판교로", phone: "010-9876-5432", orderNo: "20251204-00002", csLogs: ["배송지 변경 요청함"] },
+            { id: 3, checked: false, date: "2025-12-05", orderedAt: "오전 09:30:00", status: "신규주문", memo: "", orderBy: "이영희", receiver: "박민수", productName: "유기농 루이보스", option: "티백 50입", qty: 1, price: 15900, shippingCost: 2500, shippingMethod: "일반택배", address: "부산 해운대구", phone: "010-5555-4444", orderNo: "20251205-00001", csLogs: [] },
         ];
 
         // --- Components ---
 
-        const StatusBadge = ({ label, count, colorClass, active }) => (
-          <div className={`flex items-center justify-between px-2 py-1 text-xs border rounded cursor-pointer transition-colors ${active ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
-            <span className={`font-bold ${colorClass}`}>{label}</span>
-            <span className="ml-2 text-red-500 font-bold">({count})</span>
-          </div>
+        const StatusButton = ({ label, count, colorClass, onClick, active }) => (
+            <div onClick={onClick} className={`flex items-center space-x-1 cursor-pointer select-none group ${active ? 'opacity-100 ring-2 ring-offset-1 ring-blue-400 rounded' : 'opacity-80 hover:opacity-100'}`}>
+                <div className={`px-2 py-1 rounded border shadow-sm text-xs font-bold transition-all ${colorClass}`} style={{ minWidth: '60px', textAlign: 'center' }}>{label}</div>
+                <span className={`text-xs font-bold ${count > 0 ? 'text-red-600' : 'text-gray-400'}`}>({count})</span>
+            </div>
         );
 
-        const ToolbarButton = ({ icon: Icon, label, color = "text-gray-600" }) => (
-          <button className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded min-w-[60px]">
-            <div className={`w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center mb-1 bg-white shadow-sm ${color}`}>
-              <Icon size={16} />
-            </div>
-            <span className="text-[10px] text-gray-700 leading-tight text-center">{label}</span>
-          </button>
+        const ArrowSeparator = () => <span className="text-gray-300 mx-1">→</span>;
+
+        const ToolbarButton = ({ icon: Icon, label, color = "text-gray-600", onClick }) => (
+            <button onClick={onClick} className="flex flex-col items-center justify-center p-1.5 hover:bg-gray-100 rounded min-w-[50px] transition-colors">
+                <div className={`w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center mb-1 bg-white shadow-sm ${color}`}><Icon size={14} /></div>
+                <span className="text-[10px] text-gray-700 leading-tight text-center">{label}</span>
+            </button>
         );
 
         const TreeItem = ({ item, level = 0, onSelect, selectedId }) => {
-          const [isOpen, setIsOpen] = useState(true);
-          
-          return (
-            <div>
-              <div 
-                className={`flex items-center px-2 py-1 cursor-pointer hover:bg-blue-50 text-xs ${selectedId === item.id ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'}`}
-                style={{ paddingLeft: `${level * 16 + 4}px` }}
-                onClick={() => {
-                  setIsOpen(!isOpen);
-                  if (onSelect) onSelect(item);
-                }}
-              >
-                {item.children ? (
-                  isOpen ? <Minus size={9} className="mr-1 border border-gray-400 bg-white" /> : <Plus size={9} className="mr-1 border border-gray-400 bg-white" />
-                ) : (
-                  <span className="w-[9px] mr-1"></span>
-                )}
-                
-                {item.children ? (
-                   isOpen ? <FolderOpen size={14} className="mr-1 text-yellow-500 fill-yellow-500" /> : <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
-                ) : (
-                   <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />
-                )}
-                
-                <span className="flex-1 truncate">{item.name}</span>
-                <span className="text-gray-500 ml-1 text-[10px]">{item.count}</span>
-              </div>
-              {isOpen && item.children && (
+            const [isOpen, setIsOpen] = useState(true);
+            const isSelected = selectedId === item.id;
+            return (
                 <div>
-                  {item.children.map((child, idx) => (
-                    <TreeItem key={idx} item={child} level={level + 1} onSelect={onSelect} selectedId={selectedId} />
-                  ))}
+                    <div className={`flex items-center px-2 py-1 cursor-pointer hover:bg-blue-50 text-xs transition-colors ${isSelected ? 'bg-blue-100 text-blue-800 font-bold' : 'text-gray-700'}`} style={{ paddingLeft: `${level * 16 + 4}px` }} onClick={() => { if (item.children) setIsOpen(!isOpen); if (onSelect) onSelect(item.id); }}>
+                        {item.children ? (isOpen ? <Minus size={9} className="mr-1 border border-gray-400 bg-white" /> : <Plus size={9} className="mr-1 border border-gray-400 bg-white" />) : (<span className="w-[9px] mr-1"></span>)}
+                        {item.children ? (isOpen ? <FolderOpen size={14} className="mr-1 text-yellow-500 fill-yellow-500" /> : <Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />) : (<Folder size={14} className="mr-1 text-yellow-500 fill-yellow-500" />)}
+                        <span className="flex-1 truncate">{item.name}</span>
+                        <span className="text-gray-500 ml-1 text-[10px]">({item.count})</span>
+                    </div>
+                    {isOpen && item.children && (<div>{item.children.map((child, idx) => (<TreeItem key={idx} item={child} level={level + 1} onSelect={onSelect} selectedId={selectedId} />))}</div>)}
                 </div>
-              )}
-            </div>
-          );
+            );
         };
 
-        function App() {
-          const [activeTab, setActiveTab] = useState("주문관리");
-          const [selectedOrder, setSelectedOrder] = useState(MOCK_ORDERS[0]);
-          const [selectedDateFilter, setSelectedDateFilter] = useState("all");
-          const [products, setProducts] = useState(INITIAL_PRODUCTS);
-          const [newProduct, setNewProduct] = useState({ code: '', name: '', price: '' });
+        const ResizableTh = ({ widthKey, children, align = "left", widths, setWidths }) => {
+            const handleResize = useCallback((e) => {
+                e.preventDefault();
+                const startX = e.pageX;
+                const startWidth = widths[widthKey];
+                const onMouseMove = (moveEvent) => { const newWidth = Math.max(30, startWidth + (moveEvent.pageX - startX)); setWidths(prev => ({ ...prev, [widthKey]: newWidth })); };
+                const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+                document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
+            }, [widths, widthKey, setWidths]);
+            return (
+                <th className={`p-1 border border-gray-300 relative bg-gray-100 text-${align} select-none`} style={{ width: widths[widthKey], minWidth: '30px' }}>
+                    <div className="flex items-center h-full px-1 overflow-hidden">{children}</div>
+                    <div className="resizer" onMouseDown={handleResize} onClick={(e) => e.stopPropagation()} />
+                </th>
+            );
+        };
 
-          useEffect(() => {
-            setSelectedDateFilter("all");
-          }, [activeTab]);
+        // --- Panel Components ---
 
-          const orderDateTree = useMemo(() => {
-            const groups = MOCK_ORDERS.reduce((acc, order) => {
-              acc[order.date] = (acc[order.date] || 0) + 1;
-              return acc;
-            }, {});
-            const children = Object.keys(groups).sort().reverse().map(date => ({ id: date, name: date, count: groups[date] }));
-            return [{ id: "all", name: "전체 날짜", count: MOCK_ORDERS.length, children: children }];
-          }, []);
+        const CommentConverter = ({ onParse }) => {
+            const [input, setInput] = useState("");
+            return (
+                <div className="h-full flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
+                    <div className="px-2 py-1 bg-gray-50 border-b border-gray-200 flex items-center gap-2 text-xs font-bold text-gray-700 shrink-0">
+                        <ClipboardList size={13} className="text-blue-500"/> 댓글 변환기
+                    </div>
+                    <div className="flex-1 p-1 flex flex-col gap-1 min-h-0">
+                        <textarea 
+                            className="flex-1 w-full border border-gray-200 rounded p-1 text-xs resize-none focus:border-blue-500 outline-none overflow-y-auto"
+                            placeholder="@홍길동 비타민 2개"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                        />
+                        <button onClick={() => { onParse(input); setInput(""); }} className="w-full py-1 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 text-xs flex items-center justify-center gap-1 shrink-0 transition-colors">
+                            변환 <ArrowRight size={10} />
+                        </button>
+                    </div>
+                </div>
+            );
+        };
 
-          const productDateTree = useMemo(() => {
-            const groups = products.reduce((acc, p) => {
-              acc[p.date] = (acc[p.date] || 0) + 1;
-              return acc;
-            }, {});
-            const children = Object.keys(groups).sort().reverse().map(date => ({ id: date, name: date, count: groups[date] }));
-            return [{ id: "all", name: "전체 날짜", count: products.length, children: children }];
-          }, [products]);
+        // Center: Address Dashboard (Modified to focus on Address)
+        const AddressDashboard = ({ order, onUpdate }) => {
+            if (!order) return (
+                <div className="h-full flex items-center justify-center bg-white border border-gray-300 rounded text-gray-400 text-xs shadow-sm">
+                    주문을 선택하세요.
+                </div>
+            );
 
-          const currentTreeData = activeTab === '상품관리' ? productDateTree : orderDateTree;
-          const sidebarTitle = activeTab === '상품관리' ? '등록 일자' : '주문 일자';
-
-          const filteredOrders = useMemo(() => {
-            if (selectedDateFilter === "all") return MOCK_ORDERS;
-            return MOCK_ORDERS.filter(o => o.date === selectedDateFilter);
-          }, [selectedDateFilter]);
-
-          const filteredProducts = useMemo(() => {
-            if (selectedDateFilter === "all") return products;
-            return products.filter(p => p.date === selectedDateFilter);
-          }, [selectedDateFilter, products]);
-
-          const handleAddProduct = () => {
-            if (!newProduct.code || !newProduct.name || !newProduct.price) {
-              alert("모든 필드를 입력해주세요.");
-              return;
-            }
-            const today = new Date().toISOString().split('T')[0];
-            const product = {
-              id: products.length + 1,
-              code: newProduct.code,
-              name: newProduct.name,
-              price: Number(newProduct.price),
-              date: today
+            const handleAddressSearch = () => {
+                new daum.Postcode({
+                    oncomplete: function(data) {
+                        let addr = data.address;
+                        let extraAddr = '';
+                        if(data.addressType === 'R'){
+                            if(data.bname !== '' && /[동|로|가]$/g.test(data.bname)) extraAddr += data.bname;
+                            if(data.buildingName !== '' && data.apartment === 'Y') extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                            if(extraAddr !== '') addr += ' (' + extraAddr + ')';
+                        }
+                        // Update Order Address
+                        onUpdate(order.id, 'address', addr);
+                    }
+                }).open();
             };
-            setProducts([...products, product]);
-            setNewProduct({ code: '', name: '', price: '' });
-          };
 
-          return (
-            <div className="flex flex-col h-screen bg-gray-100 font-sans text-xs overflow-hidden select-none">
-              <header className="bg-white border-b border-gray-300 h-8 flex items-center justify-between px-3 shrink-0">
-                <div className="flex items-center space-x-2">
-                  <span className="font-bold text-gray-700">강은지 주문관리 시스템 1.1</span>
-                </div>
-                <div className="flex items-center space-x-4 text-gray-600">
-                  <div className="flex items-center space-x-1">
-                     <Settings size={14} />
-                     <span>환경설정</span>
-                  </div>
-                </div>
-              </header>
-
-              <div className="bg-gray-50 border-b border-gray-300 px-2 flex space-x-1 pt-1 shrink-0">
-                {["상품관리", "주문관리", "문의관리", "통계조회", "작업관리", "1:1 문의"].map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-t-md text-xs font-medium border-t border-l border-r ${
-                      activeTab === tab 
-                        ? 'bg-white border-gray-300 border-b-white text-blue-600 -mb-[1px] relative z-10' 
-                        : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-200'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              {activeTab === '주문관리' && (
-                <div className="bg-white border-b border-gray-300 p-2 flex items-start space-x-2 shrink-0 overflow-x-auto">
-                  <div className="flex flex-col space-y-1 w-[320px] shrink-0 border-r pr-2 border-gray-200">
-                     <div className="flex items-center space-x-1">
-                       <label className="w-10 text-gray-600">검색</label>
-                       <select className="border border-gray-300 p-1 rounded w-24"><option>부분일치</option></select>
-                       <select className="border border-gray-300 p-1 rounded flex-1"><option>모두</option></select>
-                     </div>
-                     <div className="flex items-center space-x-1">
-                       <label className="w-10 text-gray-600">날짜</label>
-                       <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-11-04" />
-                       <span>~</span>
-                       <input type="date" className="border border-gray-300 p-0.5 w-24" defaultValue="2025-12-04" />
-                     </div>
-                     <div className="flex space-x-1 pl-11">
-                       {["오늘", "어제", "2주", "1개월", "3개월", "6개월"].map(d => (
-                         <button key={d} className={`px-1.5 py-0.5 border text-[10px] rounded ${d === '1개월' ? 'bg-orange-100 border-orange-300 text-orange-800' : 'bg-white border-gray-300'}`}>{d}</button>
-                       ))}
-                     </div>
-                  </div>
-
-                  <div className="flex items-center px-2 border-r border-gray-200 h-full">
-                    <button className="flex flex-col items-center justify-center space-y-1 px-3 py-1 hover:bg-gray-50 rounded">
-                      <Search size={32} className="text-gray-700" />
-                      <span className="font-bold text-gray-700">검색시작</span>
-                    </button>
-                  </div>
-
-                  <div className="flex-1 grid grid-cols-3 gap-1.5 min-w-[400px]">
-                     <div className="bg-white border border-gray-300 rounded flex items-center justify-center font-bold text-gray-600 cursor-pointer hover:bg-gray-50">전체보기 ({MOCK_ORDERS.length})</div>
-                     <div className="grid grid-cols-1 gap-1">
-                        <StatusBadge label="신규주문" count={6} colorClass="bg-yellow-200 px-1" active={true} />
-                        <StatusBadge label="보류" count={0} colorClass="text-gray-500" />
-                     </div>
-                     <div className="grid grid-cols-1 gap-1">
-                        <StatusBadge label="취소" count={0} colorClass="bg-red-500 text-white px-1" />
-                        <StatusBadge label="반품요청" count={1} colorClass="bg-purple-200 px-1" />
-                        <StatusBadge label="교환요청" count={0} colorClass="bg-purple-100 px-1" />
-                     </div>
-                  </div>
-
-                  <div className="flex items-center space-x-1 pl-2 border-l border-gray-200">
-                     <ToolbarButton icon={Download} label="가져오기" color="text-blue-600" />
-                     <ToolbarButton icon={Upload} label="보내기" color="text-orange-500" />
-                     <ToolbarButton icon={RefreshCw} label="주문정산화" />
-                     <ToolbarButton icon={Plus} label="건별입력" />
-                     <ToolbarButton icon={FileText} label="일괄입력" />
-                     <ToolbarButton icon={Trash2} label="주문파기" />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-1 overflow-hidden">
-                <div className="w-56 bg-white border-r border-gray-300 flex flex-col shrink-0">
-                   <div className="p-1 bg-gray-100 border-b border-gray-300 font-bold text-gray-700 pl-2">{sidebarTitle}</div>
-                   <div className="flex-1 overflow-y-auto p-1">
-                     {currentTreeData.map((item, idx) => (
-                       <TreeItem key={idx} item={item} onSelect={(node) => setSelectedDateFilter(node.id)} selectedId={selectedDateFilter} />
-                     ))}
-                   </div>
-                   <div className="h-24 bg-gray-50 border-t border-gray-300 p-2">
-                      <div className="font-bold mb-1">내 검색</div>
-                      <input className="w-full border p-1" placeholder="검색어 입력" />
-                   </div>
-                </div>
-
-                <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
-                   {activeTab === '상품관리' ? (
-                     <div className="flex flex-col h-full bg-white">
-                        <div className="bg-gray-50 border-b border-gray-300 p-3">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Package className="text-blue-600" size={18} />
-                            <span className="font-bold text-gray-800 text-sm">신규 상품 등록</span>
-                          </div>
-                          <div className="flex items-end space-x-2 bg-white p-3 rounded border border-gray-200 shadow-sm">
-                            <div className="flex flex-col space-y-1">
-                              <label className="text-xs font-bold text-gray-600">상품번호</label>
-                              <input className="border border-gray-300 p-1.5 rounded w-32 focus:outline-none focus:border-blue-500" placeholder="예: P004" value={newProduct.code} onChange={(e) => setNewProduct({...newProduct, code: e.target.value})} />
-                            </div>
-                            <div className="flex flex-col space-y-1 flex-1">
-                              <label className="text-xs font-bold text-gray-600">상품명</label>
-                              <input className="border border-gray-300 p-1.5 rounded w-full focus:outline-none focus:border-blue-500" placeholder="상품명을 입력하세요" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} />
-                            </div>
-                            <div className="flex flex-col space-y-1">
-                              <label className="text-xs font-bold text-gray-600">단가</label>
-                              <input type="number" className="border border-gray-300 p-1.5 rounded w-32 text-right focus:outline-none focus:border-blue-500" placeholder="0" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} />
-                            </div>
-                            <button onClick={handleAddProduct} className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold shadow-sm flex items-center h-[30px]">
-                              <CheckCircle size={14} className="mr-1"/> 등록
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex-1 overflow-auto p-3">
-                          <h3 className="font-bold text-gray-700 mb-2">등록된 상품 목록 ({filteredProducts.length})</h3>
-                          <table className="w-full text-left border-collapse border border-gray-300">
-                            <thead className="bg-gray-100 text-gray-700">
-                              <tr>
-                                <th className="p-2 border border-gray-300 w-12 text-center">No</th>
-                                <th className="p-2 border border-gray-300 w-24 text-center">등록일</th>
-                                <th className="p-2 border border-gray-300 w-32">상품번호</th>
-                                <th className="p-2 border border-gray-300">상품명</th>
-                                <th className="p-2 border border-gray-300 text-right w-32">단가</th>
-                                <th className="p-2 border border-gray-300 w-20 text-center">관리</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredProducts.map((p, idx) => (
-                                <tr key={p.id} className="hover:bg-blue-50">
-                                  <td className="p-2 border border-gray-300 text-center">{idx + 1}</td>
-                                  <td className="p-2 border border-gray-300 text-center text-gray-600">{p.date}</td>
-                                  <td className="p-2 border border-gray-300 font-medium text-gray-600">{p.code}</td>
-                                  <td className="p-2 border border-gray-300 font-bold text-blue-700">{p.name}</td>
-                                  <td className="p-2 border border-gray-300 text-right">{p.price.toLocaleString()}원</td>
-                                  <td className="p-2 border border-gray-300 text-center"><button className="text-gray-500 hover:text-blue-600 underline">수정</button></td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                     </div>
-                   ) : (
-                     <>
-                       <div className="h-[180px] flex border-b border-gray-400 shrink-0">
-                          <div className="flex-1 bg-white p-2 overflow-y-auto">
-                             <div className="grid grid-cols-12 gap-y-1 gap-x-2">
-                                <div className="col-span-2 text-gray-500 text-right">상품명</div>
-                                <div className="col-span-10 font-bold text-gray-800">{selectedOrder.productName}</div>
-                                <div className="col-span-2 text-gray-500 text-right">마스터 상품코드</div>
-                                <div className="col-span-10 flex items-center space-x-1"><span>미매칭</span><button className="px-1 bg-blue-100 text-blue-700 border border-blue-200 text-[10px] rounded">상품매칭</button></div>
-                                <div className="col-span-2 text-gray-500 text-right">주문번호</div>
-                                <div className="col-span-4">{selectedOrder.orderNo}</div>
-                                <div className="col-span-2 text-gray-500 text-right">주문일자</div>
-                                <div className="col-span-4">{selectedOrder.date} {selectedOrder.orderedAt}</div>
-                                <div className="col-span-12 border-t border-gray-200 my-1"></div>
-                                <div className="col-span-2 text-gray-500 text-right">주문/수령자</div>
-                                <div className="col-span-10"><span className="font-bold">{selectedOrder.orderBy}</span><span className="text-gray-400 mx-1">/</span><span>{selectedOrder.receiver}</span></div>
-                                <div className="col-span-2 text-gray-500 text-right">주문자 tel</div>
-                                <div className="col-span-4 flex items-center">{selectedOrder.phone}<button className="ml-1 px-1 border bg-gray-50">문자</button></div>
-                                <div className="col-span-2 text-gray-500 text-right">옵션</div>
-                                <div className="col-span-4 text-blue-700">{selectedOrder.option}</div>
-                                <div className="col-span-2 text-gray-500 text-right">배송방법</div>
-                                <div className="col-span-4">{selectedOrder.shippingMethod}</div>
-                                <div className="col-span-2 text-gray-500 text-right">사은품</div>
-                                <div className="col-span-4">-</div>
-                                <div className="col-span-2 text-gray-500 text-right">주소</div>
-                                <div className="col-span-10">{selectedOrder.address}</div>
-                             </div>
-                          </div>
-                          <div className="w-[300px] bg-white border-l border-gray-300 flex flex-col">
-                             <div className="flex border-b border-gray-300 bg-gray-50">
-                                <button className="px-3 py-1 bg-white border-r border-gray-300 font-bold text-blue-600">주문CS</button>
-                                <button className="px-3 py-1 text-gray-500 hover:bg-gray-100">로그</button>
-                                <button className="px-3 py-1 text-gray-500 hover:bg-gray-100 flex items-center"><MessageSquare size={10} className="mr-1"/>주문CS상담관리</button>
-                             </div>
-                             <div className="flex-1 p-2 bg-gray-50 font-bold text-gray-800 text-sm">기록된 내역이 없습니다.</div>
-                             <div className="p-1 border-t border-gray-300 flex space-x-1">
-                                <textarea className="flex-1 border border-gray-300 p-1 h-12 text-xs resize-none" placeholder="내용 입력"></textarea>
-                                <div className="flex flex-col space-y-1">
-                                   <button className="px-2 py-2 bg-blue-100 border border-blue-300 rounded text-blue-800 hover:bg-blue-200">등록</button>
-                                   <button className="px-2 py-0 bg-white border border-gray-300 rounded text-gray-600">완료</button>
+            return (
+                <div className="h-full bg-white border border-gray-300 rounded shadow-sm flex flex-col overflow-hidden">
+                    <div className="px-2 py-1 bg-gray-50 border-b border-gray-200 flex items-center justify-between text-xs font-bold text-gray-700 shrink-0">
+                        <div className="flex items-center gap-2"><MapPin size={14} className="text-orange-500"/> 주소 및 배송 관리</div>
+                        <span className="text-gray-400 font-normal">{order.orderNo}</span>
+                    </div>
+                    <div className="flex-1 p-2 overflow-y-auto">
+                         <div className="flex flex-col gap-2 h-full justify-center">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="input-label">수령인 정보</span>
                                 </div>
-                             </div>
-                          </div>
-                       </div>
-                       <div className="flex-1 bg-white flex flex-col">
-                          <div className="flex items-center justify-between p-1 border-b border-gray-300 bg-gray-100">
-                             <div className="flex items-center space-x-2">
-                                <span className="font-bold">주문 목록 ({filteredOrders.length})</span>
-                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><RefreshCw size={10} className="mr-1"/>새로고침</button>
-                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50"><Save size={10} className="mr-1"/>저장</button>
-                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-red-600"><Trash2 size={10} className="mr-1"/>삭제</button>
-                                <span className="text-gray-300">|</span>
-                                <button className="flex items-center px-1 bg-green-50 border border-green-300 rounded text-green-700"><FileText size={10} className="mr-1"/>EXCEL</button>
-                                <button className="flex items-center px-1 bg-white border border-gray-300 rounded"><Printer size={10} className="mr-1"/>인쇄/FAX</button>
-                             </div>
-                             <div className="flex items-center space-x-1">
-                                <select className="border border-gray-300 rounded px-1"><option>페이지당 1000</option></select>
-                             </div>
-                          </div>
-                          <div className="flex-1 overflow-auto">
-                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-200 sticky top-0 z-10 text-gray-700 font-semibold whitespace-nowrap">
-                                   <tr>
-                                      <th className="p-1 border border-gray-300 w-8 text-center"><input type="checkbox" /></th>
-                                      <th className="p-1 border border-gray-300">블랙</th>
-                                      <th className="p-1 border border-gray-300">주문일 (시간)</th>
-                                      <th className="p-1 border border-gray-300">상태</th>
-                                      <th className="p-1 border border-gray-300">한줄메모</th>
-                                      <th className="p-1 border border-gray-300">주문자</th>
-                                      <th className="p-1 border border-gray-300">수령자</th>
-                                      <th className="p-1 border border-gray-300">상품명</th>
-                                      <th className="p-1 border border-gray-300">옵션</th>
-                                      <th className="p-1 border border-gray-300 text-right">수량</th>
-                                      <th className="p-1 border border-gray-300 text-right">판매가</th>
-                                      <th className="p-1 border border-gray-300 text-right">배송비</th>
-                                      <th className="p-1 border border-gray-300">배송방법</th>
-                                   </tr>
-                                </thead>
-                                <tbody className="bg-white">
-                                   {filteredOrders.map((order) => (
-                                      <tr key={order.id} onClick={() => setSelectedOrder(order)} className={`cursor-pointer hover:bg-blue-50 whitespace-nowrap ${selectedOrder.id === order.id ? 'bg-blue-100' : ''}`}>
-                                         <td className="p-1 border border-gray-300 text-center"><input type="checkbox" checked={selectedOrder.id === order.id} readOnly /></td>
-                                         <td className="p-1 border border-gray-300 text-center">{order.id === 1 ? <div className="w-3 h-3 rounded-full bg-gray-300 mx-auto"></div> : ''}</td>
-                                         <td className={`p-1 border border-gray-300 ${order.id === 1 ? 'text-red-500' : ''}`}>{order.date} {order.orderedAt}</td>
-                                         <td className="p-1 border border-gray-300 text-center"><span className={`px-1 py-0.5 rounded text-[10px] ${order.status === '신규주문' ? 'bg-yellow-200' : 'bg-gray-200'}`}>{order.status}</span></td>
-                                         <td className="p-1 border border-gray-300">{order.memo}</td>
-                                         <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.orderBy}</td>
-                                         <td className="p-1 border border-gray-300 text-center bg-blue-50 text-blue-700">{order.receiver}</td>
-                                         <td className="p-1 border border-gray-300 text-blue-600">{order.productName}</td>
-                                         <td className="p-1 border border-gray-300 text-blue-600">{order.option}</td>
-                                         <td className="p-1 border border-gray-300 text-right bg-blue-50">{order.qty}</td>
-                                         <td className="p-1 border border-gray-300 text-right">{order.price.toLocaleString()}</td>
-                                         <td className="p-1 border border-gray-300 text-right">{order.shippingCost.toLocaleString()}</td>
-                                         <td className="p-1 border border-gray-300">{order.shippingMethod}</td>
-                                      </tr>
-                                   ))}
-                                   {Array.from({ length: 15 }).map((_, i) => (
-                                     <tr key={`empty-${i}`}>
-                                       <td className="p-1 border border-gray-200 h-6"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td><td className="p-1 border border-gray-200"></td>
-                                     </tr>
-                                   ))}
-                                </tbody>
-                             </table>
-                          </div>
-                       </div>
-                     </>
-                   )}
+                                <div className="flex gap-1 mb-1">
+                                    <input className="input-field" value={order.receiver} onChange={(e)=>onUpdate(order.id, 'receiver', e.target.value)} placeholder="수령자" />
+                                    <input className="input-field" value={order.phone} onChange={(e)=>onUpdate(order.id, 'phone', e.target.value)} placeholder="연락처" />
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="input-label">주소 입력</span>
+                                    <button onClick={handleAddressSearch} className="bg-gray-800 text-white px-2 py-0.5 rounded text-[10px] hover:bg-gray-700 transition-colors flex items-center gap-1">
+                                        <Search size={10}/> 주소 검색 (Daum)
+                                    </button>
+                                </div>
+                                <textarea 
+                                    className="w-full border border-gray-300 rounded p-2 text-xs resize-none h-14 focus:border-blue-500 outline-none"
+                                    value={order.address}
+                                    onChange={(e)=>onUpdate(order.id, 'address', e.target.value)}
+                                    placeholder="주소 검색을 이용하거나 직접 입력하세요."
+                                />
+                            </div>
+
+                            <div>
+                                <span className="input-label">배송 메모</span>
+                                <input className="input-field" value={order.memo} onChange={(e)=>onUpdate(order.id, 'memo', e.target.value)} placeholder="부재시 문앞에 놓아주세요" />
+                            </div>
+                         </div>
+                    </div>
                 </div>
-              </div>
-            </div>
-          );
+            );
+        };
+
+        const CsMemoPanel = ({ order, onAddLog }) => {
+            const [csInput, setCsInput] = useState("");
+            if (!order) return <div className="h-full bg-gray-50 border border-gray-300 rounded shadow-sm"></div>;
+
+            const handleCsSubmit = () => {
+                if (!csInput.trim()) return;
+                onAddLog(order.id, csInput);
+                setCsInput("");
+            };
+
+            return (
+                <div className="h-full flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
+                    <div className="px-2 py-1 bg-gray-50 border-b border-gray-200 flex items-center gap-2 text-xs font-bold text-gray-700 shrink-0">
+                        <MessageSquare size={13} className="text-green-600"/> 상담/메모
+                    </div>
+                    <div className="flex-1 p-1 overflow-y-auto space-y-1 bg-gray-50 min-h-0">
+                        {order.csLogs && order.csLogs.length > 0 ? (
+                            order.csLogs.map((log, idx) => (<div key={idx} className="bg-white p-1.5 rounded border border-gray-200 shadow-sm text-xs">{log}</div>))
+                        ) : (<div className="text-center text-gray-400 text-[10px] mt-4">내역 없음</div>)}
+                    </div>
+                    <div className="p-1 border-t border-gray-200 bg-white shrink-0">
+                        <div className="flex gap-1">
+                            <textarea className="flex-1 border border-gray-300 rounded p-1 text-xs resize-none h-8 outline-none focus:border-blue-500 overflow-hidden" placeholder="메모..." value={csInput} onChange={(e) => setCsInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleCsSubmit())} />
+                            <button onClick={handleCsSubmit} className="bg-gray-100 border border-gray-300 text-gray-600 px-2 rounded hover:bg-gray-200 font-bold text-xs">등록</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Statistics Panel ---
+        const StatisticsPanel = ({ orders }) => {
+             /* ... (Previous Stats Implementation maintained) ... */
+             const [statType, setStatType] = useState('daily');
+            const [dateRange, setDateRange] = useState({ start: "2025-01-01", end: "2025-12-31" });
+            const [searchKeyword, setSearchKeyword] = useState("");
+
+            const processedData = useMemo(() => {
+                const map = {};
+                let totalRevenue = 0;
+                let totalShippingCount = 0;
+                const filteredForStats = orders.filter(o => {
+                    if (o.date < dateRange.start || o.date > dateRange.end) return false;
+                    if (searchKeyword) {
+                        const q = searchKeyword.toLowerCase();
+                        return (o.productName && o.productName.toLowerCase().includes(q)) ||
+                               (o.orderBy && o.orderBy.toLowerCase().includes(q));
+                    }
+                    return true;
+                });
+                filteredForStats.forEach(o => {
+                    let key;
+                    if (statType === 'daily') key = o.date;
+                    else if (statType === 'monthly') key = o.date.substring(0, 7);
+                    else if (statType === 'product') key = o.productName || '(상품명 미상)';
+                    else if (statType === 'customer') key = o.orderBy || '(주문자 미상)';
+
+                    if (!map[key]) map[key] = { key, count: 0, revenue: 0, qty: 0, shipping: 0 };
+                    map[key].count += 1; map[key].revenue += o.price; map[key].qty += o.qty;
+                    if (o.status === '배송중') { map[key].shipping += 1; totalShippingCount += 1; }
+                    totalRevenue += o.price;
+                });
+                const list = Object.values(map);
+                if (statType === 'daily' || statType === 'monthly') { list.sort((a, b) => b.key.localeCompare(a.key)); } 
+                else { list.sort((a, b) => b.revenue - a.revenue); }
+                return { list, totalRevenue, totalShippingCount };
+            }, [orders, statType, dateRange, searchKeyword]);
+            const maxRevenue = Math.max(...processedData.list.map(i => i.revenue), 0);
+            const TabButton = ({ type, icon: Icon, label }) => (
+                <button onClick={() => setStatType(type)} className={`flex-1 py-2 text-xs font-bold border-b-2 flex items-center justify-center gap-1 transition-colors ${statType === type ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>
+                    <Icon size={14}/> {label}
+                </button>
+            );
+            return (
+                <div className="h-full flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
+                    <div className="flex border-b border-gray-200 bg-gray-50 shrink-0">
+                        <TabButton type="daily" icon={Calendar} label="일별" />
+                        <TabButton type="monthly" icon={TrendingUp} label="월별" />
+                        <TabButton type="product" icon={ShoppingBag} label="상품별" />
+                        <TabButton type="customer" icon={Users} label="고객별" />
+                    </div>
+                    <div className="bg-blue-50 border-b border-blue-100 p-2 flex flex-col gap-2 shrink-0">
+                        <div className="flex items-center gap-2 text-xs">
+                            <div className="flex items-center gap-1 bg-white border border-blue-200 rounded px-2 py-1">
+                                <Calendar size={12} className="text-blue-500"/>
+                                <input type="date" className="bg-transparent outline-none" value={dateRange.start} onChange={(e)=>setDateRange({...dateRange, start: e.target.value})} />
+                                <span className="text-gray-400">~</span>
+                                <input type="date" className="bg-transparent outline-none" value={dateRange.end} onChange={(e)=>setDateRange({...dateRange, end: e.target.value})} />
+                            </div>
+                            <div className="flex items-center gap-1 bg-white border border-blue-200 rounded px-2 py-1 flex-1">
+                                <Search size={12} className="text-blue-500"/>
+                                <input type="text" className="bg-transparent outline-none w-full" placeholder="품목명 또는 고객명 검색..." value={searchKeyword} onChange={(e)=>setSearchKeyword(e.target.value)} />
+                            </div>
+                            <button className="bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-700 shadow-sm">조회</button>
+                        </div>
+                        <div className="flex justify-between items-center bg-white p-2 rounded border border-blue-100 shadow-sm">
+                            <span className="text-blue-800 font-bold text-xs flex items-center gap-1"><Filter size={12}/> 통계 결과</span>
+                            <div className="flex gap-4 text-xs">
+                                <div className="flex gap-1"><span className="text-gray-500">총 배송:</span><span className="font-bold text-green-600">{processedData.totalShippingCount}건</span></div>
+                                <div className="flex gap-1"><span className="text-gray-500">총 매출:</span><span className="font-bold text-blue-700 font-mono">{processedData.totalRevenue.toLocaleString()}원</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-auto bg-white">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-gray-100 sticky top-0 z-10 text-xs font-bold text-gray-600">
+                                <tr>
+                                    <th className="p-2 border-b border-gray-200 w-12 text-center">순위</th>
+                                    <th className="p-2 border-b border-gray-200">{statType === 'daily' || statType === 'monthly' ? '기간' : (statType === 'product' ? '상품명' : '고객명')}</th>
+                                    <th className="p-2 border-b border-gray-200 text-right w-16">주문수</th>
+                                    <th className="p-2 border-b border-gray-200 text-right w-16 text-green-600">배송수</th>
+                                    <th className="p-2 border-b border-gray-200 text-right w-16">판매량</th>
+                                    <th className="p-2 border-b border-gray-200 text-right w-24">매출액</th>
+                                    <th className="p-2 border-b border-gray-200 w-24">비중</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-xs text-gray-700 divide-y divide-gray-100">
+                                {processedData.list.length > 0 ? (
+                                    processedData.list.map((item, idx) => {
+                                        const percent = maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
+                                        return (
+                                            <tr key={item.key} className="hover:bg-gray-50">
+                                                <td className="p-2 text-center text-gray-400">{idx + 1}</td>
+                                                <td className="p-2 font-medium truncate max-w-[150px]" title={item.key}>{item.key}</td>
+                                                <td className="p-2 text-right">{item.count.toLocaleString()}</td>
+                                                <td className="p-2 text-right font-bold text-green-600">{item.shipping.toLocaleString()}</td>
+                                                <td className="p-2 text-right">{item.qty.toLocaleString()}</td>
+                                                <td className="p-2 text-right font-mono font-bold text-blue-600">{item.revenue.toLocaleString()}</td>
+                                                <td className="p-2 align-middle"><div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden"><div className="bg-blue-400 h-full rounded-full transition-all duration-500" style={{ width: `${percent}%` }}></div></div></td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (<tr><td colSpan="7" className="p-10 text-center text-gray-400">데이터가 없습니다.</td></tr>)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+
+        function App() {
+            const [activeTab, setActiveTab] = useState("주문관리");
+            const [orders, setOrders] = useState(() => {
+                const saved = localStorage.getItem('orders');
+                return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+            });
+            const [selectedOrderId, setSelectedOrderId] = useState(null);
+            
+            // UI State
+            const [searchQuery, setSearchQuery] = useState("");
+            const [selectedDateFilter, setSelectedDateFilter] = useState("all");
+            const [selectedStatusFilter, setSelectedStatusFilter] = useState("all");
+            const [rawOrderInput, setRawOrderInput] = useState(""); 
+            
+            const [colWidths, setColWidths] = useState({
+                checkbox: 30, black: 40, date: 120, status: 70, memo: 100,
+                orderBy: 70, receiver: 70, productName: 180, option: 100,
+                qty: 50, price: 80, shippingCost: 70, shippingMethod: 80
+            });
+            
+            const [sidebarWidth, setSidebarWidth] = useState(224);
+
+            useEffect(() => { localStorage.setItem('orders', JSON.stringify(orders)); }, [orders]);
+            useEffect(() => { if (orders.length > 0 && !selectedOrderId) setSelectedOrderId(orders[0].id); }, [orders]);
+
+            const selectedOrder = useMemo(() => orders.find(o => o.id === selectedOrderId), [orders, selectedOrderId]);
+
+            const handleUpdateOrder = (id, field, value) => {
+                setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
+            };
+
+            const handleAddCsLog = (id, log) => {
+                setOrders(prev => prev.map(o => o.id === id ? { ...o, csLogs: [...(o.csLogs || []), log] } : o));
+            };
+
+            const handleParseOrders = (input) => {
+                if (!input.trim()) { 
+                    handleAddEmptyOrder(); // Add blank order if empty
+                    return; 
+                }
+                const lines = input.split('\n').filter(l => l.trim());
+                const newOrders = lines.map((line, idx) => {
+                    let orderBy = "미확인";
+                    let productName = line;
+                    let qty = 1;
+                    const nameMatch = line.match(/@([^\s]+)/);
+                    if (nameMatch) { orderBy = nameMatch[1]; productName = productName.replace(nameMatch[0], '').trim(); }
+                    const qtyMatch = productName.match(/(\d+)개/);
+                    if (qtyMatch) { qty = parseInt(qtyMatch[1], 10); productName = productName.replace(qtyMatch[0], '').trim(); }
+                    return {
+                        id: Date.now() + idx + Math.random(), checked: false, date: new Date().toISOString().slice(0, 10), orderedAt: new Date().toLocaleTimeString(),
+                        status: "신규주문", memo: "", orderBy: orderBy, receiver: orderBy, productName: productName || "상품명 미확인", option: "", qty: qty, price: 0,
+                        shippingCost: 0, shippingMethod: "미정", address: "", phone: "", orderNo: `ORD-${Date.now()}-${idx}`, csLogs: [`자동 등록됨: ${line}`]
+                    };
+                });
+                setOrders(prev => [...newOrders, ...prev]);
+                alert(`${newOrders.length}건의 주문이 등록되었습니다.`);
+                setRawOrderInput("");
+            };
+
+            const handleAddEmptyOrder = () => {
+                 const newOrder = {
+                    id: Date.now() + Math.random(), checked: false, date: new Date().toISOString().slice(0, 10), orderedAt: new Date().toLocaleTimeString(),
+                    status: "신규주문", memo: "", orderBy: "", receiver: "", productName: "", option: "", qty: 1, price: 0,
+                    shippingCost: 0, shippingMethod: "미정", address: "", phone: "", orderNo: `ORD-${Date.now()}`, csLogs: []
+                };
+                setOrders(prev => [newOrder, ...prev]);
+            };
+            
+            const handleDeleteOrder = (id) => {
+                if (confirm('정말 삭제하시겠습니까?')) {
+                     setOrders(prev => prev.filter(o => o.id !== id));
+                     if(selectedOrderId === id) setSelectedOrderId(null);
+                }
+            };
+
+            // Keydown Handler for Table Inputs (Excel-like navigation)
+            const handleTableKeyDown = (e, index, field) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const nextId = `${field}-${index + 1}`;
+                    const nextEl = document.getElementById(nextId);
+                    if (nextEl) {
+                        nextEl.focus();
+                        nextEl.select();
+                    }
+                }
+            };
+
+            const stats = useMemo(() => {
+                const counts = { new: 0, shipping: 0, cancel: 0, noShow: 0, return: 0, exchange: 0, total: orders.length };
+                orders.forEach(o => {
+                    if (o.status === "신규주문") counts.new++; else if (o.status === "배송중") counts.shipping++; else if (o.status === "취소") counts.cancel++;
+                    else if (o.status === "노쇼") counts.noShow++; else if (o.status === "반품요청") counts.return++; else if (o.status === "교환요청") counts.exchange++;
+                });
+                return counts;
+            }, [orders]);
+
+            const dateTree = useMemo(() => {
+                const groups = orders.reduce((acc, order) => { acc[order.date] = (acc[order.date] || 0) + 1; return acc; }, {});
+                const children = Object.keys(groups).sort().reverse().map(date => ({ id: date, name: date, count: groups[date] }));
+                return [{ id: "all", name: "전체 날짜", count: orders.length, children: children }];
+            }, [orders]);
+
+            const filteredOrders = useMemo(() => {
+                return orders.filter(o => {
+                    if (selectedDateFilter !== "all" && o.date !== selectedDateFilter) return false;
+                    if (selectedStatusFilter !== "all" && o.status !== selectedStatusFilter) return false;
+                    if (searchQuery) {
+                        const query = searchQuery.toLowerCase();
+                        const targetString = `${o.orderBy} ${o.receiver} ${o.productName} ${o.phone} ${o.orderNo}`.toLowerCase();
+                        if (!targetString.includes(query)) return false;
+                    }
+                    return true;
+                });
+            }, [orders, selectedDateFilter, selectedStatusFilter, searchQuery]);
+
+            const handleStatusFilter = (status) => setSelectedStatusFilter(prev => prev === status ? "all" : status);
+
+            const handleSidebarResize = useCallback((e) => {
+                e.preventDefault();
+                const startX = e.pageX;
+                const startWidth = sidebarWidth;
+                const onMouseMove = (moveEvent) => {
+                    const newWidth = Math.max(150, Math.min(500, startWidth + (moveEvent.pageX - startX)));
+                    setSidebarWidth(newWidth);
+                };
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }, [sidebarWidth]);
+
+            return (
+                <div className="flex flex-col h-screen bg-gray-100 font-sans text-xs overflow-hidden select-none">
+                    <header className="bg-white border-b border-gray-300 h-8 flex items-center justify-between px-3 shrink-0">
+                        <div className="flex items-center space-x-2"><span className="font-bold text-gray-700">강은지 주문관리 시스템 1.1 PRO</span></div>
+                        <div className="flex items-center space-x-4 text-gray-600"><div className="flex items-center space-x-1 cursor-pointer hover:text-blue-600"><Settings size={14} /> <span>환경설정</span></div></div>
+                    </header>
+
+                    <div className="bg-gray-50 border-b border-gray-300 px-2 flex space-x-1 pt-1 shrink-0">
+                        {["상품관리", "주문관리", "문의관리", "통계조회"].map(tab => (
+                            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-t-md text-xs font-medium border-t border-l border-r ${activeTab === tab ? 'bg-white border-gray-300 border-b-white text-blue-600 -mb-[1px] relative z-10' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-200'}`}>{tab}</button>
+                        ))}
+                    </div>
+
+                    {activeTab === '주문관리' && (
+                        <div className="flex flex-col shrink-0 border-b border-gray-300 bg-white">
+                            <div className="p-2 flex items-start space-x-2 overflow-x-auto border-b border-gray-200">
+                                <div className="flex flex-col space-y-1 w-[280px] shrink-0 border-r pr-2 border-gray-200">
+                                    <div className="flex items-center space-x-1">
+                                        <label className="w-8 text-gray-600 font-bold">검색</label>
+                                        <input type="text" className="border border-gray-300 p-1 rounded flex-1 focus:border-blue-500 outline-none" placeholder="통합 검색..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                        <label className="w-8 text-gray-600 font-bold">날짜</label>
+                                        <input type="date" className="border border-gray-300 p-0.5 w-24 bg-gray-50" defaultValue="2025-12-04" />
+                                        <span>~</span>
+                                        <input type="date" className="border border-gray-300 p-0.5 w-24 bg-gray-50" defaultValue="2025-12-04" />
+                                    </div>
+                                </div>
+                                <div className="flex-1 flex items-center space-x-4 pl-2 min-w-[500px]">
+                                    <div onClick={() => setSelectedStatusFilter("all")} className={`border border-gray-300 rounded bg-white flex items-center p-2 h-full shadow-sm cursor-pointer hover:bg-gray-50 ${selectedStatusFilter === 'all' ? 'ring-2 ring-blue-400' : ''}`}>
+                                        <span className="font-bold text-gray-700 text-sm mr-2 border-r border-gray-200 pr-2">전체</span>
+                                        <span className="text-lg font-bold text-gray-800">{stats.total}</span>
+                                    </div>
+                                    <div className="flex flex-col space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <StatusButton label="신규주문" count={stats.new} colorClass="bg-yellow-200 border-yellow-300 text-yellow-900" onClick={() => handleStatusFilter("신규주문")} active={selectedStatusFilter === "신규주문"} />
+                                            <ArrowSeparator />
+                                            <StatusButton label="배송중" count={stats.shipping} colorClass="bg-blue-500 border-blue-600 text-white" onClick={() => handleStatusFilter("배송중")} active={selectedStatusFilter === "배송중"} />
+                                            <ArrowSeparator />
+                                            <StatusButton label="취소" count={stats.cancel} colorClass="bg-red-500 border-red-600 text-white" onClick={() => handleStatusFilter("취소")} active={selectedStatusFilter === "취소"} />
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <StatusButton label="노쇼" count={stats.noShow} colorClass="bg-gray-200 border-gray-300 text-gray-700" onClick={() => handleStatusFilter("노쇼")} active={selectedStatusFilter === "노쇼"} />
+                                            <ArrowSeparator />
+                                            <StatusButton label="반품요청" count={stats.return} colorClass="bg-purple-200 border-purple-300 text-purple-900" onClick={() => handleStatusFilter("반품요청")} active={selectedStatusFilter === "반품요청"} />
+                                            <ArrowSeparator />
+                                            <StatusButton label="교환요청" count={stats.exchange} colorClass="bg-pink-200 border-pink-300 text-pink-900" onClick={() => handleStatusFilter("교환요청")} active={selectedStatusFilter === "교환요청"} />
+                                        </div>
+                                    </div>
+                                    {/* Moved Toolbar Icons to here */}
+                                    <div className="ml-auto flex items-center gap-1 pl-2 border-l border-gray-200 h-full">
+                                         <ToolbarButton icon={FileText} label="엑셀" color="text-green-600" onClick={() => alert('엑셀 다운로드')} />
+                                         <ToolbarButton icon={RefreshCw} label="새로고침" onClick={() => window.location.reload()} />
+                                         <ToolbarButton icon={Trash2} label="삭제" color="text-red-500" onClick={() => selectedOrderId && handleDeleteOrder(selectedOrderId)} />
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Reduced Height Middle Section (h-44) */}
+                            <div className="grid grid-cols-12 gap-2 p-2 h-44 bg-gray-100">
+                                <div className="col-span-3 h-full"><CommentConverter onParse={handleParseOrders} /></div>
+                                <div className="col-span-6 h-full"><AddressDashboard order={selectedOrder} onUpdate={handleUpdateOrder} /></div>
+                                <div className="col-span-3 h-full"><CsMemoPanel order={selectedOrder} onAddLog={handleAddCsLog} /></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === '통계조회' && (
+                        <div className="h-full p-2 bg-gray-100 overflow-hidden">
+                            <StatisticsPanel orders={orders} />
+                        </div>
+                    )}
+
+                    {(activeTab !== '주문관리' && activeTab !== '통계조회') && (
+                         <div className="flex items-center justify-center h-full text-gray-400 flex-col"><Package size={48} className="mb-2 opacity-50" /><span>준비중...</span></div>
+                    )}
+
+                    {activeTab === '주문관리' && (
+                        <div className="flex flex-1 overflow-hidden">
+                            <div className="relative bg-white border-r border-gray-300 flex flex-col shrink-0" style={{ width: sidebarWidth }}>
+                                <div className="p-1.5 bg-gray-100 border-b border-gray-300 font-bold text-gray-700 pl-2">주문 일자</div>
+                                <div className="flex-1 overflow-y-auto p-1">
+                                    {dateTree.map((item, idx) => (<TreeItem key={idx} item={item} onSelect={setSelectedDateFilter} selectedId={selectedDateFilter} />))}
+                                </div>
+                                {/* Sidebar Resizer */}
+                                <div className="sidebar-resizer" onMouseDown={handleSidebarResize} />
+                            </div>
+
+                            <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
+                                <div className="flex items-center justify-between p-1 border-b border-gray-300 bg-gray-100 shrink-0">
+                                    <div className="flex items-center space-x-2"><span className="font-bold text-gray-700">주문 목록 ({filteredOrders.length}건)</span></div>
+                                    {/* Toolbar icons moved to top */}
+                                </div>
+                                <div className="flex-1 overflow-auto bg-white">
+                                    <table className="w-full text-left border-collapse table-fixed">
+                                        <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold whitespace-nowrap border-b border-gray-300">
+                                            <tr>
+                                                <ResizableTh widthKey="checkbox" align="center" widths={colWidths} setWidths={setColWidths}><input type="checkbox" /></ResizableTh>
+                                                <ResizableTh widthKey="date" widths={colWidths} setWidths={setColWidths}>주문일</ResizableTh>
+                                                <ResizableTh widthKey="status" align="center" widths={colWidths} setWidths={setColWidths}>상태</ResizableTh>
+                                                <ResizableTh widthKey="orderBy" align="center" widths={colWidths} setWidths={setColWidths}>주문자</ResizableTh>
+                                                <ResizableTh widthKey="productName" widths={colWidths} setWidths={setColWidths}>상품명</ResizableTh>
+                                                <ResizableTh widthKey="option" widths={colWidths} setWidths={setColWidths}>옵션</ResizableTh>
+                                                <ResizableTh widthKey="qty" align="right" widths={colWidths} setWidths={setColWidths}>수량</ResizableTh>
+                                                <ResizableTh widthKey="price" align="right" widths={colWidths} setWidths={setColWidths}>금액</ResizableTh>
+                                                <ResizableTh widthKey="memo" widths={colWidths} setWidths={setColWidths}>배송메모</ResizableTh>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {filteredOrders.length > 0 ? filteredOrders.map((order, idx) => (
+                                                <tr key={order.id} onClick={() => setSelectedOrderId(order.id)} className={`cursor-pointer transition-colors ${selectedOrderId === order.id ? 'bg-blue-100' : 'hover:bg-blue-50'}`}>
+                                                    <td className="p-1 border-r border-gray-200 text-center"><input type="checkbox" checked={selectedOrderId === order.id} readOnly /></td>
+                                                    <td className="p-1 border-r border-gray-200 text-gray-500">{order.date}</td>
+                                                    <td className="p-1 border-r border-gray-200 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${order.status === '신규주문' ? 'bg-yellow-100 text-yellow-800' : order.status === '배송중' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>{order.status}</span></td>
+                                                    {/* Inline Editable Fields with Enter Key Support */}
+                                                    <td className="border-r border-gray-200"><input id={`orderBy-${idx}`} className="table-input text-center font-medium text-blue-900" value={order.orderBy} onChange={(e)=>handleUpdateOrder(order.id, 'orderBy', e.target.value)} onKeyDown={(e)=>handleTableKeyDown(e, idx, 'orderBy')} /></td>
+                                                    <td className="border-r border-gray-200"><input id={`productName-${idx}`} className="table-input text-blue-600 font-medium" value={order.productName} onChange={(e)=>handleUpdateOrder(order.id, 'productName', e.target.value)} onKeyDown={(e)=>handleTableKeyDown(e, idx, 'productName')} /></td>
+                                                    <td className="border-r border-gray-200"><input id={`option-${idx}`} className="table-input text-gray-600" value={order.option} onChange={(e)=>handleUpdateOrder(order.id, 'option', e.target.value)} onKeyDown={(e)=>handleTableKeyDown(e, idx, 'option')} /></td>
+                                                    <td className="border-r border-gray-200"><input id={`qty-${idx}`} type="number" className="table-input text-right font-mono" value={order.qty} onChange={(e)=>handleUpdateOrder(order.id, 'qty', Number(e.target.value))} onKeyDown={(e)=>handleTableKeyDown(e, idx, 'qty')} /></td>
+                                                    <td className="border-r border-gray-200"><input id={`price-${idx}`} type="number" className="table-input text-right font-mono" value={order.price} onChange={(e)=>handleUpdateOrder(order.id, 'price', Number(e.target.value))} onKeyDown={(e)=>handleTableKeyDown(e, idx, 'price')} /></td>
+                                                    <td className="border-r border-gray-200"><input id={`memo-${idx}`} className="table-input text-gray-500" value={order.memo} onChange={(e)=>handleUpdateOrder(order.id, 'memo', e.target.value)} onKeyDown={(e)=>handleTableKeyDown(e, idx, 'memo')} /></td>
+                                                </tr>
+                                            )) : (
+                                                <tr><td colSpan="9" className="p-10 text-center text-gray-400">데이터가 없습니다.</td></tr>
+                                            )}
+                                            {Array.from({ length: Math.max(0, 15 - filteredOrders.length) }).map((_, i) => (
+                                                <tr key={`empty-${i}`} className="h-6"><td className="border-r border-gray-100" colSpan="9"></td></tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
