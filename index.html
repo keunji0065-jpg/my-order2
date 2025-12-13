@@ -222,8 +222,9 @@
 
         const ProductAutocomplete = ({ value, onChange, onSelect }) => {
             return (
-                <input 
-                    className="w-full bg-transparent font-bold outline-none" 
+                <textarea 
+                    className="w-full bg-transparent font-bold outline-none resize-none whitespace-pre-wrap" // 줄바꿈 기능 추가
+                    rows={1}
                     value={value} 
                     onChange={onChange} 
                 />
@@ -508,7 +509,7 @@
                             <div className="flex-1 overflow-y-auto">
                                 <table className="w-full text-xs text-left border-collapse">
                                     <thead className="text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-dark-input/50 sticky top-0 z-10"><tr><th className="py-2 px-3 w-24">사이트</th><th className="py-2 px-3 w-24">상품번호</th><th className="py-2 px-3">상품명 (클릭수정)</th><th className="py-2 px-3 w-20 text-right">단가</th><th className="py-2 px-3 w-10 text-center"></th></tr></thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{filteredProducts.map((p, idx) => (<tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td className="p-1 px-2"><input className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none text-slate-500 truncate" value={p.site} onChange={(e) => handleInlineUpdate(p.name, 'site', e.target.value)} list="site-options"/></td><td className="p-1 px-2"><input className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none text-slate-500 font-mono" value={p.code} onChange={(e) => handleInlineUpdate(p.name, 'code', e.target.value)}/></td><td className="p-1 px-2"><input className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none font-bold text-slate-700 dark:text-slate-200" defaultValue={p.name} onBlur={(e) => handleInlineUpdate(p.name, 'name', e.target.value)} onKeyDown={(e)=> { if(e.key==='Enter') e.currentTarget.blur(); }}/></td><td className="p-1 px-2"><input type="number" className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none text-right font-mono text-slate-600 dark:text-slate-400" value={p.price} onChange={(e) => handleInlineUpdate(p.name, 'price', e.target.value)}/></td><td className="p-1 text-center"><button onClick={() => handleDelete(p.name)} className="text-slate-300 hover:text-rose-500 transition-colors p-1"><Icon name="Trash2" /></button></td></tr>))}</tbody>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{filteredProducts.map((p, idx) => (<tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><td className="p-1 px-2"><input className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none text-slate-500 truncate" value={p.site} onChange={(e) => handleInlineUpdate(p.name, 'site', e.target.value)} list="site-options"/></td><td className="p-1 px-2"><input className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none text-slate-500 font-mono" value={p.code} onChange={(e) => handleInlineUpdate(p.name, 'code', e.target.value)}/></td><td className="p-1 px-2"><textarea className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none font-bold text-slate-700 dark:text-slate-200 resize-none whitespace-pre-wrap" rows={1} defaultValue={p.name} onBlur={(e) => handleInlineUpdate(p.name, 'name', e.target.value)} onKeyDown={(e)=> { if(e.key==='Enter') e.currentTarget.blur(); }}></textarea></td><td className="p-1 px-2"><textarea type="number" className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none text-right font-mono text-slate-600 dark:text-slate-400 resize-none" rows={1} value={p.price} onChange={(e) => handleInlineUpdate(p.name, 'price', e.target.value)}></textarea></td><td className="p-1 text-center"><button onClick={() => handleDelete(p.name)} className="text-slate-300 hover:text-rose-500 transition-colors p-1"><Icon name="Trash2" /></button></td></tr>))}</tbody>
                                 </table>
                             </div>
                         </div>
@@ -850,11 +851,11 @@
                         </div>
                         <div className={`flex-1 px-2 flex items-center gap-3 min-w-[140px] rounded-lg p-1 bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-200`}>
                             <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-md flex items-center justify-center shrink-0">
-                                <Icon name="Money" size={20} weight="bold"/>
+                                <Icon name="Truck" size={20} weight="bold"/>
                             </div>
                             <div>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">배송 미수금 (제거됨)</span>
-                                <span className={`text-lg font-bold font-mono text-slate-700 dark:text-slate-200`}>0원</span>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">배송 미수금</span>
+                                <span className={`text-lg font-bold font-mono ${stats.shipUnpaid > 0 ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}`}>{stats.shipUnpaid.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
@@ -1052,7 +1053,7 @@
                 // 전체 주문 CSV (배송비 로직 복구)
                 const headers = ['닉네임', '입금명', '상품명', '수량', '금액', '입금액(현금)', '카드결제액', '배송비', '미수금', '수령인', '연락처', '우편번호', '주소', '배송메모', '메모']; 
                 const csv = [headers.join(',')].concat(list.map(o => { 
-                    const isFirst = firstIds[o.customer] === o.id; 
+                    const isFirst = firstOrderIds[o.customer] === o.id; 
                     const ship = o.customShippingFee ?? defaults.shippingCost; // defaults.shippingCost 사용
                     const shipCharge = isFirst ? ship : 0; 
                     // 미수금 계산: (상품가 + 배송비) - 총 결제액 - (처리된 배송비)
@@ -1306,9 +1307,9 @@
                 });
 
                 return {
-                    qty: orders.reduce((s, o) => s + o.quantity, 0), 
-                    orderCount: orders.length,
-                    shippingCount: Object.keys(grouped).length, // 총 고객 수
+                    qty: orders.reduce((s, o) => s + o.quantity, 0), // 전체 주문 수량 반영
+                    orderCount: orders.length, // 전체 주문 건수 반영
+                    shippingCount: Object.keys(grouped).length, // 총 고객 수 반영
                     totalRev, 
                     cashUnpaid: shipUnpaid + productUnpaid,
                     shipUnpaid, 
@@ -1539,11 +1540,14 @@
                                                         <div className="flex justify-center gap-1 items-center">
                                                             <button onClick={(e) => { e.stopPropagation(); handleAutoDepositFull(order.id); }} className={`px-1.5 h-4.5 rounded-sm text-[9px] border transition-all ${order.deposit > 0 ? 'bg-teal-50 text-teal-600 border-teal-200 font-bold' : 'bg-transparent text-slate-300 border-slate-200 hover:border-slate-300'}`}>현금</button>
                                                             {isFirst ? (
-                                                                // [FIX] 배송 토글 색상 수정: blue-계열로 통일
+                                                                // [FIX] 배송 토글 색상 수정 및 정렬 유지
                                                                 <button 
                                                                     onClick={(e) => { e.stopPropagation(); handleShippingToggle(order.id); }}
                                                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setEditingShippingId(order.id); }}
-                                                                    className={`px-1.5 h-4.5 rounded-sm text-[9px] font-bold transition-all ${order.isShippingPaid ? 'bg-sky-500 text-white border-sky-600' : 'bg-white text-sky-600 border border-sky-300 hover:bg-sky-50'}`}
+                                                                    className={`px-1.5 h-4.5 rounded-sm text-[9px] font-bold transition-all ${order.isShippingPaid 
+                                                                        ? 'bg-sky-100 text-sky-600 border-sky-300' 
+                                                                        : 'bg-white text-slate-400 border border-slate-200 hover:border-slate-300' 
+                                                                    }`}
                                                                 >배송</button>
                                                             ) : <span className="w-[26px]"></span>}
                                                             <button 
@@ -1554,8 +1558,8 @@
                                                         </div>
                                                         <div className="relative"><input className="w-full bg-transparent font-bold outline-none" value={order.customer} onChange={e => handleUpdateOrder(order.id, 'customer', e.target.value)} /></div>
                                                         <div className="relative"><input className="w-full bg-transparent font-mono outline-none text-slate-500" value={productNumbers[order.product] || ''} readOnly /></div>
-                                                        <div className="relative"><ProductAutocomplete id={`prod-${idx}`} value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onSelect={(n, p) => handleUpdateOrder(order.id, 'product', n)} priceMap={productHistory} /></div>
-                                                        <div className="flex justify-center"><input type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)} /></div>
+                                                        <div className="relative"><textarea className="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-brand-500 rounded px-1 py-1 outline-none font-bold text-slate-700 dark:text-slate-200 resize-none whitespace-pre-wrap" rows={1} defaultValue={order.product} onBlur={(e) => handleInlineUpdate(order.product, 'name', e.target.value)} onKeyDown={(e)=> { if(e.key==='Enter') e.currentTarget.blur(); }}></textarea></div>
+                                                        <div className="flex justify-center"><textarea type="number" className="w-full text-center bg-transparent font-bold outline-none resize-none" rows={1} value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)}></textarea></div>
                                                         <div className="text-right">
                                                             {/* 배송비 포함된 금액 표시 */}
                                                             <span className='font-mono text-slate-700 dark:text-slate-200'>{(order.price + (isFirst ? ship : 0)).toLocaleString()}</span>
