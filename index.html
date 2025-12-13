@@ -394,7 +394,7 @@
                             <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100"><Icon name="Calendar" weight="fill" /> {year}년 {month + 1}월</h3>
                             <div className="flex gap-1"><button onClick={prevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><Icon name="CaretLeft"/></button><button onClick={()=>setCurrentDate(new Date())} className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded">오늘</button><button onClick={nextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"><Icon name="CaretRight"/></button></div>
                         </div>
-                        <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-500 mb-2 shrink-0"><div className="text-red-500">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div className="text-blue-500">토</div></div>
+                        <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-500 mb-2 shrink-0"><div className="text-red-500">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div className="blue-500">토</div></div>
                         <div className="grid grid-cols-7 gap-1 flex-1 auto-rows-fr overflow-y-auto">
                             {days.map((d, i) => {
                                 if (!d) return <div key={i} className="bg-transparent"></div>;
@@ -976,7 +976,15 @@
                     if (field === 'product') updates.price = o.quantity * (productHistory[value] || 0);
                     if (field === 'price' && o.product) setProductHistory(h => ({...h, [o.product]: value/o.quantity}));
                     const newPrice = updates.price ?? o.price;
-                    if (field === 'deposit') { const rem = Math.max(0, newPrice - value); updates.cardAmount = rem; updates.isCardPaid = rem > 0; }
+                    if (field === 'deposit') { 
+                        // 현금 입금 시 isPaid를 업데이트 (카드와 별개로 처리)
+                        updates.isPaid = (value + o.cardAmount) >= newPrice;
+                        updates.cardAmount = o.cardAmount; // 다른 필드 유지
+                    }
+                    if (field === 'cardAmount') { 
+                        updates.isCardPaid = value > 0;
+                        updates.isPaid = (o.deposit + value) >= newPrice; // 다른 필드 유지
+                    }
                     
                     return sanitizeOrder({ ...o, ...updates }); 
                 })); 
@@ -996,12 +1004,35 @@
                     if (o.id !== id) return o;
                     const price = o.price;
                     const current = o.deposit;
-                    let next = (current === 0) ? price : 0;
-                    return sanitizeOrder({ ...o, deposit: next, cardAmount: 0, isPaid: next >= price });
+                    let nextDeposit = (current === 0) ? price : 0;
+                    
+                    // 카드 금액은 유지하고, deposit을 변경하여 isPaid를 업데이트
+                    const newPaidTotal = nextDeposit + o.cardAmount;
+                    const isNowPaid = newPaidTotal >= price;
+
+                    return sanitizeOrder({ ...o, deposit: nextDeposit, isPaid: isNowPaid });
                 }));
             };
 
-            const handleAutoCardFull = (id) => { setOrders(prev => prev.map(o => { if (o.id !== id) return o; if (o.cardAmount >= o.price && o.price > 0) return sanitizeOrder({ ...o, cardAmount: 0, isPaid: false, isCardPaid: false }); return sanitizeOrder({ ...o, cardAmount: o.price, deposit: 0, isPaid: true, isCardPaid: true }); })); };
+            const handleAutoCardFull = (id) => { setOrders(prev => prev.map(o => { 
+                if (o.id !== id) return o; 
+                const price = o.price;
+                const currentCardAmount = o.cardAmount;
+                
+                let nextCardAmount = (currentCardAmount > 0) ? 0 : price;
+                
+                const newPaidTotal = o.deposit + nextCardAmount;
+                const isNowPaid = newPaidTotal >= price;
+
+                return sanitizeOrder({ 
+                    ...o, 
+                    cardAmount: nextCardAmount, 
+                    isCardPaid: nextCardAmount > 0,
+                    deposit: 0, // 카드 결제 시 현금 입금액은 0으로 간주 (토글 동작 통일성)
+                    isPaid: isNowPaid
+                }); 
+            })); };
+            
             const handleToggleAmountEdit = (id) => { setEditingAmountId(id === editingAmountId ? null : id); setEditingShippingId(null); };
             const handleToggleShippingEdit = (id) => { setEditingShippingId(id === editingShippingId ? null : id); setEditingAmountId(null); };
             const handleToggleAddressEdit = (id) => { setEditingAddressId(id === editingAddressId ? null : id); };
@@ -1130,8 +1161,12 @@
                     const newOrders = [];
                     
                     let currentNick = null;
+                    
+                    // FIX: 일반 변환 시, rawInput 대신 speedInput 값을 사용하도록 로직 변경
+                    const textToParse = converterTab === 'general' ? speedInput : rawInput;
+                    const parsingLines = textToParse.split('\n').map(l => l.trim()).filter(Boolean);
 
-                    lines.forEach((line) => {
+                    parsingLines.forEach((line) => {
                         // --- 1. BATCH MODE PARSING ---
                         if (converterTab === 'batch') {
                             if (line.startsWith('@')) {
@@ -1148,28 +1183,28 @@
                                 }
                             }
                         } 
-                        // --- 2. GENERAL MODE PARSING ---
-                        else {
-                            if (line.startsWith('@')) {
-                                currentNick = line.substring(1).trim();
-                            } else if (currentNick) {
-                                let product = line;
-                                let quantity = 1;
-                                const qtyMatch = line.match(/(\d+)\s*(?:개|set|ea|box)?$/i);
-                                if (qtyMatch) {
-                                    quantity = parseInt(qtyMatch[1], 10);
-                                    product = line.replace(qtyMatch[0], '').trim() || line; 
-                                }
-                                const unitPrice = productHistory[product] || 0;
-                                const crmData = customerDB[currentNick];
-                                if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
-                                // 배송비 관련 필드 초기화하며 추가
-                                newOrders.push(sanitizeOrder({ id: Date.now() + Math.random(), originalText: line, customer: currentNick, product: product, quantity: quantity, price: quantity * unitPrice, isShippingPaid: false, customShippingFee: null, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData }));
-                            }
+                        // --- 2. GENERAL MODE PARSING (스피드 주문과 동일 로직) ---
+                        else if (converterTab === 'general') {
+                            // 일반 변환 탭에서는 speedInput에 한 줄만 입력했다고 가정하고 처리 (스피드 주문 로직 재사용)
+                            const order = processTextLine(line);
+                            if (order) newOrders.push(order);
+
+                            // *Note: General 탭에서 멀티라인 입력 시 첫 줄만 처리되도록 하려면 이 부분만 사용
+                            // 현재는 멀티라인 처리 로직을 제거하고 speedInput을 흉내내도록 함
                         }
                     });
+                    
+                    if (converterTab === 'general') {
+                        // 스피드 주문 필드 초기화
+                        setSpeedInput('');
+                        setRawInput(''); // rawInput도 초기화
+                    } else {
+                        // 일괄 주문 필드 초기화
+                        setRawInput('');
+                    }
+
+
                     setOrders(prev => [...newOrders, ...prev]);
-                    setRawInput('');
                     setIsProcessing(false);
                     showToast(`${newOrders.length}건 변환 완료`);
                 }, 100);
@@ -1456,6 +1491,7 @@
                                         <div className="flex-1 p-2 flex flex-col gap-2 overflow-y-auto">
                                             {converterTab === 'general' ? (
                                                 <>
+                                                    {/* FIX: General 탭에서 rawInput 대신 speedInput 사용하도록 로직 변경 */}
                                                     <div className="relative"><input className="w-full pl-7 pr-2 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md text-xs outline-none focus:ring-1 focus:ring-blue-500 font-bold placeholder-blue-300 dark:placeholder-blue-700 transition-all" placeholder="스피드 주문 (예: 홍길동 사과 1)" value={speedInput} onChange={e => setSpeedInput(e.target.value)} onKeyDown={handleSpeedInput} /><div className="absolute left-2 top-1/2 -translate-y-1/2 text-blue-400"><Icon name="Lightning" weight="fill" size={12}/></div></div>
                                                     <textarea className="flex-1 w-full p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-md resize-none text-xs font-mono focus:border-brand-500 outline-none transition-all text-slate-700 dark:text-gray-200 placeholder-slate-400" placeholder="@홍길동 A세트 1개&#13;&#10;@김철수 B세트 2개" value={rawInput} onChange={e => setRawInput(e.target.value)}></textarea>
                                                     <button onClick={handleParseOrders} disabled={isProcessing} className="w-full py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-md text-xs font-bold transition-colors flex justify-center items-center gap-1 shadow-sm h-8">{isProcessing ? '처리 중...' : '변환하기'}</button>
@@ -1540,7 +1576,7 @@
                                                         <div className="flex justify-center gap-1 items-center">
                                                             <button onClick={(e) => { e.stopPropagation(); handleAutoDepositFull(order.id); }} className={`px-1.5 h-4.5 rounded-sm text-[9px] border transition-all ${order.deposit > 0 ? 'bg-teal-50 text-teal-600 border-teal-200 font-bold' : 'bg-transparent text-slate-300 border-slate-200 hover:border-slate-300'}`}>현금</button>
                                                             {isFirst ? (
-                                                                // [FIX] 배송 토글 색상 수정 및 정렬 유지
+                                                                // [FIX] 배송 토글 색상 수정: blue-계열로 통일
                                                                 <button 
                                                                     onClick={(e) => { e.stopPropagation(); handleShippingToggle(order.id); }}
                                                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setEditingShippingId(order.id); }}
@@ -1575,7 +1611,7 @@
                                                             </div>
                                                         )}
                                                         {editingShippingId === order.id && (
-                                                            <div className="col-span-full p-1.5 bg-brand-50 dark:bg-brand-900/20 border-y border-brand-100 dark:border-brand-800 flex gap-2 justify-center items-center animate-fade-in shadow-inner" onClick={e => e.stopPropagation()}>
+                                                            <div className="col-span-full p-1.5 bg-brand-50 dark:bg-brand-900/20 border-y border-brand-100 dark:border-brand-800 flex gap-2 justify-start pl-2 items-center animate-fade-in shadow-inner" onClick={e => e.stopPropagation()}>
                                                                 {" "}<span className="text-[10px] font-bold text-brand-600 dark:text-brand-300">개별 배송비:</span>{" "}
                                                                 <input type="number" className="w-16 p-0.5 rounded-sm border border-brand-200 text-right font-bold text-xs text-brand-700 outline-none" value={order.customShippingFee ?? defaults.shippingCost} onChange={e => handleUpdateOrder(order.id, 'customShippingFee', Number(e.target.value))} />{" "}
                                                                 <button onClick={() => handleUpdateOrder(order.id, 'customShippingFee', null)} className="text-[10px] bg-white text-brand-600 px-2 py-0.5 rounded-sm border border-brand-200 hover:bg-brand-50">기본값</button>{" "}
