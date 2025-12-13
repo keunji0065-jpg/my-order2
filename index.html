@@ -135,8 +135,20 @@
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
         // --- GLOBAL UTILITIES ---
+        const safeJSONParse = (key, defaultValue) => {
+            try {
+                const stored = localStorage.getItem(key);
+                return stored ? JSON.parse(stored) : defaultValue;
+            } catch (e) {
+                console.error(`Error parsing localStorage key "${key}":`, e);
+                return defaultValue;
+            }
+        };
+
         const sanitizeOrder = (order) => {
             if (!order || typeof order !== 'object') return null;
+            
+            // 배송비 관련 필드를 복구하고 초기값을 설정
             const sanitized = {
                 id: order.id || Date.now() + Math.random(),
                 customer: order.customer || '',
@@ -147,8 +159,12 @@
                 cardAmount: Number(order.cardAmount) || 0,
                 isPaid: !!order.isPaid,
                 isCardPaid: !!order.isCardPaid,
+                
+                // 배송비 관련 필드 복구
                 isShippingPaid: !!order.isShippingPaid,
+                // customShippingFee는 null이거나 숫자여야 함
                 customShippingFee: order.customShippingFee === null ? null : (Number(order.customShippingFee) || 0),
+
                 memo: order.memo || '',
                 originalText: order.originalText || '',
                 recipientName: order.recipientName || '',
@@ -246,13 +262,13 @@
 
                     <div className="flex-1 px-2 flex items-center gap-3 min-w-[120px]">
                         <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-md flex items-center justify-center shrink-0">
-                            <Icon name="Truck" size={20} weight="bold"/>
+                            <Icon name="Users" size={20} weight="bold"/>
                         </div>
                         <div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">배송 건수</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">총 고객 수</span>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-lg font-bold text-slate-700 dark:text-slate-200 font-mono">{stats.shippingCount}</span>
-                                <span className="text-xs text-slate-400">건 (명)</span>
+                                <span className="text-xs text-slate-400">명</span>
                             </div>
                         </div>
                     </div>
@@ -485,7 +501,7 @@
                             <button onClick={handleSave} className="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded text-xs font-bold h-[30px] flex items-center gap-1 min-w-[60px] justify-center"><Icon name="Plus" weight="bold"/> 등록</button>
                         </div>
                         <div className="bg-white dark:bg-dark-card rounded-lg border border-slate-200 dark:border-dark-border flex-1 flex flex-col overflow-hidden shadow-sm">
-                            <div className="p-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 justify-between">
+                            <div className="p-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                 <div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-700 dark:text-slate-300">{selectedCategory === 'all' ? '전체 상품' : selectedCategory}</span><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 rounded text-slate-500">{filteredProducts.length}개</span></div>
                                 <div className="relative w-48"><div className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="Search" /></div><input className="w-full pl-7 pr-2 py-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-sm text-xs outline-none focus:border-brand-500" placeholder="상품 검색..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} /></div>
                             </div>
@@ -515,7 +531,7 @@
             return (
                 <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg flex flex-col h-full shadow-soft overflow-hidden">
                     <div className="flex items-center justify-between px-2 pt-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20 shrink-0"><div className="flex gap-1"><button onClick={()=>setTab('input')} className={`px-3 py-1.5 text-xs font-bold rounded-t-lg transition-all ${tab==='input' ? 'bg-white dark:bg-dark-card text-brand-600 dark:text-brand-400 border-x border-t border-slate-200 dark:border-slate-700 border-b-white dark:border-b-dark-card -mb-px z-10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>정보 붙여넣기</button><button onClick={()=>setTab('edit')} className={`px-3 py-1.5 text-xs font-bold rounded-t-lg transition-all ${tab==='edit' ? 'bg-white dark:bg-dark-card text-brand-600 dark:text-brand-400 border-x border-t border-slate-200 dark:border-slate-700 border-b-white dark:border-b-dark-card -mb-px z-10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>상세 수정</button></div><span className="text-[9px] text-slate-400 font-mono pb-1 pr-1">#{selectedOrder.id.toString().slice(-4)}</span></div>
-                    <div className="flex-1 overflow-y-auto p-2">{tab === 'input' ? (<div className="h-full flex flex-col gap-2"><textarea className="flex-1 w-full p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs resize-none outline-none focus:border-brand-500 placeholder-slate-400" placeholder="예시:&#13;&#10;홍길동&#13;&#10;010-1234-5678&#13;&#10;서울시 강남구..." value={rawText} onChange={e => setRawText(e.target.value)}></textarea><button onClick={handleParseRaw} className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-bold transition-colors">자동 입력</button></div>) : (<div className="space-y-2"><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">수령인</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.recipientName} onChange={e=>handleChange('recipientName', e.target.value)} /></div><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">연락처</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.phone} onChange={e=>handleChange('phone', e.target.value)} /></div><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">주소</label><div className="flex-1 flex flex-col gap-1"><div className="relative w-full"><input className="w-full p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 pr-6" value={localAddr.addressText} onChange={e=>handleChange('addressText', e.target.value)} /><button onClick={handlePostcode} className="absolute right-1 top-1 text-slate-400 hover:text-brand-600"><Icon name="Search" size={10}/></button></div><input className="w-full p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" placeholder="상세주소 (동/호수)" value={localAddr.addressDetail} onChange={e=>handleChange('addressDetail', e.target.value)} /></div></div><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">배송메모</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.shippingMemo} onChange={e=>handleChange('shippingMemo', e.target.value)} /></div><div className="pt-2 text-right"><button onClick={handleSave} className="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors shadow-sm">저장</button></div></div>)}</div></div>
+                    <div className="flex-1 overflow-y-auto p-2">{tab === 'input' ? (<div className="h-full flex flex-col gap-2"><textarea className="flex-1 w-full p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs resize-none outline-none focus:border-brand-500 placeholder-slate-400" placeholder="예시:&#13;&#10;홍길동&#13;&#10;010-1234-5678&#13;&#10;서울시 강남구..." value={rawText} onChange={e => setRawText(e.target.value)}></textarea><button onClick={handleParseRaw} className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-bold transition-colors">자동 입력</button></div>) : (<div className="space-y-2"><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">수령인</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.recipientName} onChange={e=>handleChange('recipientName', e.target.value)} /></div><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">연락처</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.phone} onChange={e=>handleChange('phone', e.target.value)} /></div><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">주소</label><div className="flex-1 flex flex-col gap-1"><div className="relative w-full"><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 pr-6" value={localAddr.addressText} onChange={e=>handleChange('addressText', e.target.value)} /><button onClick={handlePostcode} className="absolute right-1 top-1 text-slate-400 hover:text-brand-600"><Icon name="Search" size={10}/></button></div><input className="w-full p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" placeholder="상세주소 (동/호수)" value={localAddr.addressDetail} onChange={e=>handleChange('addressDetail', e.target.value)} /></div></div><div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">배송메모</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.shippingMemo} onChange={e=>handleChange('shippingMemo', e.target.value)} /></div><div className="pt-2 text-right"><button onClick={handleSave} className="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors shadow-sm">저장</button></div></div>)}</div></div>
             );
         };
         const InquiryTab = ({ csRecords, setCsRecords, showToast, sites }) => {
@@ -615,11 +631,17 @@
                 const grandTotal = productTotal + shipFee;
                 const info = customerDB[customerName] || {};
                 
+                // [FIX] grandTotal 중복 선언 제거
+                
                 return (
                     <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
                         <div className="flex justify-between items-end mb-6"><div><p className="text-xs text-slate-500 mb-1">To.</p><h3 className="text-lg font-bold">{customerName} 님</h3><p className="text-xs text-slate-500 mt-1">{info.phone || ''}</p><p className="text-xs text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p></div><div className="text-right"><p className="text-xs text-slate-500">Date</p><p className="text-sm font-mono">{new Date().toLocaleDateString()}</p></div></div>
                         <table className="w-full text-sm mb-6"><thead className="border-b border-slate-200"><tr><th className="text-left py-2">상품명</th><th className="text-center py-2 w-12">수량</th><th className="text-right py-2 w-20">금액</th></tr></thead><tbody className="divide-y divide-slate-100">{targetOrders.map(o => (<tr key={o.id}><td className="py-2">{o.product}</td><td className="py-2 text-center">{o.quantity}</td><td className="py-2 text-right font-mono">{o.price.toLocaleString()}</td></tr>))}</tbody></table>
-                        <div className="border-t-2 border-slate-800 pt-4 space-y-2"><div className="flex justify-between text-sm"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div><div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div><div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div></div>
+                        <div className="border-t-2 border-slate-800 pt-4 space-y-2">
+                            <div className="flex justify-between text-sm"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div>
+                            <div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div>
+                            <div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div>
+                        </div>
                         <div className="mt-8 text-center text-xs text-slate-400">감사합니다. 또 이용해주세요!<br/>강은지 주문서 PRO</div>
                     </div>
                 );
@@ -721,11 +743,39 @@
                     siteSales[site].rev += o.price;
                 });
 
+                // 미수금 계산 (배송비 완전히 배제)
+                let productUnpaid = 0;
+                let customerCount = 0;
+                
+                const grouped = orders.reduce((acc, o) => {
+                    const k = o.customer || 'u';
+                    if (!acc[k]) acc[k] = { products: [], totalProductPrice: 0, totalDeposit: 0, totalCard: 0 };
+                    
+                    acc[k].products.push(o);
+                    acc[k].totalProductPrice += o.price;
+                    acc[k].totalDeposit += o.deposit;
+                    acc[k].totalCard += o.cardAmount;
+                    
+                    return acc;
+                }, {});
+
+                Object.values(grouped).forEach(g => {
+                    customerCount++; 
+                    // 물품 미수금: 총 물품 대금 - 총 결제액
+                    const calculatedProductUnpaid = Math.max(0, g.totalProductPrice - (g.totalDeposit + g.totalCard));
+                    productUnpaid += calculatedProductUnpaid;
+                });
+
+
                 return {
-                    totalRev, totalQty, orderCount, avgOrderValue,
-                    topProducts: Object.values(productSales).sort((a,b) => b.rev - a.rev).slice(0, 5),
-                    topCustomers: Object.values(customerSales).sort((a,b) => b.rev - a.rev).slice(0, 5),
-                    topSites: Object.values(siteSales).sort((a,b) => b.rev - a.rev)
+                    qty: orders.reduce((s, o) => s + o.quantity, 0), 
+                    orderCount: orders.length,
+                    shippingCount: customerCount, // 배송 건수 대신 고객 수 사용
+                    totalRev: totalRev, // 순수 상품가만 반영
+                    cashUnpaid: productUnpaid, // 배송 미수금 0으로 가정
+                    shipUnpaid: 0, // 배송 미수금 항목 제거
+                    productUnpaid: productUnpaid, // 물품 미수금
+                    totalUnpaid: productUnpaid
                 };
             }, [orders, productCategories]);
 
@@ -734,7 +784,7 @@
                     {/* Key Metrics */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-white dark:bg-dark-card p-4 rounded-lg shadow-sm border border-slate-200 dark:border-dark-border">
-                            <div className="text-slate-500 text-xs font-bold uppercase mb-1">총 매출</div>
+                            <div className="text-slate-500 text-xs font-bold uppercase mb-1">총 예상 매출</div>
                             <div className="text-2xl font-bold text-brand-600">{stats.totalRev.toLocaleString()}원</div>
                         </div>
                         <div className="bg-white dark:bg-dark-card p-4 rounded-lg shadow-sm border border-slate-200 dark:border-dark-border">
@@ -742,8 +792,8 @@
                             <div className="text-2xl font-bold text-blue-600">{stats.totalQty.toLocaleString()}개 <span className="text-sm text-slate-400">({stats.orderCount}건)</span></div>
                         </div>
                         <div className="bg-white dark:bg-dark-card p-4 rounded-lg shadow-sm border border-slate-200 dark:border-dark-border">
-                            <div className="text-slate-500 text-xs font-bold uppercase mb-1">평균 객단가</div>
-                            <div className="text-2xl font-bold text-emerald-600">{Math.round(stats.avgOrderValue).toLocaleString()}원</div>
+                            <div className="text-slate-500 text-xs font-bold uppercase mb-1">총 고객 수</div>
+                            <div className="text-2xl font-bold text-emerald-600">{stats.shippingCount}명</div>
                         </div>
                     </div>
 
@@ -786,9 +836,32 @@
                             </div>
                         </div>
                     </div>
+                    
+                    {/* 배송/물품 미수금 항목은 이제 순수 물품 미수금만 계산하며, 배송 미수금은 0으로 표시됩니다. */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`flex-1 px-2 flex items-center gap-3 min-w-[140px] rounded-lg p-1 bg-red-50 dark:bg-red-900/20 ring-1 ring-rose-200`}>
+                            <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-md flex items-center justify-center shrink-0">
+                                <Icon name="Wallet" size={20} weight="bold"/>
+                            </div>
+                            <div>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">총 미수금 (물품)</span>
+                                <span className={`text-lg font-bold font-mono ${stats.productUnpaid > 0 ? 'text-rose-600' : 'text-slate-700 dark:text-slate-200'}`}>{stats.productUnpaid.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div className={`flex-1 px-2 flex items-center gap-3 min-w-[140px] rounded-lg p-1 bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-200`}>
+                            <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-md flex items-center justify-center shrink-0">
+                                <Icon name="Money" size={20} weight="bold"/>
+                            </div>
+                            <div>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">배송 미수금 (제거됨)</span>
+                                <span className={`text-lg font-bold font-mono text-slate-700 dark:text-slate-200`}>0원</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             );
         };
+
 
         const App = () => {
             const [isDarkMode, setIsDarkMode] = useState(() => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -805,22 +878,22 @@
             // NEW: Message Panel States
             const [manualMessage, setManualMessage] = useState('');
 
-            const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
-            const [productCategories, setProductCategories] = useState(() => JSON.parse(localStorage.getItem('productCategories')) || {});
-            const [productNumbers, setProductNumbers] = useState(() => JSON.parse(localStorage.getItem('productNumbers')) || {});
-            const [categoryOrder, setCategoryOrder] = useState(() => JSON.parse(localStorage.getItem('categoryOrder')) || []);
-            const [customerDB, setCustomerDB] = useState(() => JSON.parse(localStorage.getItem('customerDB')) || {}); 
-            const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
-            const [csRecords, setCsRecords] = useState(() => JSON.parse(localStorage.getItem('csRecords')) || []);
-            const [schedules, setSchedules] = useState(() => JSON.parse(localStorage.getItem('schedules')) || []); // NEW Schedule State
+            const [productHistory, setProductHistory] = useState(() => safeJSONParse('productHistory', {}));
+            const [productCategories, setProductCategories] = useState(() => safeJSONParse('productCategories', {}));
+            const [productNumbers, setProductNumbers] = useState(() => safeJSONParse('productNumbers', {}));
+            const [categoryOrder, setCategoryOrder] = useState(() => safeJSONParse('categoryOrder', []));
+            const [customerDB, setCustomerDB] = useState(() => safeJSONParse('customerDB', {})); 
+            const [orders, setOrders] = useState(() => safeJSONParse('youtubeOrders', []));
+            const [csRecords, setCsRecords] = useState(() => safeJSONParse('csRecords', []));
+            const [schedules, setSchedules] = useState(() => safeJSONParse('schedules', [])); 
             
             const [googleScriptUrl, setGoogleScriptUrl] = useState(() => localStorage.getItem('googleScriptUrl') || '');
-            const [shippingFee, setShippingFee] = useState(4000);
+            const [shippingFee, setShippingFee] = useState(0); 
             const [filterText, setFilterText] = useState('');
             const [quickCode, setQuickCode] = useState('');
             const [quickName, setQuickName] = useState('');
             const [quickPrice, setQuickPrice] = useState('');
-            const [quickShipping, setQuickShipping] = useState(4000);
+            const [quickShipping, setQuickShipping] = useState(0); 
             const [speedInput, setSpeedInput] = useState('');
             const [isProcessing, setIsProcessing] = useState(false);
             const [isSyncing, setIsSyncing] = useState(false);
@@ -835,7 +908,16 @@
             const fileInputRef = useRef(null);
             const customerFileRef = useRef(null);
             const excelMenuRef = useRef(null); 
-
+            
+            // [NEW] defaults 객체 복구 및 shippingCost 설정
+            const [defaults, setDefaults] = useState(() => safeJSONParse('defaults', { 
+                site: "스마트스토어", 
+                productName: "기본상품", 
+                shippingCost: 4000 // 기본 배송비 설정 (로직 복구를 위해 재설정)
+            }));
+            
+            // FIX: 로컬스토리지 저장 시 defaults 포함
+            useEffect(() => { localStorage.setItem('defaults', JSON.stringify(defaults)); }, [defaults]);
             useEffect(() => { if (isDarkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [isDarkMode]);
             useEffect(() => { localStorage.setItem('youtubeOrders', JSON.stringify(orders)); }, [orders]);
             useEffect(() => { localStorage.setItem('productHistory', JSON.stringify(productHistory)); }, [productHistory]);
@@ -848,6 +930,7 @@
             useEffect(() => { localStorage.setItem('googleScriptUrl', googleScriptUrl); }, [googleScriptUrl]);
             useEffect(() => { localStorage.setItem('currentSite', currentSite); }, [currentSite]);
             useEffect(() => { const handleClickOutside = (event) => { if (excelMenuRef.current && !excelMenuRef.current.contains(event.target)) { setIsExcelMenuOpen(false); } }; document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
+
 
             const recentProducts = useMemo(() => Object.entries(productHistory).reverse().slice(0, 50), [productHistory]);
             const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 2500); };
@@ -879,7 +962,8 @@
                      setProductNumbers(prev => ({...prev, [pName]: pCode}));
                      setCategoryOrder(prev => prev.includes(pSite) ? prev : [...prev, pSite]);
                 }
-                setOrders(prev => [sanitizeOrder({ id: Date.now(), customer: '', product: quickName || '', quantity: 1, price: Number(quickPrice) || 0, customShippingFee: Number(quickShipping) }), ...prev]);
+                // 배송비 관련 필드 초기화하며 주문 추가
+                setOrders(prev => [sanitizeOrder({ id: Date.now(), customer: '', product: quickName || '', quantity: 1, price: Number(quickPrice) || 0, isShippingPaid: false, customShippingFee: null }), ...prev]);
                 showToast("주문이 추가되었습니다.");
             };
 
@@ -928,17 +1012,10 @@
                 const customer = targetOrder.customer;
                 const newStatus = !targetOrder.isShippingPaid;
                 
+                // 해당 고객의 모든 주문에 대해 isShippingPaid 상태를 업데이트
                 setOrders(prev => prev.map(o => {
                     if (o.customer === customer) {
-                        // Sync status across all customer orders
-                        // Actually, isShippingPaid should be synced or at least tracked per customer group logic in stats
-                        // Let's just update this order's status. The stats logic will handle "if any order has shipping paid".
-                        // Wait, user said "1 time per nickname".
-                        // If I toggle it here, I should probably toggle it for ALL orders of this customer to keep UI consistent?
-                        // Or just keeping it on the 'first' order is enough as per current UI rendering.
-                        // Let's keep it simple: toggle for THIS order, but stats logic looks at ALL orders for that customer.
-                        // However, to make it look consistent in UI (since button is only on first row), this is fine.
-                        return sanitizeOrder({ ...o, isShippingPaid: newStatus });
+                        return { ...o, isShippingPaid: newStatus };
                     }
                     return o;
                 }));
@@ -959,7 +1036,33 @@
                 }));
             };
 
-            const getCSVString = (listData, mode) => { const list = [...listData].map(sanitizeOrder).sort((a, b) => (a.customer || '').localeCompare(b.customer || '')); const firstIds = {}; list.forEach(o => { if (o.customer && !firstIds[o.customer]) firstIds[o.customer] = o.id; }); const clean = (val) => '"' + String(val || '').replace(/"/g, '""') + '"'; const cleanPhone = (val) => { if (!val) return '""'; const strVal = String(val); return '"\u200B' + strVal + '"'; }; if (mode === 'invoice') { const excelHeaders = ['', '', '', '', '상품명', '수령인', '연락처', '주소', '배송메모', '', '메모', '우편번호', '']; const csv = [excelHeaders.join(',')].concat(list.map(o => { let quantitySuffix = ''; if (o.quantity >= 2) { quantitySuffix = ` ★${o.quantity}`; } const productName = `[${o.customer || '미지정'}] ${o.product}${quantitySuffix}`; return ['', '', '', '', clean(productName), clean(o.recipientName), cleanPhone(o.phone), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), '', clean(o.memo), cleanPhone(o.zipCode), ''].join(','); })).join('\n'); return "\ufeff" + csv; } else { const headers = ['닉네임', '입금명', '상품명', '수량', '금액', '입금액(현금)', '카드결제액', '배송비', '미수금', '수령인', '연락처', '우편번호', '주소', '배송메모', '메모']; const csv = [headers.join(',')].concat(list.map(o => { const isFirst = firstIds[o.customer] === o.id; const ship = o.customShippingFee ?? shippingFee; const shipCharge = isFirst ? ship : 0; const unpaid = Math.max(0, (o.price + shipCharge) - (o.deposit + o.cardAmount + (isFirst && o.isShippingPaid ? ship : 0))); return [clean(o.customer), clean(o.phone), clean(o.product), o.quantity, o.price, clean(o.deposit), clean(o.cardAmount), clean(shipCharge), clean(unpaid), clean(o.recipientName), cleanPhone(o.phone), cleanPhone(o.zipCode), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), clean(o.memo)].join(','); })).join('\n'); return "\ufeff" + csv; } };
+            const getCSVString = (listData, mode) => { const list = [...listData].map(sanitizeOrder).sort((a, b) => (a.customer || '').localeCompare(b.customer || '')); const firstIds = {}; list.forEach(o => { if (o.customer && !firstIds[o.customer]) firstIds[o.customer] = o.id; }); const clean = (val) => '"' + String(val || '').replace(/"/g, '""') + '"'; const cleanPhone = (val) => { if (!val) return '""'; const strVal = String(val); return '"\u200B' + strVal + '"'; }; 
+            
+            if (mode === 'invoice') { 
+                // 송장 CSV (배송비 항목 제거)
+                const excelHeaders = ['', '', '', '', '상품명', '수령인', '연락처', '주소', '배송메모', '', '메모', '우편번호', '']; 
+                const csv = [excelHeaders.join(',')].concat(list.map(o => { 
+                    let quantitySuffix = ''; 
+                    if (o.quantity >= 2) { quantitySuffix = ` ★${o.quantity}`; } 
+                    const productName = `[${o.customer || '미지정'}] ${o.product}${quantitySuffix}`; 
+                    return ['', '', '', '', clean(productName), clean(o.recipientName), cleanPhone(o.phone), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), '', clean(o.memo), cleanPhone(o.zipCode), ''].join(','); 
+                })).join('\n'); 
+                return "\ufeff" + csv; 
+            } else { 
+                // 전체 주문 CSV (배송비 로직 복구)
+                const headers = ['닉네임', '입금명', '상품명', '수량', '금액', '입금액(현금)', '카드결제액', '배송비', '미수금', '수령인', '연락처', '우편번호', '주소', '배송메모', '메모']; 
+                const csv = [headers.join(',')].concat(list.map(o => { 
+                    const isFirst = firstIds[o.customer] === o.id; 
+                    const ship = o.customShippingFee ?? defaults.shippingCost; // defaults.shippingCost 사용
+                    const shipCharge = isFirst ? ship : 0; 
+                    // 미수금 계산: (상품가 + 배송비) - 총 결제액 - (처리된 배송비)
+                    const unpaid = Math.max(0, (o.price + shipCharge) - (o.deposit + o.cardAmount + (isFirst && o.isShippingPaid ? ship : 0))); 
+                    return [clean(o.customer), clean(o.phone), clean(o.product), o.quantity, o.price, clean(o.deposit), clean(o.cardAmount), clean(shipCharge), clean(unpaid), clean(o.recipientName), cleanPhone(o.phone), cleanPhone(o.zipCode), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), clean(o.memo)].join(','); 
+                })).join('\n'); 
+                return "\ufeff" + csv; 
+            } 
+            };
+            
             const handleDownloadCSV = (mode) => { const csvString = getCSVString(orders, mode); const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; const timestamp = new Date().toISOString().slice(0,10); link.setAttribute('download', `${mode === 'invoice' ? '송장용_' : '전체주문_'}${timestamp}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
             const handleDownloadProductCSV = () => { const summary = {}; orders.forEach(o => { const key = o.product || '미지정'; summary[key] = (summary[key] || 0) + o.quantity; }); const csvContent = "\ufeff상품명,수량\n" + Object.entries(summary).map(e => e.join(',')).join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.setAttribute('download', `발주리스트_${new Date().toISOString().slice(0,10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
             const handleSetGoogleUrl = () => { const url = window.prompt("Google Apps Script 웹 앱 URL 입력:", googleScriptUrl); if (url !== null) { setGoogleScriptUrl(url.trim()); showToast("URL 저장 완료"); } };
@@ -996,7 +1099,8 @@
                     if (batchCode) { setProductNumbers(prev => ({...prev, [product]: batchCode})); }
                     if (unitPrice > 0) { setProductHistory(prev => ({...prev, [product]: unitPrice})); }
 
-                    return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
+                    // 배송비 관련 필드 초기화하며 반환
+                    return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, isShippingPaid: false, customShippingFee: null, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
                 }
                 
                 // --- GENERAL MODE ---
@@ -1013,7 +1117,8 @@
                 const crmData = customerDB[customer];
                 if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
                 
-                return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
+                // 배송비 관련 필드 초기화하며 반환
+                return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, isShippingPaid: false, customShippingFee: null, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
             };
 
             const handleParseOrders = () => {
@@ -1037,7 +1142,8 @@
                                     if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
                                     if (batchCode) { setProductNumbers(prev => ({...prev, [product]: batchCode})); }
                                     if (unitPrice > 0) { setProductHistory(prev => ({...prev, [product]: unitPrice})); }
-                                    newOrders.push(sanitizeOrder({ id: Date.now() + Math.random(), originalText: line, customer: nickname, product: product, quantity: 1, price: unitPrice, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData }));
+                                    // 배송비 관련 필드 초기화하며 추가
+                                    newOrders.push(sanitizeOrder({ id: Date.now() + Math.random(), originalText: line, customer: nickname, product: product, quantity: 1, price: unitPrice, isShippingPaid: false, customShippingFee: null, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData }));
                                 }
                             }
                         } 
@@ -1056,7 +1162,8 @@
                                 const unitPrice = productHistory[product] || 0;
                                 const crmData = customerDB[currentNick];
                                 if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
-                                newOrders.push(sanitizeOrder({ id: Date.now() + Math.random(), originalText: line, customer: currentNick, product: product, quantity: quantity, price: quantity * unitPrice, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData }));
+                                // 배송비 관련 필드 초기화하며 추가
+                                newOrders.push(sanitizeOrder({ id: Date.now() + Math.random(), originalText: line, customer: currentNick, product: product, quantity: quantity, price: quantity * unitPrice, isShippingPaid: false, customShippingFee: null, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData }));
                             }
                         }
                     });
@@ -1098,33 +1205,38 @@
                     result = result.filter(o => {
                         const g = grouped[o.customer || 'u'];
                         if (!g) return false;
-                        const ship = g.fee ?? shippingFee;
+                        const ship = g.fee ?? defaults.shippingCost;
                         
-                        // Calculated Unpaid Logic based on user request:
-
+                        // --- 미수금 필터링 로직 ---
+                        
+                        // 배송 미수금 필터: 배송비가 있고, 배송비 토글이 눌리지 않은 경우
                         if (unpaidFilter === 'ship') {
                             return !g.paid && ship > 0;
                         }
+                        
+                        // 물품 미수금 필터: 총 입금액(현금+카드)이 물품 대금보다 적은 경우
                         if (unpaidFilter === 'cash') {
-                            const totalRequired = g.p + ship;
-                            const totalPaid = g.d + g.c;
-                            const remaining = Math.max(0, totalRequired - totalPaid);
-                            if (remaining === 0) return false;
-
-                            const shippingUnpaidAmount = (!g.paid) ? ship : 0;
-                            return remaining > shippingUnpaidAmount;
+                            // 총 물품 대금
+                            const totalProductCost = g.p;
+                            // 물품 대금에 대한 미수금 여부 확인
+                            const productUnpaidAmount = Math.max(0, totalProductCost - (g.d + g.c));
+                            
+                            // 해당 고객 그룹의 주문 중 하나라도 물품 미수금이 남아있는 경우
+                            if (productUnpaidAmount > 0 && o.customer === g.products[0].customer) {
+                                return true;
+                            }
                         }
-                        return true;
+                        return false;
                     });
                 }
 
-                // Sidebar Filtering
+                // Sidebar Filtering (닉네임 클릭 시 필터링)
                 if (selectedCustomerFolder !== 'all') {
                     result = result.filter(o => o.customer === selectedCustomerFolder);
                 }
 
                 return result;
-            }, [orders, filterText, unpaidFilter, shippingFee, selectedCustomerFolder]);
+            }, [orders, filterText, unpaidFilter, defaults.shippingCost, selectedCustomerFolder]); // selectedCustomerFolder 종속성 추가
 
             // Customer Folder Data (Left Sidebar)
             const customerFolders = useMemo(() => {
@@ -1139,19 +1251,25 @@
                     if (!map[k]) map[k] = { name: k, count: 0, unpaid: false };
                     map[k].count++;
                     const paid = o.deposit + o.cardAmount;
-                    const required = o.price; 
+                    // 배송비 포함한 총 필요 금액
+                    const ship = o.customShippingFee ?? defaults.shippingCost;
+                    const required = o.price + ship;
+                    // FIX: 폴더 unpaid 상태는 (물품 + 배송비)가 미납되었을 때
                     if (paid < required) map[k].unpaid = true; 
                 });
                 return Object.values(map).sort((a,b) => a.name.localeCompare(b.name));
-            }, [orders, folderSearch]);
+            }, [orders, folderSearch, defaults.shippingCost]); // defaults.shippingCost 종속성 추가
 
-            // [START FIX] 배송비 미수금 계산 로직 수정
+            // [START FIX] 배송비 미수금 계산 로직 복구 (고객 요구사항 반영)
             const stats = useMemo(() => {
                 let totalRev = 0; let orderCount = 0; let shippingCount = 0; 
                 let productUnpaid = 0; let shipUnpaid = 0;
+                const defaultsShippingCost = defaults.shippingCost || 4000;
                 
-                const grouped = filteredOrders.reduce((acc, o) => {
+                // 1. 고객별 그룹화 및 미수금 계산 (전체 주문 'orders' 기준)
+                const grouped = orders.reduce((acc, o) => {
                     const k = o.customer || 'u';
+                    // 닉네임이 다르면 새 그룹을 만듭니다.
                     if (!acc[k]) acc[k] = { products: [], totalProductPrice: 0, totalDeposit: 0, totalCard: 0, customShip: null, isShipPaid: false };
                     
                     acc[k].products.push(o);
@@ -1159,52 +1277,50 @@
                     acc[k].totalDeposit += o.deposit;
                     acc[k].totalCard += o.cardAmount;
                     
+                    // 배송비와 배송 결제 상태는 첫 주문에서 결정되거나, 가장 최근에 업데이트된 값을 따르도록 로직을 간소화
                     if (o.customShippingFee !== null) acc[k].customShip = o.customShippingFee;
                     // 고객의 주문 중 하나라도 isShippingPaid가 true면 배송비 결제 완료로 간주
                     if (o.isShippingPaid) acc[k].isShipPaid = true; 
+                    
                     return acc;
                 }, {});
 
+                // 2. 통계 합산
                 Object.values(grouped).forEach(g => {
-                    const ship = g.customShip ?? shippingFee;
+                    const ship = g.customShip ?? defaultsShippingCost; // defaults.shippingCost 사용
                     const shipPaid = g.isShipPaid;
                     
                     shippingCount++; // 배송 건수 (고객 수)
                     orderCount += g.products.length; // 총 주문 수
                     totalRev += g.totalProductPrice + ship; // 총 매출 (물품 + 배송비)
 
-                    const totalRequired = g.totalProductPrice + ship;
-                    const totalPaid = g.totalDeposit + g.totalCard;
-                    
-                    // 1. 배송비 미수금 (배송비 결제 여부 isShippingPaid 기준)
+                    // 1. 배송 미수금 (배송비 토글 상태 기준)
                     const calculatedShipUnpaid = shipPaid ? 0 : ship;
 
-                    // 2. 물품 미수금 (잔액에서 배송비 미수금을 제외한 금액)
-                    // 잔액: 총 필요한 금액 (물품+배송비) - 총 입금액
-                    const remainingBalance = Math.max(0, totalRequired - totalPaid);
+                    // 2. 물품 미수금 (순수 물품 대금에서 현금/카드가 물품 대금만 커버한 후 남는 잔액)
+                    // 총 물품 대금 - 총 결제액
+                    const calculatedProductUnpaid = Math.max(0, g.totalProductPrice - (g.totalDeposit + g.totalCard));
                     
-                    // 물품 미수금 = (전체 잔액) - (배송비 미수금)
-                    // 배송비가 현금/카드로 지불된 경우, remainingBalance가 0이 되어야 물품 미수금이 0이 됨.
-                    // 만약 현금/카드가 물품 대금만 커버하고 배송비는 커버 못 했다면, 이 계산이 정확함.
-                    const calculatedProductUnpaid = Math.max(0, remainingBalance - calculatedShipUnpaid);
-
                     shipUnpaid += calculatedShipUnpaid;
                     productUnpaid += calculatedProductUnpaid;
                 });
 
                 return {
-                    qty: filteredOrders.reduce((s, o) => s + o.quantity, 0),
-                    orderCount, shippingCount, totalRev, 
+                    qty: orders.reduce((s, o) => s + o.quantity, 0), 
+                    orderCount: orders.length,
+                    shippingCount: Object.keys(grouped).length, // 총 고객 수
+                    totalRev, 
                     cashUnpaid: shipUnpaid + productUnpaid,
-                    shipUnpaid, productUnpaid,
+                    shipUnpaid, 
+                    productUnpaid,
                     totalUnpaid: shipUnpaid + productUnpaid
                 };
-            }, [filteredOrders, shippingFee]);
-            // [END FIX] 배송비 미수금 계산 로직 수정
+            }, [orders, defaults.shippingCost]); 
+            // [END FIX] 배송비 미수금 계산 로직 복구 (고객 요구사항 반영)
 
             const focusedOrder = useMemo(() => orders.find(o => o.id === focusedOrderId), [orders, focusedOrderId]);
 
-            // Generate Order Message Template
+            // Generate Order Message Template (카톡 주문서 로직)
             const generateOrderSummary = (targetCustomer) => {
                 const custOrders = orders.filter(o => o.customer === targetCustomer);
                 if (custOrders.length === 0) return '';
@@ -1212,8 +1328,8 @@
                 let totalProduct = 0;
                 let totalDeposit = 0;
                 let totalCard = 0;
-                const shipFee = custOrders[0].customShippingFee ?? shippingFee;
-                const isShipPaid = custOrders.some(o => o.isShippingPaid); // Check if ANY order marked as paid
+                const shipFee = custOrders[0].customShippingFee ?? defaults.shippingCost;
+                const isShipPaid = custOrders.some(o => o.isShippingPaid); 
 
                 custOrders.forEach(o => {
                     totalProduct += o.price;
@@ -1224,12 +1340,10 @@
                 const totalRequired = totalProduct + shipFee;
                 const totalPaid = totalDeposit + totalCard;
                 
-                // [START FIX] 미수금 계산 로직을 메시지 생성에도 반영
+                // 미수금 계산
                 const calculatedShipUnpaid = isShipPaid ? 0 : shipFee;
-                const remainingBalance = Math.max(0, totalRequired - totalPaid);
-                const productMissing = Math.max(0, remainingBalance - calculatedShipUnpaid);
-                const totalMissing = remainingBalance;
-                // [END FIX]
+                const productMissing = Math.max(0, totalProduct - totalPaid);
+                const totalMissing = calculatedShipUnpaid + productMissing; 
 
                 let text = `💙 ${targetCustomer} 님 💙\n\n`;
                 custOrders.forEach(o => {
@@ -1241,16 +1355,8 @@
                 text += `------------------\n`;
                 text += `총 결제금액 ${totalRequired.toLocaleString()}원\n\n`;
 
-                // Payment Info
-                if (totalPaid > 0) {
-                    text += `[입금확인]\n`;
-                    if (totalDeposit > 0) text += `현금: ${totalDeposit.toLocaleString()}원\n`;
-                    if (totalCard > 0) text += `카드: ${totalCard.toLocaleString()}원\n`;
-                    text += `\n`;
-                }
-
-                // Unpaid Info
-                if (totalMissing > 0) { // 잔액이 0보다 클 때만 미입금 내역 표시
+                // Unpaid Info (미입금 내역 또는 완납 확인만 표시)
+                if (totalMissing > 0) { 
                     text += `[미입금 내역]\n`;
                     
                     if (calculatedShipUnpaid > 0) {
@@ -1265,12 +1371,7 @@
                     text += `\n카카오뱅크 김선정\n7942 18 01611\n\n`;
                     text += `입금 부탁드립니다 🙏\n\n`;
                 } else {
-                    if (totalCard === 0) {
-                        text += `완납 확인! 감사합니다 😍\n\n`;
-                    } else {
-                        // Card payment case
-                        text += `카드 결제 확인되었습니다.\n\n`;
-                    }
+                    text += `완납 확인! 감사합니다 😍\n\n`;
                 }
 
                 // [MODIFIED] Footer Message
@@ -1285,10 +1386,11 @@
                 }
                 if (focusedOrder) return generateOrderSummary(focusedOrder.customer);
                 return '';
-            }, [orders, selectedCustomerFolder, focusedOrder, shippingFee]);
+            }, [orders, selectedCustomerFolder, focusedOrder, defaults.shippingCost]); // defaults.shippingCost 종속성 추가
 
             const handleSidebarClick = (customerName) => {
-                setSelectedCustomerFolder(customerName);
+                // FIX: selectedCustomerFolder 상태 업데이트
+                setSelectedCustomerFolder(prev => prev === customerName ? 'all' : customerName); 
                 const msg = generateOrderSummary(customerName);
                 // Set manual message to the generated summary when sidebar clicked
                 setManualMessage(msg);
@@ -1423,22 +1525,25 @@
                                                         {categoryOrder.length > 0 ? categoryOrder.map(c => <option key={c} value={c}>{c}</option>) : <option value="기본 창고">기본 창고</option>}
                                                     </select>
                                                 </div>
-                                                <input type="number" className="w-16 h-7 px-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-sm text-xs outline-none focus:border-brand-500 text-right" placeholder="배송비" value={quickShipping} onChange={e => setQuickShipping(e.target.value)} />
+                                                <input type="number" className="w-16 h-7 px-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-sm text-xs outline-none focus:border-brand-500 text-right" placeholder="배송비" value={defaults.shippingCost} onChange={e => setDefaults(p => ({...p, shippingCost: Number(e.target.value) || 0}))} />
                                             </div>
                                         </div>
                                         <div className="grid grid-rows-compact gap-2 px-3 py-1.5 bg-slate-100/50 dark:bg-dark-bg border-b border-slate-200 text-[10px] font-bold text-slate-500 text-center"><div>상태</div><div className="text-left">닉네임</div><div className="text-left">코드</div><div className="text-left">상품명</div><div>수량</div><div class="text-right">금액</div><div>주소</div><div className="text-left">메모</div><div></div></div>
                                         <div className="flex-1 overflow-y-auto p-0">
                                             {filteredOrders.map((order, idx) => {
                                                 const isFirst = firstOrderIds[order.customer] === order.id;
+                                                const ship = order.customShippingFee ?? defaults.shippingCost;
+                                                
                                                 return (
                                                     <div key={order.id} onClick={() => setFocusedOrderId(order.id)} className={`grid grid-rows-compact gap-2 px-3 py-1 items-center text-xs hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer ${focusedOrderId === order.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
                                                         <div className="flex justify-center gap-1 items-center">
                                                             <button onClick={(e) => { e.stopPropagation(); handleAutoDepositFull(order.id); }} className={`px-1.5 h-4.5 rounded-sm text-[9px] border transition-all ${order.deposit > 0 ? 'bg-teal-50 text-teal-600 border-teal-200 font-bold' : 'bg-transparent text-slate-300 border-slate-200 hover:border-slate-300'}`}>현금</button>
                                                             {isFirst ? (
+                                                                // [FIX] 배송 토글 색상 수정: blue-계열로 통일
                                                                 <button 
                                                                     onClick={(e) => { e.stopPropagation(); handleShippingToggle(order.id); }}
                                                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setEditingShippingId(order.id); }}
-                                                                    className={`px-1.5 h-4.5 rounded-sm text-[9px] font-bold transition-all ${order.isShippingPaid ? 'bg-sky-500 text-white border-sky-600' : 'bg-transparent text-slate-300 border border-slate-200 hover:border-slate-300'}`}
+                                                                    className={`px-1.5 h-4.5 rounded-sm text-[9px] font-bold transition-all ${order.isShippingPaid ? 'bg-sky-500 text-white border-sky-600' : 'bg-white text-sky-600 border border-sky-300 hover:bg-sky-50'}`}
                                                                 >배송</button>
                                                             ) : <span className="w-[26px]"></span>}
                                                             <button 
@@ -1451,7 +1556,10 @@
                                                         <div className="relative"><input className="w-full bg-transparent font-mono outline-none text-slate-500" value={productNumbers[order.product] || ''} readOnly /></div>
                                                         <div className="relative"><ProductAutocomplete id={`prod-${idx}`} value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onSelect={(n, p) => handleUpdateOrder(order.id, 'product', n)} priceMap={productHistory} /></div>
                                                         <div className="flex justify-center"><input type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)} /></div>
-                                                        <div className="text-right"><input className="w-full text-right bg-transparent font-mono outline-none focus:border-b focus:border-blue-500 cursor-text" defaultValue={order.price.toLocaleString()} onBlur={(e) => handlePriceBlur(order.id, e)} onKeyDown={e=>{if(e.key==='Enter')e.target.blur()}} key={order.price} /></div>
+                                                        <div className="text-right">
+                                                            {/* 배송비 포함된 금액 표시 */}
+                                                            <span className='font-mono text-slate-700 dark:text-slate-200'>{(order.price + (isFirst ? ship : 0)).toLocaleString()}</span>
+                                                        </div>
                                                         <div className="flex justify-center"><div className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-default ${order.isAddressFilled ? 'bg-brand-600 text-white' : 'text-slate-300 bg-slate-100 dark:bg-slate-800'}`}><Icon name="MapPin" size={10} /></div></div>
                                                         <div><input className="w-full bg-transparent text-slate-500 outline-none" value={order.memo} onChange={e => handleUpdateOrder(order.id, 'memo', e.target.value)} /></div>
                                                         <div className="flex justify-end"><button onClick={(e) => { e.stopPropagation(); handleDelete(order.id); }} className="text-slate-300 hover:text-rose-500"><Icon name="X" size={10} /></button></div>
@@ -1465,7 +1573,7 @@
                                                         {editingShippingId === order.id && (
                                                             <div className="col-span-full p-1.5 bg-brand-50 dark:bg-brand-900/20 border-y border-brand-100 dark:border-brand-800 flex gap-2 justify-center items-center animate-fade-in shadow-inner" onClick={e => e.stopPropagation()}>
                                                                 {" "}<span className="text-[10px] font-bold text-brand-600 dark:text-brand-300">개별 배송비:</span>{" "}
-                                                                <input type="number" className="w-16 p-0.5 rounded-sm border border-brand-200 text-right font-bold text-xs text-brand-700 outline-none" value={order.customShippingFee ?? shippingFee} onChange={e => handleUpdateOrder(order.id, 'customShippingFee', Number(e.target.value))} />{" "}
+                                                                <input type="number" className="w-16 p-0.5 rounded-sm border border-brand-200 text-right font-bold text-xs text-brand-700 outline-none" value={order.customShippingFee ?? defaults.shippingCost} onChange={e => handleUpdateOrder(order.id, 'customShippingFee', Number(e.target.value))} />{" "}
                                                                 <button onClick={() => handleUpdateOrder(order.id, 'customShippingFee', null)} className="text-[10px] bg-white text-brand-600 px-2 py-0.5 rounded-sm border border-brand-200 hover:bg-brand-50">기본값</button>{" "}
                                                                 <button onClick={() => setEditingShippingId(null)} className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded-sm hover:bg-brand-700 ml-1">확인</button>{" "}
                                                             </div>
@@ -1479,7 +1587,7 @@
                             </>
                         )}
                         {activeTab === 'customer' && <CustomerTab customerDB={customerDB} setCustomerDB={setCustomerDB} orders={orders} showToast={showToast} />}
-                        {activeTab === 'statement' && <StatementTab orders={orders} shippingFee={shippingFee} customerDB={customerDB} categoryOrder={categoryOrder} />}
+                        {activeTab === 'statement' && <StatementTab orders={orders} shippingFee={defaults.shippingCost} customerDB={customerDB} categoryOrder={categoryOrder} />}
                         {activeTab === 'inquiry' && <InquiryTab csRecords={csRecords} setCsRecords={setCsRecords} showToast={showToast} sites={categoryOrder} />}
                         {activeTab === 'stats' && <StatsTab orders={orders} productCategories={productCategories} />}
                     </main>
