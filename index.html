@@ -50,7 +50,7 @@
         
         /* [수정] 위아래 정렬을 완벽하게 맞추기 위해 버튼 영역(첫 컬럼)을 고정 픽셀(120px)로 설정하고, 
         /* [수정] 버튼들이 작아졌으므로 첫 컬럼 너비 축소 (135px -> 115px) */
-        .grid-rows-compact { grid-template-columns: 115px 100px 70px 1.8fr 50px 80px 30px 1fr 30px; }
+        .grid-rows-compact { grid-template-columns: 75px 100px 70px 1.8fr 50px 80px 30px 1fr 30px; }
         
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
         @media print {
@@ -74,14 +74,29 @@
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
         // --- GLOBAL UTILITIES ---
+        // [MODIFIED] Helper to safely extract number from potential string with newlines
+        const parseNum = (val) => {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            // Take first line, remove commas, parse float
+            const firstLine = String(val).split('\n')[0].replace(/,/g, '');
+            const num = parseFloat(firstLine);
+            return isNaN(num) ? 0 : num;
+        };
+
         const sanitizeOrder = (order) => {
             if (!order || typeof order !== 'object') return null;
+            
+            // Allow string inputs for multiline support in UI, but ensure numeric values for calculation
+            const rawPrice = order.price !== undefined ? order.price : 0;
+            const rawQty = order.quantity !== undefined ? order.quantity : 1;
+
             const sanitized = {
                 id: order.id || Date.now() + Math.random(),
                 customer: order.customer || '',
                 product: order.product || '',
-                quantity: Number(order.quantity) || 1,
-                price: Number(order.price) || 0,
+                quantity: rawQty, // Keep raw for display (might be string)
+                price: rawPrice, // Keep raw for display
                 deposit: Number(order.deposit) || 0,
                 cardAmount: Number(order.cardAmount) || 0,
                 isPaid: !!order.isPaid,
@@ -143,12 +158,14 @@
             );
         });
 
-        const ProductAutocomplete = ({ value, onChange, onSelect }) => {
+        const ProductAutocomplete = ({ value, onChange, id, onKeyDown }) => {
             return (
                 <input 
+                    id={id}
                     className="w-full bg-transparent font-bold outline-none" 
                     value={value} 
                     onChange={onChange} 
+                    onKeyDown={onKeyDown}
                 />
             );
         };
@@ -345,7 +362,7 @@
                 return (
                     <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
                         <div className="flex justify-between items-end mb-6"><div><p className="text-xs text-slate-500 mb-1">To.</p><h3 className="text-lg font-bold">{customerName} 님</h3><p className="text-xs text-slate-500 mt-1">{info.phone || ''}</p><p className="text-xs text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p></div><div className="text-right"><p className="text-xs text-slate-500">Date</p><p className="text-sm font-mono">{new Date().toLocaleDateString()}</p></div></div>
-                        <table className="w-full text-sm mb-6"><thead className="border-b border-slate-200"><tr><th className="text-left py-2">상품명</th><th className="text-center py-2 w-12">수량</th><th className="text-right py-2 w-20">금액</th></tr></thead><tbody className="divide-y divide-slate-100">{targetOrders.map(o => (<tr key={o.id}><td className="py-2">{o.product}</td><td className="py-2 text-center">{o.quantity}</td><td className="py-2 text-right font-mono">{o.price.toLocaleString()}</td></tr>))}</tbody></table>
+                        <table className="w-full text-sm mb-6"><thead className="border-b border-slate-200"><tr><th className="text-left py-2">상품명</th><th className="text-center py-2 w-12">수량</th><th className="text-right py-2 w-20">금액</th></tr></thead><tbody className="divide-y divide-slate-100">{targetOrders.map(o => (<tr key={o.id}><td className="py-2">{o.product}</td><td className="py-2 text-center">{o.quantity}</td><td className="py-2 text-right font-mono">{parseNum(o.price).toLocaleString()}</td></tr>))}</tbody></table>
                         <div className="border-t-2 border-slate-800 pt-4 space-y-2"><div className="flex justify-between text-sm"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div><div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div><div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div></div>
                         <div className="mt-8 text-center text-xs text-slate-400">감사합니다. 또 이용해주세요!<br/>강은지 주문서 PRO</div>
                     </div>
@@ -419,7 +436,7 @@
             const [isDarkMode, setIsDarkMode] = useState(() => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
             const [rawInput, setRawInput] = useState('');
             const [activeTab, setActiveTab] = useState('order'); 
-            const [currentSite, setCurrentSite] = useState(() => localStorage.getItem('currentSite') || '기본 창고');
+            const [currentSite, setCurrentSite] = useState(() => localStorage.getItem('currentSite') || ''); // [MODIFIED] Default warehouse removed (empty string)
             const [converterTab, setConverterTab] = useState('general');
             const [batchProduct, setBatchProduct] = useState('');
             const [batchPrice, setBatchPrice] = useState('');
@@ -455,6 +472,8 @@
             const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
             const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
             const [focusedOrderId, setFocusedOrderId] = useState(null);
+            const [editSource, setEditSource] = useState(null); // [NEW] Track edit source ('card' etc)
+
             const fileInputRef = useRef(null);
             const customerFileRef = useRef(null);
             const excelMenuRef = useRef(null); 
@@ -508,12 +527,33 @@
                 setOrders(prev => prev.map(o => { 
                     if (o.id !== id) return o; 
                     let updates = { [field]: value };
-                    if (field === 'quantity') updates.price = value * (productHistory[o.product] || Number(quickPrice) || 0);
-                    if (field === 'product') updates.price = o.quantity * (productHistory[value] || 0);
-                    if (field === 'price' && o.product) setProductHistory(h => ({...h, [o.product]: value/o.quantity}));
-                    const newPrice = updates.price ?? o.price;
-                    if (field === 'deposit') { const rem = Math.max(0, newPrice - value); updates.cardAmount = rem; updates.isCardPaid = rem > 0; }
                     
+                    // [MODIFIED] Use parseNum for calculations as values can be strings now
+                    const numValue = parseNum(value);
+                    
+                    if (field === 'quantity') {
+                        const unitPrice = productHistory[o.product] || 0;
+                        // Only auto-update price if it seems calculated (simple logic) or always?
+                        // Let's simple update price based on history if available
+                        if (unitPrice > 0) updates.price = numValue * unitPrice;
+                    }
+                    if (field === 'product') {
+                        const unitPrice = productHistory[value] || 0;
+                        updates.price = parseNum(o.quantity) * unitPrice;
+                    }
+                    if (field === 'price' && o.product) {
+                         const qty = parseNum(o.quantity);
+                         if (qty > 0) {
+                             setProductHistory(h => ({...h, [o.product]: numValue/qty}));
+                         }
+                    }
+                    // Also update productNumbers map if code changes
+                    if (field === 'codeInput') {
+                        // Special field name for the code input
+                        setProductNumbers(prev => ({...prev, [o.product]: value}));
+                        return o; // Don't update order itself, just the map (re-render will show new code)
+                    }
+
                     return sanitizeOrder({ ...o, ...updates }); 
                 })); 
             };
@@ -524,7 +564,7 @@
             const handleAutoDepositFull = (id) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id !== id) return o;
-                    const price = o.price;
+                    const price = parseNum(o.price);
                     const currentDeposit = o.deposit;
                     
                     // 우클릭 시 인라인 편집 토글
@@ -535,14 +575,13 @@
                     }
                     
                     // 기본 클릭: 현금 완납 토글
-                    // 이미 전액 현금이면 0으로, 아니면 전액 현금 (카드는 0으로)
                     const isFullCash = currentDeposit === price && o.cardAmount === 0;
                     const nextDeposit = isFullCash ? 0 : price;
                     
                     return sanitizeOrder({ 
                         ...o, 
                         deposit: nextDeposit,
-                        cardAmount: isFullCash ? o.cardAmount : 0, // 전액 현금 버튼 누르면 카드 금액 초기화
+                        cardAmount: isFullCash ? o.cardAmount : 0, 
                         isPaid: nextDeposit > 0 ? true : false 
                     });
                 }));
@@ -552,12 +591,12 @@
             const handleAutoCardFull = (id) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id !== id) return o;
-                    const price = o.price;
+                    const price = parseNum(o.price);
                     
                     // 우클릭 시 인라인 편집 토글
                     if (window.event && window.event.type === 'contextmenu') {
                         window.event.preventDefault();
-                        handleToggleAmountEdit(id);
+                        handleToggleAmountEdit(id, 'card'); // Pass 'card' as source
                         return o;
                     }
 
@@ -568,57 +607,59 @@
                     return sanitizeOrder({ 
                         ...o, 
                         cardAmount: nextCard,
-                        deposit: isFullCard ? o.deposit : 0, // 전액 카드 버튼 누르면 현금 금액 초기화
+                        deposit: isFullCard ? o.deposit : 0, 
                         isCardPaid: nextCard > 0, 
                         isPaid: nextCard > 0
                     });
                 }));
             };
 
-            // [MODIFIED] Card amount setting logic (focusing on manual entry for later settlement)
             const handleSetCardAmount = (id, amount) => { 
                 setOrders(prev => prev.map(o => { 
                     if (o.id !== id) return o;
                     const newAmount = Number(amount) || 0;
+                    const price = parseNum(o.price);
                     
                     return sanitizeOrder({ 
                         ...o, 
                         cardAmount: newAmount, 
-                        isCardPaid: newAmount > 0, // 카드 금액이 있으면 후불 결제 플래그
-                        isPaid: (o.deposit + newAmount) >= o.price // 물품 금액 기준 완납 체크
+                        isCardPaid: newAmount > 0, 
+                        isPaid: (o.deposit + newAmount) >= price 
                     });
                 }));
             };
 
-            // [MODIFIED] 현금 금액 설정 (인라인 편집)
             const handleSetDepositAmount = (id, amount) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id !== id) return o;
                     const newAmount = Number(amount) || 0;
-                    return sanitizeOrder({ ...o, deposit: newAmount, isPaid: (newAmount + o.cardAmount) >= o.price });
+                    const price = parseNum(o.price);
+                    return sanitizeOrder({ ...o, deposit: newAmount, isPaid: (newAmount + o.cardAmount) >= price });
                 }));
             };
 
 
-            const handleToggleAmountEdit = (id) => { setEditingAmountId(id === editingAmountId ? null : id); setEditingShippingId(null); };
+            const handleToggleAmountEdit = (id, source = null) => { 
+                setEditingAmountId(id === editingAmountId ? null : id); 
+                setEditSource(source);
+                setEditingShippingId(null); 
+            };
+            
             const handleToggleShippingEdit = (id) => { setEditingShippingId(id === editingShippingId ? null : id); setEditingAmountId(null); };
             const handleToggleAddressEdit = (id) => { setEditingAddressId(id === editingAddressId ? null : id); };
             
-            // [MODIFIED] Shipping Toggle Handler
             const handleShippingToggle = (id) => {
                 const targetOrder = orders.find(o => o.id === id);
                 if (!targetOrder) return;
                 const customer = targetOrder.customer;
                 const newStatus = !targetOrder.isShippingPaid;
                 
-                // 우클릭 시 개별 배송비 설정 토글
                 if (window.event && window.event.type === 'contextmenu') {
                     window.event.preventDefault();
                     setEditingShippingId(id === editingShippingId ? null : id);
                     return;
                 }
                 
-                // 기본 클릭: 배송비 결제 상태 토글
                 setOrders(prev => prev.map(o => {
                     if (o.customer === customer) {
                         return sanitizeOrder({ ...o, isShippingPaid: newStatus });
@@ -627,25 +668,29 @@
                 }));
             };
 
-            const handlePriceBlur = (id, e) => {
-                const val = e.target.value.replace(/,/g, '');
-                const newPrice = Number(val);
-                if (isNaN(newPrice)) return;
-                setOrders(prev => prev.map(o => {
-                    if (o.id !== id) return o;
-                    const updated = { ...o, price: newPrice };
-                    if (o.product && o.quantity > 0) {
-                        const unitPrice = newPrice / o.quantity;
-                        setProductHistory(ph => ({ ...ph, [o.product]: unitPrice }));
+            // [NEW] Excel-like Navigation: Enter moves focus to next row's cell
+            const handleGridKeyDown = (e, field, idx) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const nextId = `cell-${field}-${idx + 1}`;
+                    const nextEl = document.getElementById(nextId);
+                    if (nextEl) {
+                        nextEl.focus();
+                        nextEl.select(); // Optional: select text in next cell like Excel
                     }
-                    return sanitizeOrder(updated);
-                }));
+                }
+            };
+
+            const handlePriceBlur = (id, e) => {
+                // Formatting logic moved to render or sanitize?
+                // Actually, if we want to format "1000" to "1,000", we can do it here by updating state with formatted string?
+                // But we are using textarea which allows newlines. Formatting might kill newlines.
+                // Let's just keep the value as is for now to support multiline text.
             };
 
             const getCSVString = (listData, mode) => { 
                 const list = [...listData].map(sanitizeOrder).sort((a, b) => (a.customer || '').localeCompare(b.customer || '')); 
                 
-                // [MODIFIED] CSV 내보내기 시에도 가장 오래된 주문을 기준으로 배송비 부과
                 const firstIds = {}; 
                 list.forEach(o => { 
                     if (o.customer) {
@@ -661,7 +706,8 @@
                     const excelHeaders = ['', '', '', '', '상품명', '수령인', '연락처', '주소', '배송메모', '', '메모', '우편번호', '']; 
                     const csv = [excelHeaders.join(',')].concat(list.map(o => { 
                         let quantitySuffix = ''; 
-                        if (o.quantity >= 2) { quantitySuffix = ` ★${o.quantity}`; } 
+                        const qtyNum = parseNum(o.quantity);
+                        if (qtyNum >= 2) { quantitySuffix = ` ★${qtyNum}`; } 
                         const productName = `[${o.customer || '미지정'}] ${o.product}${quantitySuffix}`; 
                         return ['', '', '', '', clean(productName), clean(o.recipientName), cleanPhone(o.phone), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), '', clean(o.memo), cleanPhone(o.zipCode), ''].join(','); 
                     })).join('\n'); 
@@ -672,14 +718,15 @@
                         const isFirst = firstIds[o.customer] === o.id; 
                         const ship = o.customShippingFee ?? quickShipping; 
                         const shipCharge = isFirst ? ship : 0; 
-                        const unpaid = Math.max(0, (o.price + shipCharge) - (o.deposit + o.cardAmount + (isFirst && o.isShippingPaid ? ship : 0))); 
-                        return [clean(o.customer), clean(o.phone), clean(o.product), o.quantity, o.price, clean(o.deposit), clean(o.cardAmount), clean(shipCharge), clean(unpaid), clean(o.recipientName), cleanPhone(o.phone), cleanPhone(o.zipCode), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), clean(o.memo)].join(','); 
+                        const priceNum = parseNum(o.price);
+                        const unpaid = Math.max(0, (priceNum + shipCharge) - (o.deposit + o.cardAmount + (isFirst && o.isShippingPaid ? ship : 0))); 
+                        return [clean(o.customer), clean(o.phone), clean(o.product), o.quantity, priceNum, clean(o.deposit), clean(o.cardAmount), clean(shipCharge), clean(unpaid), clean(o.recipientName), cleanPhone(o.phone), cleanPhone(o.zipCode), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), clean(o.memo)].join(','); 
                     })).join('\n'); 
                     return "\ufeff" + csv; 
                 } 
             };
             const handleDownloadCSV = (mode) => { const csvString = getCSVString(orders, mode); const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; const timestamp = new Date().toISOString().slice(0, 10); link.setAttribute('download', `${mode === 'invoice' ? '송장용_' : '전체주문_'}${timestamp}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
-            const handleDownloadProductCSV = () => { const summary = {}; orders.forEach(o => { const key = o.product || '미지정'; summary[key] = (summary[key] || 0) + o.quantity; }); const csvContent = "\ufeff상품명,수량\n" + Object.entries(summary).map(e => e.join(',')).join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.setAttribute('download', `발주리스트_${new Date().toISOString().slice(0, 10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+            const handleDownloadProductCSV = () => { const summary = {}; orders.forEach(o => { const key = o.product || '미지정'; summary[key] = (summary[key] || 0) + parseNum(o.quantity); }); const csvContent = "\ufeff상품명,수량\n" + Object.entries(summary).map(e => e.join(',')).join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.setAttribute('download', `발주리스트_${new Date().toISOString().slice(0, 10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
             const handleSetGoogleUrl = () => { const url = window.prompt("Google Apps Script 웹 앱 URL 입력:", googleScriptUrl); if (url !== null) { setGoogleScriptUrl(url.trim()); showToast("URL 저장 완료"); } };
             const handleLoadFromGoogle = async () => { if (!googleScriptUrl) { handleSetGoogleUrl(); return; } setIsSyncing(true); try { const res = await fetch(googleScriptUrl); const data = await res.json(); if (data.orders) { const rows = JSON.parse(data.orders); const headers = rows[0]; const loadedOrders = rows.slice(1).map(row => { const obj = {}; headers.forEach((h, i) => obj[h] = row[i]); return sanitizeOrder(obj); }); setOrders(loadedOrders); } if (data.products) setProductHistory(JSON.parse(data.products)); if (data.customers) { const custRows = JSON.parse(data.customers); const newDB = {}; custRows.slice(1).forEach(r => { newDB[r[0]] = { recipientName: r[1], phone: r[2], zipCode: r[3], addressText: r[4], shippingMemo: r[5] }; }); setCustomerDB(newDB); } showToast("불러오기 완료"); } catch (e) { showToast("실패: " + e.message, "error"); } finally { setIsSyncing(false); } };
             const handleSaveToGoogle = async () => { if (!googleScriptUrl) { handleSetGoogleUrl(); return; } setIsSyncing(true); try { const payload = { orders: JSON.stringify(orders), products: JSON.stringify(productHistory), customers: JSON.stringify(customerDB) }; const res = await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(payload) }); const json = await res.json(); if (json.status === 'success') showToast("저장 완료"); else throw new Error(json.message || "Unknown Error"); } catch (e) { showToast("저장 실패", "error"); console.error(e); } finally { setIsSyncing(false); } };
@@ -690,8 +737,6 @@
             const handleCustomerFileUpload = (e) => { const file = e.target.files[0]; if (!file) return; Papa.parse(file, { header: true, skipEmptyLines: true, complete: (results) => { const newDB = { ...customerDB }; let count = 0; results.data.forEach(row => { const nick = row['닉네임'] || row['Nickname'] || row['이름'] || row['성함']; if (nick && nick.trim()) { newDB[nick.trim()] = { recipientName: row['수령인'] || row['받는분'] || row['이름'] || nick.trim(), phone: row['연락처'] || row['전화번호'] || row['휴대폰'] || '', zipCode: row['우편번호'] || row['Zip'] || '', addressText: row['주소'] || row['Address'] || row['기본주소'] || '', addressDetail: row['상세주소'] || '', shippingMemo: row['배송메모'] || row['배송요청사항'] || row['메모'] || '' }; count++; } }); setCustomerDB(newDB); showToast(`총 ${count}명 고객 등록 완료`, 'success'); } }); e.target.value = null; };
             const handleReset = () => { if (window.confirm("정말로 모든 주문 내역을 삭제하시겠습니까? (고객 데이터는 유지됩니다)")) { setOrders([]); showToast("초기화 완료", "error"); } };
 
-            // [MODIFIED] 화면에 배송비 버튼을 표시할 "첫 주문"의 기준을 변경
-            // 기존: 가장 최신(배열 앞쪽) 주문 -> 수정: ID가 가장 작은(가장 오래된) 주문
             const firstOrderIds = useMemo(() => { 
                 const ids = {}; 
                 orders.forEach(o => { 
@@ -714,8 +759,10 @@
                 const processedCustomers = {};
 
                 orders.forEach(o => {
-                    totalRev += o.price;
-                    totalQty += o.quantity;
+                    // [MODIFIED] Use parseNum
+                    const priceVal = parseNum(o.price);
+                    totalRev += priceVal;
+                    totalQty += parseNum(o.quantity);
                     
                     if (!o.customer) return;
 
@@ -725,7 +772,7 @@
                         const customerGroupOrders = orders.filter(groupO => groupO.customer === o.customer);
                         
                         // 고객 그룹 통계 계산
-                        const groupProductTotal = customerGroupOrders.reduce((sum, item) => sum + item.price, 0);
+                        const groupProductTotal = customerGroupOrders.reduce((sum, item) => sum + parseNum(item.price), 0);
                         const groupDeposit = customerGroupOrders.reduce((sum, item) => sum + item.deposit, 0);
                         const groupCard = customerGroupOrders.reduce((sum, item) => sum + item.cardAmount, 0);
                         
@@ -736,7 +783,6 @@
                             : Number(quickShipping);
                         
                         // [MODIFIED] 통계에서 배송비 결제 여부 판단: 가장 오래된 주문(Main Order)의 상태를 기준으로 함
-                        // 추가 주문이 들어오면 isShippingPaid: true로 들어오기 때문에 some()을 쓰면 무조건 결제됨으로 오판할 수 있음
                         const isShippingPaid = mainOrder.isShippingPaid;
 
                         const groupTotalPaid = groupDeposit + groupCard + (isShippingPaid ? groupShipFee : 0); 
@@ -755,7 +801,8 @@
                         const remainingAfterShipUnpaid = Math.max(0, remaining - (!isShippingPaid ? groupShipFee : 0));
                         productUnpaid += remainingAfterShipUnpaid;
                         
-                        if (o.isAddressFilled) shippingCustomers.add(o.customer);
+                        // [MODIFIED] 배송 건수: 중복되지 않는 닉네임 수 (배송비 유무 상관없음)
+                        shippingCustomers.add(o.customer);
 
                         // 중복 계산 방지
                         processedCustomers[o.customer] = true;
@@ -934,60 +981,79 @@
 
             const filteredOrders = useMemo(() => {
                 let result = orders;
+                
+                // 1. 텍스트 검색 필터
                 if (filterText) {
                     const lower = filterText.toLowerCase();
                     result = result.filter(o => (o.customer && o.customer.toLowerCase().includes(lower)) || (o.product && o.product.toLowerCase().includes(lower)));
                 }
+
+                // [수정] 2. 미수금 필터 로직 개선 (통계 로직과 동일하게 고객 단위로 정확히 계산)
                 if (unpaidFilter) {
-                    // 고객별 그룹화하여 미수금 상태 확인
-                    const customerUnpaidStatus = {};
+                    // 전체 주문을 순회하며 고객별 그룹화 데이터 생성 (검색 필터 전의 전체 데이터 기준)
+                    const customerStats = {};
+                    
                     orders.forEach(o => {
                         const customer = o.customer || '미지정';
-                        if (!customerUnpaidStatus[customer]) {
-                            customerUnpaidStatus[customer] = {
+                        if (!customerStats[customer]) {
+                            customerStats[customer] = {
+                                orders: [],
                                 productTotal: 0,
-                                totalPaid: 0,
-                                isShippingPaid: false,
-                                shipFee: o.customShippingFee ?? quickShipping
+                                totalDeposit: 0,
+                                totalCard: 0
                             };
                         }
-                        customerUnpaidStatus[customer].productTotal += o.price;
-                        customerUnpaidStatus[customer].totalPaid += o.deposit + o.cardAmount;
+                        customerStats[customer].orders.push(o);
+                        customerStats[customer].productTotal += parseNum(o.price);
+                        customerStats[customer].totalDeposit += o.deposit;
+                        customerStats[customer].totalCard += o.cardAmount;
+                    });
+
+                    // 각 고객별로 미수금 상태 판별하여 필터링 대상 고객 목록 추출
+                    const eligibleCustomers = new Set();
+                    
+                    Object.entries(customerStats).forEach(([customer, data]) => {
+                        if (data.orders.length === 0) return;
+
+                        // 가장 오래된 주문 찾기 (배송비 및 결제 상태 기준)
+                        const mainOrder = data.orders.reduce((oldest, current) => (current.id < oldest.id ? current : oldest), data.orders[0]);
                         
-                        // [FIXED] 배송비 계산: 하나라도 설정되어 있으면 그것을 씀
-                        if (o.customShippingFee !== null && o.customShippingFee !== undefined) {
-                            customerUnpaidStatus[customer].shipFee = o.customShippingFee;
-                        }
+                        const shipFee = (mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) 
+                            ? mainOrder.customShippingFee 
+                            : Number(quickShipping);
                         
-                        if (o.isShippingPaid) {
-                            customerUnpaidStatus[customer].isShippingPaid = true;
+                        const isShippingPaid = mainOrder.isShippingPaid;
+
+                        // 총 납부액 (현금 + 카드 + 배송비결제분)
+                        const totalPaid = data.totalDeposit + data.totalCard + (isShippingPaid ? shipFee : 0);
+                        // 총 필요금액 (물품 + 배송비)
+                        const totalRequired = data.productTotal + shipFee;
+                        // 총 미수금
+                        const remaining = Math.max(0, totalRequired - totalPaid);
+
+                        // 필터 조건 검사
+                        if (unpaidFilter === 'ship') {
+                            // 배송 미수금 필터: 배송비가 결제되지 않았고, 배송비가 0원보다 큰 경우
+                            // (단순히 버튼 상태만 보는 것이 아니라 실제 미수금이 있는지 확인)
+                            if (!isShippingPaid && shipFee > 0) {
+                                eligibleCustomers.add(customer);
+                            }
+                        } else if (unpaidFilter === 'cash') {
+                            // 물품 미수금 필터: 총 미수금에서 배송비 미수금을 제외하고도 남은 금액이 있는 경우
+                            const shipUnpaidAmount = (!isShippingPaid && shipFee > 0) ? shipFee : 0;
+                            const productMissing = Math.max(0, remaining - shipUnpaidAmount);
+                            
+                            if (productMissing > 0) {
+                                eligibleCustomers.add(customer);
+                            }
                         }
                     });
-                    
-                    result = result.filter(o => {
-                        const status = customerUnpaidStatus[o.customer || '미지정'];
-                        if (!status) return false;
 
-                        const totalRequired = status.productTotal + status.shipFee;
-                        const remaining = Math.max(0, totalRequired - status.totalPaid);
-
-                        if (unpaidFilter === 'ship') {
-                            // 배송 미수금 필터: 배송비 결제 버튼이 눌리지 않았고 배송비가 0보다 클 때
-                            return !status.isShippingPaid && status.shipFee > 0;
-                        }
-                        
-                        if (unpaidFilter === 'cash') {
-                            // 물품 미수금 필터: 전체 미수금에서 배송비 미수금을 제외하고도 남은 금액이 있을 때
-                            const shipUnpaidAmount = (!status.isShippingPaid && status.shipFee > 0) ? status.shipFee : 0;
-                            const productMissing = Math.max(0, remaining - shipUnpaidAmount);
-                            return productMissing > 0;
-                        }
-                        
-                        return true;
-                    }).filter(o => o.customer === selectedCustomerFolder || selectedCustomerFolder === 'all'); // 필터링된 고객의 주문만 유지
+                    // 위에서 선별된 고객의 주문만 남김
+                    result = result.filter(o => eligibleCustomers.has(o.customer || '미지정'));
                 }
 
-                // Sidebar Filtering
+                // 3. 사이드바 폴더 필터
                 if (selectedCustomerFolder !== 'all') {
                     result = result.filter(o => o.customer === selectedCustomerFolder);
                 }
@@ -1008,7 +1074,7 @@
                     if (!map[k]) map[k] = { name: k, count: 0, unpaid: false };
                     map[k].count++;
                     const paid = o.deposit + o.cardAmount;
-                    const required = o.price; 
+                    const required = parseNum(o.price); 
                     if (paid < required) map[k].unpaid = true; 
                 });
                 return Object.values(map).sort((a,b) => a.name.localeCompare(b.name));
@@ -1031,7 +1097,7 @@
                 const isShipPaid = custOrders.some(o => o.isShippingPaid); 
 
                 custOrders.forEach(o => {
-                    totalProduct += o.price;
+                    totalProduct += parseNum(o.price);
                     totalDeposit += o.deposit;
                     totalCard += o.cardAmount;
                 });
@@ -1051,8 +1117,9 @@
 
                 let text = `💙 ${targetCustomer} 님 💙\n\n`;
                 custOrders.forEach(o => {
-                    text += `${o.product} ${o.price.toLocaleString()}원`;
-                    if (o.quantity > 1) text += ` (${o.quantity})`;
+                    const priceVal = parseNum(o.price);
+                    text += `${o.product} ${priceVal.toLocaleString()}원`;
+                    if (parseNum(o.quantity) > 1) text += ` (${o.quantity})`;
                     text += `\n`;
                 });
                 text += `배송비 ${shipFee.toLocaleString()}원\n`;
@@ -1262,7 +1329,10 @@
                                         <div className="p-1.5 border-b border-slate-100 dark:border-dark-border flex items-center justify-between gap-2">
                                             <div className="relative flex-1 max-w-sm"><div className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="Search" size={12}/></div><input className="w-full pl-7 pr-2 py-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-sm text-xs outline-none" placeholder="검색..." value={filterText} onChange={e => setFilterText(e.target.value)}/></div>
                                             <div className="flex items-center gap-1 ml-2">
-                                                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-sm px-1 mr-1 border border-slate-200 dark:border-slate-700"><span className="text-[10px] text-slate-500 font-bold mr-1">현재:</span><select value={currentSite} onChange={e=>setCurrentSite(e.target.value)} className="bg-transparent text-xs font-bold text-brand-700 dark:text-brand-400 outline-none h-7 min-w-[80px]">{categoryOrder.length>0 ? categoryOrder.map(c=><option key={c} value={c}>{c}</option>) : <option value="기본 창고">기본 창고</option>}</select></div>
+                                                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-sm px-1 mr-1 border border-slate-200 dark:border-slate-700"><span className="text-[10px] text-slate-500 font-bold mr-1">현재:</span><select value={currentSite} onChange={e=>setCurrentSite(e.target.value)} className="bg-transparent text-xs font-bold text-brand-700 dark:text-brand-400 outline-none h-7 min-w-[80px]">
+                                                    <option value="">미지정</option>
+                                                    {categoryOrder.map(c=><option key={c} value={c}>{c}</option>)}
+                                                </select></div>
                                                 <input type="number" className="w-16 h-7 px-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-sm text-xs outline-none focus:border-brand-500 text-right" placeholder="배송비" value={quickShipping} onChange={e=>setQuickShipping(e.target.value)} />
                                             </div>
                                         </div>
@@ -1272,7 +1342,8 @@
                                             {/* Sticky Header */}
                                             {/* [수정] 헤더 높이/여백 축소 (py-2 -> py-1) */}
                                             <div className="grid grid-rows-compact gap-2 px-3 py-1 bg-slate-100 dark:bg-dark-card border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 text-center sticky top-0 z-10 shadow-sm">
-                                                <div>상태 (현금/배송/카드)</div>
+                                                {/* [수정] 너비 축소에 맞춰 텍스트 간소화 */}
+                                                <div>상태</div>
                                                 <div className="text-left">닉네임</div>
                                                 <div className="text-left">코드</div>
                                                 <div className="text-left">상품명</div>
@@ -1299,7 +1370,7 @@
                                                 // 카드: 결제(빨강), 미결제(기본)
                                                 const cardButtonClass = order.cardAmount > 0 
                                                     ? (isCombinedPayment 
-                                                        ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' 
+                                                        ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200' 
                                                         : 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200')
                                                     : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
 
@@ -1339,20 +1410,20 @@
                                                             {/* 3. 카드 결제 버튼 (텍스트) - [수정] 높이 더 축소 */}
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); handleAutoCardFull(order.id); }} 
-                                                                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleAmountEdit(order.id); }}
+                                                                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleAmountEdit(order.id, 'card'); }}
                                                                 className={`w-full h-4 rounded-[3px] text-[9px] font-bold border transition-all flex items-center justify-center ${cardButtonClass}`}
                                                                 title={`카드 결제 ${order.cardAmount > 0 ? `(${order.cardAmount.toLocaleString()}원)` : '(클릭: 전액, 우클릭: 복합/입력)'}`}
                                                             >
                                                                 카드
                                                             </button>
                                                         </div>
-                                                        <div className="relative"><input className="w-full bg-transparent font-bold outline-none" value={order.customer} onChange={e => handleUpdateOrder(order.id, 'customer', e.target.value)} /></div>
-                                                        <div className="relative"><input className="w-full bg-transparent font-mono outline-none text-slate-500" value={productNumbers[order.product] || ''} readOnly /></div>
-                                                        <div className="relative"><ProductAutocomplete id={`prod-${idx}`} value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onSelect={(n, p) => handleUpdateOrder(order.id, 'product', n)} priceMap={productHistory} /></div>
-                                                        <div className="flex justify-center"><input type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)} /></div>
-                                                        <div className="text-right"><input className="w-full text-right bg-transparent font-mono outline-none focus:border-b focus:border-blue-500 cursor-text" defaultValue={order.price.toLocaleString()} onBlur={(e) => handlePriceBlur(order.id, e)} onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }} key={order.price} /></div>
+                                                        <div className="relative"><input id={`cell-customer-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.customer} onChange={e => handleUpdateOrder(order.id, 'customer', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'customer', idx)} /></div>
+                                                        <div className="relative"><input id={`cell-code-${idx}`} className="w-full bg-transparent font-mono outline-none text-slate-500" value={productNumbers[order.product] || ''} onChange={e => handleUpdateOrder(order.id, 'codeInput', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'code', idx)} /></div>
+                                                        <div className="relative"><input id={`cell-product-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'product', idx)} /></div>
+                                                        <div className="flex justify-center"><input id={`cell-quantity-${idx}`} type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'quantity', idx)} /></div>
+                                                        <div className="text-right"><input id={`cell-price-${idx}`} className="w-full text-right bg-transparent font-mono outline-none focus:border-b focus:border-blue-500 cursor-text" value={order.price.toLocaleString()} onChange={e => handleUpdateOrder(order.id, 'price', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'price', idx)} /></div>
                                                         <div className="flex justify-center"><div className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-default ${order.isAddressFilled ? 'bg-brand-600 text-white' : 'text-slate-300 bg-slate-100 dark:bg-slate-800'}`}><Icon name="MapPin" size={10}/></div></div>
-                                                        <div><input className="w-full bg-transparent text-slate-500 outline-none" value={order.memo} onChange={e => handleUpdateOrder(order.id, 'memo', e.target.value)} /></div>
+                                                        <div><input id={`cell-memo-${idx}`} className="w-full bg-transparent text-slate-500 outline-none" value={order.memo} onChange={e => handleUpdateOrder(order.id, 'memo', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'memo', idx)} /></div>
                                                         <div className="flex justify-end"><button onClick={(e) => { e.stopPropagation(); handleDelete(order.id); }} className="text-slate-300 hover:text-rose-500"><Icon name="X" size={10}/></button></div>
                                                         
                                                         {/* Inline Edit Panels */}
@@ -1364,7 +1435,17 @@
                                                                     placeholder="현금 금액" 
                                                                     className="w-20 p-1 border rounded text-xs text-right font-mono outline-none focus:border-brand-500" 
                                                                     value={order.deposit} 
-                                                                    onChange={e => handleSetDepositAmount(order.id, e.target.value)} 
+                                                                    autoFocus={true}
+                                                                    onChange={e => {
+                                                                        const val = Number(e.target.value);
+                                                                        handleSetDepositAmount(order.id, val);
+                                                                        // [MODIFIED] If opened via Card Right Click, update Card automatically
+                                                                        if (editSource === 'card') {
+                                                                            const priceNum = parseNum(order.price);
+                                                                            const remainder = Math.max(0, priceNum - val);
+                                                                            handleSetCardAmount(order.id, remainder);
+                                                                        }
+                                                                    }}
                                                                     onBlur={() => handleToggleAmountEdit(null)}
                                                                     onKeyDown={(e) => { if (e.key === 'Enter') handleToggleAmountEdit(null); }}
                                                                 />
