@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.16 (인쇄 스마트분할)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.17 (인쇄 짤림 완벽수정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -28,7 +28,10 @@
                     },
                     boxShadow: { 'soft': '0 1px 3px 0 rgba(0, 0, 0, 0.05)', 'inner-soft': 'inset 0 1px 2px 0 rgba(0, 0, 0, 0.03)' },
                     fontSize: { 'xxs': '0.65rem' },
-                    animation: { spin: 'spin 1s linear infinite' }
+                    animation: { spin: 'spin 1s linear infinite' },
+                    screens: {
+                        'print': {'raw': 'print'},
+                    }
                 }
             }
         }
@@ -46,85 +49,78 @@
         *:focus { outline: none !important; }
         
         .grid-rows-compact { grid-template-columns: 75px 100px 70px 1.8fr 50px 80px 30px 1fr 30px; }
-        
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
         
-        .print-only { display: none; }
-
+        /* --- 인쇄 전용 스타일 (강력 초기화) --- */
         @media print {
-            @page { margin: 5mm; size: auto; } /* 여백 최소화 */
+            @page { 
+                size: A4; 
+                margin: 0 !important; /* 브라우저 기본 여백 제거 (핵심) */
+            }
             
-            /* 모든 요소 초기화 및 강제 표시 설정 */
             html, body {
-                width: 100%;
-                height: 100%; /* 전체 높이 사용 */
+                width: 210mm;
+                height: 297mm;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: visible !important;
                 background: white !important;
                 color: black !important;
+                -webkit-print-color-adjust: exact;
             }
 
-            /* 상위 컨테이너들의 레이아웃 제한 해제 */
-            #root, main, .tab-content, div {
-                height: auto !important;
-                overflow: visible !important;
-                position: static !important;
-                display: block !important;
-            }
-
-            /* 화면에 보이는 모든 요소 숨김 */
+            /* 화면의 모든 요소 숨김 */
             body * {
                 visibility: hidden;
             }
 
-            /* 인쇄 영역만 보이게 하고 절대 위치로 상단 고정 */
+            /* 인쇄 영역만 표시 */
             .print-only, .print-only * {
                 visibility: visible !important;
-                display: block !important; /* flex가 필요하면 내부에서 다시 지정 */
-            }
-            
-            /* Flex 복구 */
-            .print-flex {
-                display: flex !important;
-            }
-            .print-flex-col {
-                display: flex !important;
-                flex-direction: column !important;
             }
 
             .print-only {
                 position: absolute;
-                top: 0;
                 left: 0;
-                width: 100%;
-                height: 100%;
-                background: white;
-                z-index: 9999;
+                top: 0;
+                width: 210mm;
+                /* height는 내용에 따라 유동적일 수 있으나 A4 페이지 단위로 끊음 */
             }
 
             .no-print { display: none !important; }
 
-            .receipt-container { 
-                box-shadow: none !important; 
-                border: none !important; /* 박스 테두리 제거 */
-                background: transparent !important;
-                margin: 0 auto; 
-                padding: 0 !important; /* 패딩 제거 */
-                width: 100% !important; 
-                max-width: 100% !important; 
-                page-break-inside: avoid;
-                color: black !important;
+            /* 강제 페이지 넘김 설정 */
+            .page-break { 
+                page-break-after: always !important;
+                break-after: page !important;
+                height: 0;
+                display: block;
+                visibility: hidden;
+            }
+
+            /* A4 컨테이너 재설정 */
+            .a4-page-print {
+                width: 210mm !important;
+                height: 297mm !important;
+                page-break-after: always !important;
+                overflow: hidden !important;
+                background: white !important;
+                position: relative !important;
+                left: 0 !important;
+                top: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
             }
             
-            .page-break { page-break-after: always; }
+            /* 마지막 페이지 공백 제거 */
+            .a4-page-print:last-child {
+                page-break-after: auto !important;
+            }
         }
 
         .tab-content { animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
         [contenteditable="true"]:focus { outline: 2px dashed #627d98; background-color: rgba(98, 125, 152, 0.05); border-radius: 4px; padding: 2px; }
         
-        /* Modal Styles */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; max-width: 90%; }
         .dark .modal-content { background: #1e1e1e; border: 1px solid #333; color: #fff; }
@@ -217,11 +213,10 @@
             );
         });
 
-        // --- DASHBOARD COMPONENT (4 Columns, Minimized Height) ---
+        // --- DASHBOARD COMPONENT ---
         const SummarySection = React.memo(({ stats, handleUnpaidFilterClick, unpaidFilter }) => {
             return (
                 <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg shadow-sm w-full grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-700 h-auto overflow-hidden">
-                    {/* 1칸: 총 예상 매출 */}
                     <div className="px-4 py-1 flex flex-col justify-center items-start text-left min-w-0">
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-0.5">총 예상 매출</span>
                         <div className="flex items-baseline gap-1">
@@ -229,71 +224,31 @@
                             <span className="text-sm text-slate-400 font-bold">원</span>
                         </div>
                     </div>
-
-                    {/* 2칸: 현금/카드/배송 상세 */}
                     <div className="px-4 py-1 flex flex-col justify-center gap-0 min-w-0">
                         <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="Money" size={16} className="text-amber-500" weight="bold"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">현금</span>
-                            </div>
-                            <span className="font-bold text-lg font-mono leading-none">{stats.totalCash.toLocaleString()}</span>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="Money" size={16} className="text-amber-500" weight="bold"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">현금</span></div><span className="font-bold text-lg font-mono leading-none">{stats.totalCash.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="CreditCard" size={16} className="text-purple-500" weight="bold"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">카드</span>
-                            </div>
-                            <span className="font-bold text-lg font-mono leading-none">{stats.totalCard.toLocaleString()}</span>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="CreditCard" size={16} className="text-purple-500" weight="bold"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">카드</span></div><span className="font-bold text-lg font-mono leading-none">{stats.totalCard.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="Truck" size={16} className="text-sky-500" weight="bold"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span>
-                            </div>
-                            <span className="font-bold text-lg font-mono leading-none">{stats.totalShipping.toLocaleString()}</span>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="Truck" size={16} className="text-sky-500" weight="bold"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span></div><span className="font-bold text-lg font-mono leading-none">{stats.totalShipping.toLocaleString()}</span>
                         </div>
                     </div>
-
-                    {/* 3칸: 주문 / 배송 */}
                     <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0">
                         <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 px-1 py-0.5">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="Package" size={18} className="text-indigo-500" weight="fill"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">주문</span>
-                            </div>
-                            <span className="font-bold font-mono text-xl leading-none">{stats.qty}<span className="text-xs font-normal text-slate-400 ml-0.5">개</span></span>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="Package" size={18} className="text-indigo-500" weight="fill"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">주문</span></div><span className="font-bold font-mono text-xl leading-none">{stats.qty}<span className="text-xs font-normal text-slate-400 ml-0.5">개</span></span>
                         </div>
                         <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 px-1 py-0.5">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="PaperPlaneTilt" size={18} className="text-teal-500" weight="fill"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span>
-                            </div>
-                            <span className="font-bold font-mono text-xl leading-none">{stats.shippingCount}<span className="text-xs font-normal text-slate-400 ml-0.5">건</span></span>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="PaperPlaneTilt" size={18} className="text-teal-500" weight="fill"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span></div><span className="font-bold font-mono text-xl leading-none">{stats.shippingCount}<span className="text-xs font-normal text-slate-400 ml-0.5">건</span></span>
                         </div>
                     </div>
-
-                    {/* 4칸: 미수금 현황 (통합) */}
                     <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0">
-                        <div 
-                            className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'cash' ? 'bg-rose-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                            onClick={() => handleUnpaidFilterClick('cash')}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icon name="HandCoins" size={18} className={unpaidFilter === 'cash' ? 'text-white' : 'text-rose-500'} weight="fill"/>
-                                <span className={`${unpaidFilter === 'cash' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>물품미수금</span>
-                            </div>
-                            <span className={`font-mono text-lg leading-none ${unpaidFilter !== 'cash' && stats.productUnpaid > 0 ? 'text-rose-600 font-bold' : ''}`}>{stats.productUnpaid.toLocaleString()}</span>
+                        <div className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'cash' ? 'bg-rose-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`} onClick={() => handleUnpaidFilterClick('cash')}>
+                            <div className="flex items-center gap-2"><Icon name="HandCoins" size={18} className={unpaidFilter === 'cash' ? 'text-white' : 'text-rose-500'} weight="fill"/><span className={`${unpaidFilter === 'cash' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>물품미수금</span></div><span className={`font-mono text-lg leading-none ${unpaidFilter !== 'cash' && stats.productUnpaid > 0 ? 'text-rose-600 font-bold' : ''}`}>{stats.productUnpaid.toLocaleString()}</span>
                         </div>
-                        <div 
-                            className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'ship' ? 'bg-orange-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                            onClick={() => handleUnpaidFilterClick('ship')}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icon name="Truck" size={18} className={unpaidFilter === 'ship' ? 'text-white' : 'text-orange-500'} weight="fill"/>
-                                <span className={`${unpaidFilter === 'ship' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>배송미수금</span>
-                            </div>
-                            <span className={`font-mono text-lg leading-none ${unpaidFilter !== 'ship' && stats.shipUnpaid > 0 ? 'text-orange-600 font-bold' : ''}`}>{stats.shipUnpaid.toLocaleString()}</span>
+                        <div className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'ship' ? 'bg-orange-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`} onClick={() => handleUnpaidFilterClick('ship')}>
+                            <div className="flex items-center gap-2"><Icon name="Truck" size={18} className={unpaidFilter === 'ship' ? 'text-white' : 'text-orange-500'} weight="fill"/><span className={`${unpaidFilter === 'ship' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>배송미수금</span></div><span className={`font-mono text-lg leading-none ${unpaidFilter !== 'ship' && stats.shipUnpaid > 0 ? 'text-orange-600 font-bold' : ''}`}>{stats.shipUnpaid.toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -310,8 +265,7 @@
                 <div className="flex items-end px-2 pt-1 border-b border-slate-200 dark:border-dark-border bg-white dark:bg-dark-card shrink-0 gap-1 overflow-x-auto no-scrollbar">
                     {tabs.map(tab => (
                         <button key={tab.id} onClick={() => onTabChange(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-t-lg transition-all border-t border-x relative top-[1px] ${activeTab === tab.id ? 'bg-[#f5f7fa] dark:bg-dark-bg border-slate-200 dark:border-dark-border border-b-[#f5f7fa] dark:border-b-dark-bg text-brand-600 dark:text-brand-400 z-10' : 'bg-slate-50 dark:bg-dark-input border-transparent text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <Icon name={tab.icon} size={14} weight={activeTab === tab.id ? 'fill' : 'regular'} />
-                            <span>{tab.label}</span>
+                            <Icon name={tab.icon} size={14} weight={activeTab === tab.id ? 'fill' : 'regular'} /><span>{tab.label}</span>
                         </button>
                     ))}
                 </div>
@@ -325,14 +279,8 @@
             useEffect(() => { if (selectedOrder) { setLocalAddr({ recipientName: selectedOrder.recipientName || '', phone: selectedOrder.phone || '', addressText: selectedOrder.addressText || '', addressDetail: selectedOrder.addressDetail || '', shippingMemo: selectedOrder.shippingMemo || '' }); setRawText(''); } else { setLocalAddr({ recipientName: '', phone: '', addressText: '', addressDetail: '', shippingMemo: '' }); } }, [selectedOrder]);
             const handleChange = (field, val) => setLocalAddr(prev => ({...prev, [field]: val}));
             const handleSave = () => { if (!selectedOrder) return; handleUpdateOrderBatch(selectedOrder.id, localAddr); showToast('주소 정보 저장 완료'); };
-            const handlePostcode = () => { 
-                try {
-                    new daum.Postcode({ oncomplete: function(data) { setLocalAddr(prev => ({ ...prev, zipCode: data.zonecode, addressText: data.address, addressDetail: '' })); } }).open(); 
-                } catch(e) {
-                    showToast("팝업이 차단되었습니다. 주소를 수동으로 입력해주세요.", "error");
-                }
-            };
-            const handleParseRaw = () => { if (!rawText.trim()) return; let text = rawText; let name = '', phone = '', address = '', memo = ''; const phoneMatch = text.match(/(01[016789])[- .]?(\d{3,4})[- .]?(\d{4})/); if (phoneMatch) { phone = phoneMatch[0]; text = text.replace(phone, ''); } const zipMatch = text.match(/\d{5}/); if(zipMatch) text = text.replace(zipMatch[0], ''); const lines = text.split('\n').map(l => l.trim()).filter(Boolean); lines.forEach(line => { if (line.match(/^(이름|수령인|받는분):?/)) name = line.replace(/^(이름|수령인|받는분):?/, '').trim();else if (line.match(/^(주소|배송지):?/)) address = line.replace(/^(주소|배송지):?/, '').trim();else if (line.match(/^(메모|요청사항):?/)) memo = line.replace(/^(메모|요청사항):?/, '').trim(); }); if (!name && lines.length > 0) name = lines[0]; if (!address && lines.length > 1) address = lines.find(l => l !== name && l.match(/[시도구군길로]/)) || lines[1]; setLocalAddr(prev => ({ ...prev, recipientName: name || prev.recipientName, phone: phone || prev.phone, addressText: address || prev.addressText, shippingMemo: memo || prev.shippingMemo })); setTab('edit'); showToast("정보가 입력되었습니다. 확인해주세요."); };
+            const handlePostcode = () => { try { new daum.Postcode({ oncomplete: function(data) { setLocalAddr(prev => ({ ...prev, zipCode: data.zonecode, addressText: data.address, addressDetail: '' })); } }).open(); } catch(e) { showToast("팝업이 차단되었습니다.", "error"); } };
+            const handleParseRaw = () => { if (!rawText.trim()) return; let text = rawText; let name = '', phone = '', address = '', memo = ''; const phoneMatch = text.match(/(01[016789])[- .]?(\d{3,4})[- .]?(\d{4})/); if (phoneMatch) { phone = phoneMatch[0]; text = text.replace(phone, ''); } const zipMatch = text.match(/\d{5}/); if(zipMatch) text = text.replace(zipMatch[0], ''); const lines = text.split('\n').map(l => l.trim()).filter(Boolean); lines.forEach(line => { if (line.match(/^(이름|수령인|받는분):?/)) name = line.replace(/^(이름|수령인|받는분):?/, '').trim();else if (line.match(/^(주소|배송지):?/)) address = line.replace(/^(주소|배송지):?/, '').trim();else if (line.match(/^(메모|요청사항):?/)) memo = line.replace(/^(메모|요청사항):?/, '').trim(); }); if (!name && lines.length > 0) name = lines[0]; if (!address && lines.length > 1) address = lines.find(l => l !== name && l.match(/[시도구군길로]/)) || lines[1]; setLocalAddr(prev => ({ ...prev, recipientName: name || prev.recipientName, phone: phone || prev.phone, addressText: address || prev.addressText, shippingMemo: memo || prev.shippingMemo })); setTab('edit'); showToast("정보가 입력되었습니다."); };
             
             if (!selectedOrder) { return (<div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col h-full shadow-soft items-center justify-center text-slate-400 text-xs"><Icon name="MapPin" size={24} className="mb-2 opacity-50"/><p>주문을 선택해주세요</p></div>); }
             return (
@@ -380,12 +328,11 @@
             const [selectedSite, setSelectedSite] = useState('all');
             const [printLayout, setPrintLayout] = useState('single');
             const [printMode, setPrintMode] = useState('single'); 
-            // isEditMode 관련 변수 제거됨
 
             const customers = useMemo(() => { const unique = [...new Set(orders.map(o => o.customer))]; return unique.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())).sort(); }, [orders, searchTerm]);
             const batchCustomers = useMemo(() => { if (printMode !== 'batch') return []; const unique = [...new Set(orders.map(o => o.customer))]; return unique.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())).sort(); }, [orders, searchTerm, printMode, selectedSite]); 
 
-            const SingleReceipt = ({ customerName, heightClass = "h-full" }) => {
+            const SingleReceipt = ({ customerName }) => {
                 const targetOrders = orders.filter(o => o.customer === customerName);
                 const productTotal = targetOrders.reduce((sum, o) => sum + parseNum(o.price), 0);
                 const mainOrder = targetOrders.reduce((oldest, current) => (current.id < oldest.id ? current : oldest), targetOrders[0]);
@@ -395,7 +342,7 @@
                 
                 return (
                     <div className={`bg-white text-black text-[11px] print:text-[10px] font-sans leading-tight flex flex-col w-full`}>
-                        <div className="flex justify-between items-end mb-2 border-b-0">
+                        <div className="flex justify-between items-end mb-1 border-b-0">
                             <div>
                                 <h3 className="text-base font-bold">{customerName} 님</h3>
                                 <div className="flex flex-col gap-0">
@@ -408,8 +355,7 @@
                             </div>
                         </div>
                         
-                        {/* 테이블 레이아웃 고정 (table-fixed) 및 열 너비 지정 */}
-                        <table className="w-full mb-2 text-[11px] print:text-[10px] table-fixed">
+                        <table className="w-full mb-1 text-[11px] print:text-[10px] table-fixed">
                             <colgroup>
                                 <col className="w-[58%]" />
                                 <col className="w-[17%]" />
@@ -425,7 +371,6 @@
                             <tbody className="divide-y divide-slate-200">
                                 {targetOrders.map(o => (
                                     <tr key={o.id} className="align-top">
-                                        {/* 상품명이 길면 자동 줄바꿈, 단어 단위로 끊기 */}
                                         <td className="py-0.5 break-keep pr-1">{o.product}</td>
                                         <td className="py-0.5 text-center whitespace-nowrap">{o.quantity}</td>
                                         <td className="py-0.5 text-right font-mono whitespace-nowrap">{parseNum(o.price).toLocaleString()}</td>
@@ -444,39 +389,32 @@
             };
 
             const A4Page = ({ children, className = "" }) => (
-                <div className={`a4-page bg-white shadow-lg mx-auto mb-8 box-border flex flex-col p-[10mm] w-[210mm] h-[297mm] ${className}`}>
+                <div className={`a4-page-print bg-white shadow-lg mx-auto mb-8 box-border flex flex-col w-[210mm] h-[297mm] overflow-hidden ${className}`}>
                     {children}
                 </div>
             );
 
-            // [수정] 페이지 데이터 계산 로직 개선 (내용 많으면 자동 분리)
             const pages = useMemo(() => {
                 const targetList = printMode === 'single' ? (selectedCustomer ? [selectedCustomer] : []) : batchCustomers;
                 const result = [];
                 
                 if (printLayout === 'single') {
-                    // 1장씩: 무조건 1페이지 1명
                     targetList.forEach(c => result.push([c]));
                 } else {
-                    // 2장 모아찍기 (스마트 분할)
                     let currentChunk = [];
-                    const LINES_THRESHOLD = 15; // 상품 종류가 이 개수를 넘으면 한 페이지 다 씀
+                    const LINES_THRESHOLD = 15; 
                     
                     targetList.forEach(customer => {
                          const itemCount = orders.filter(o => o.customer === customer).length;
                          const isLong = itemCount > LINES_THRESHOLD;
 
                          if (isLong) {
-                             // 긴 영수증이면
-                             // 1. 현재 대기중인 짝꿍이 있으면 걔 먼저 페이지로 만듦
                              if (currentChunk.length > 0) {
                                  result.push(currentChunk);
                                  currentChunk = [];
                              }
-                             // 2. 나 혼자 한 페이지 차지
                              result.push([customer]);
                          } else {
-                             // 짧은 영수증이면 짝꿍 찾음
                              currentChunk.push(customer);
                              if (currentChunk.length === 2) {
                                  result.push(currentChunk);
@@ -484,8 +422,6 @@
                              }
                          }
                     });
-
-                    // 남은 짝꿍 처리
                     if (currentChunk.length > 0) {
                         result.push(currentChunk);
                     }
@@ -506,50 +442,58 @@
                     </div>
                     <div className="flex-1 bg-slate-100 dark:bg-dark-bg rounded-lg border border-slate-200 dark:border-dark-border flex flex-col items-center p-8 overflow-y-auto relative">
                         <div className="no-print flex gap-2 mb-4 sticky top-0 z-10">
-                            {/* 내용 수정하기 버튼 제거됨 */}
                             <button onClick={()=>window.print()} className="bg-slate-800 text-white px-4 py-2 rounded-md font-bold hover:bg-slate-700 flex items-center gap-2 text-xs"><Icon name="Printer"/> 인쇄하기</button>
                         </div>
 
-                        {/* 미리보기 및 인쇄 영역 공통 렌더링 */}
-                        <div className="">
-                             {pages.length > 0 ? pages.map((pageCustomers, pageIdx) => (
-                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-start"}>
+                        <div>
+                             {pages.length > 0 ? pages.map((pageCustomers, pageIdx) => {
+                                const pageClass = printLayout === 'single' 
+                                    ? "justify-center items-center p-[10mm]" 
+                                    : "justify-start items-start px-[10mm] py-[5mm]"; 
+                                
+                                return (
+                                <A4Page key={pageIdx} className={pageClass}>
                                     {pageCustomers.map((customer, cIdx) => (
                                         <React.Fragment key={customer}>
                                             <div className="w-full">
                                                 <SingleReceipt customerName={customer} />
                                             </div>
                                             {printLayout === 'double' && cIdx === 0 && pageCustomers.length > 1 && (
-                                                <div className="w-full border-b border-dashed border-black my-8 h-0"></div>
+                                                <div className="w-full border-b border-dashed border-black my-2 h-0"></div>
                                             )}
                                         </React.Fragment>
                                     ))}
                                 </A4Page>
-                             )) : (
+                             )}) : (
                                 <div className="flex flex-col items-center justify-center text-slate-400 h-[50vh]">
                                     <Icon name="Receipt" size={64} className="mb-4 opacity-20"/>
                                     <p>대상이 선택되지 않았습니다.</p>
                                 </div>
                              )}
                         </div>
-                        
-                        {/* 인쇄 전용 영역 (미리보기와 동일한 구조 사용, print-only 클래스로 인쇄 시에만 표시) */}
-                         <div className="print-only">
-                             {pages.map((pageCustomers, pageIdx) => (
-                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-start"}>
+                    </div>
+                    
+                    {/* 인쇄 전용 영역 - 숨김 처리되었던 내용을 인쇄 시에만 절대위치로 표시 */}
+                     <div className="print-only">
+                         {pages.map((pageCustomers, pageIdx) => {
+                                const pageClass = printLayout === 'single' 
+                                    ? "justify-center items-center p-[10mm]" 
+                                    : "justify-start items-start px-[10mm] py-[5mm]"; 
+                                
+                                return (
+                                <A4Page key={pageIdx} className={pageClass}>
                                     {pageCustomers.map((customer, cIdx) => (
                                         <React.Fragment key={customer}>
                                             <div className="w-full">
                                                 <SingleReceipt customerName={customer} />
                                             </div>
                                             {printLayout === 'double' && cIdx === 0 && pageCustomers.length > 1 && (
-                                                <div className="w-full border-b border-dashed border-black my-8 h-0"></div>
+                                                <div className="w-full border-b border-dashed border-black my-2 h-0"></div>
                                             )}
                                         </React.Fragment>
                                     ))}
                                 </A4Page>
-                             ))}
-                        </div>
+                         )})}
                     </div>
                 </div>
             );
@@ -587,7 +531,6 @@
             const [focusedOrderId, setFocusedOrderId] = useState(null);
             const [editSource, setEditSource] = useState(null);
             
-            // Replacement for window.confirm/prompt
             const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null });
             const [promptModal, setPromptModal] = useState({ open: false, message: '', value: '', onConfirm: null });
             const [filterText, setFilterText] = useState('');
@@ -613,7 +556,6 @@
             const recentProducts = useMemo(() => Object.entries(productHistory).reverse().slice(0, 300), [productHistory]);
             const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 2500); };
             
-            // Define focusedOrder early to avoid ReferenceError
             const focusedOrder = useMemo(() => { return orders.find(o => o.id === focusedOrderId); }, [orders, focusedOrderId]);
 
             const handleRecentProductClick = (name, price) => {
@@ -670,36 +612,26 @@
                     if (o.id !== id) return o; 
                     let updates = { [field]: value };
                     const numValue = parseNum(value);
-                    
-                    // [수정] 수량 변경 시 가격 업데이트 (공백 제거 후 조회)
                     if (field === 'quantity') { 
                         const pName = o.product ? o.product.trim() : '';
                         const unitPrice = productHistory[o.product] || productHistory[pName] || 0; 
                         if (unitPrice > 0) updates.price = numValue * unitPrice; 
                     }
-                    
-                    // [수정] 상품명 변경 시 가격 업데이트 (공백 제거 후 조회)
                     if (field === 'product') { 
                         const pName = value.trim();
-                        // 입력된 값 그대로, 혹은 공백 제거된 값으로 가격 찾기
                         const unitPrice = productHistory[value] || productHistory[pName] || 0; 
                         updates.price = parseNum(o.quantity) * unitPrice; 
                     }
-                    
-                    // [수정] 가격 직접 입력 시 히스토리 저장 (키 값 공백 제거하여 저장)
                     if (field === 'price' && o.product) { 
                         const qty = parseNum(o.quantity); 
                         if (qty > 0) { 
                             setProductHistory(h => ({...h, [o.product.trim()]: numValue/qty})); 
                         } 
                     }
-                    
-                    // [수정] 코드 입력 시 저장 (공백 제거)
                     if (field === 'codeInput') { 
                         setProductNumbers(prev => ({...prev, [o.product.trim()]: value})); 
                         return o; 
                     }
-                    
                     return sanitizeOrder({ ...o, ...updates }); 
                 })); 
             };
@@ -771,7 +703,6 @@
             const handleDownloadCSV = (mode) => { const csvString = getCSVString(orders, mode); const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; const timestamp = new Date().toISOString().slice(0, 10); link.setAttribute('download', `${mode === 'invoice' ? '송장용_' : '전체주문_'}${timestamp}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
             const handleDownloadProductCSV = () => { const summary = {}; orders.forEach(o => { const key = o.product || '미지정'; summary[key] = (summary[key] || 0) + parseNum(o.quantity); }); const csvContent = "\ufeff상품명,수량\n" + Object.entries(summary).map(e => e.join(',')).join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.setAttribute('download', `발주리스트_${new Date().toISOString().slice(0, 10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
             
-            // Custom Prompt Replacement
             const handleSetGoogleUrl = () => { 
                 setPromptModal({
                     open: true,
@@ -792,7 +723,6 @@
             const handleCustomerUploadClick = () => customerFileRef.current && customerFileRef.current.click();
             const handleCustomerFileUpload = (e) => { const file = e.target.files[0]; if (!file) return; Papa.parse(file, { header: true, skipEmptyLines: true, complete: (results) => { const newDB = { ...customerDB }; let count = 0; results.data.forEach(row => { const nick = row['닉네임'] || row['Nickname'] || row['이름'] || row['성함']; if (nick && nick.trim()) { newDB[nick.trim()] = { recipientName: row['수령인'] || row['받는분'] || row['이름'] || nick.trim(), phone: row['연락처'] || row['전화번호'] || row['휴대폰'] || '', zipCode: row['우편번호'] || row['Zip'] || '', addressText: row['주소'] || row['Address'] || row['기본주소'] || '', addressDetail: row['상세주소'] || '', shippingMemo: row['배송메모'] || row['배송요청사항'] || row['메모'] || '' }; count++; } }); setCustomerDB(newDB); showToast(`총 ${count}명 고객 등록 완료`, 'success'); } }); e.target.value = null; };
             
-            // Custom Confirm Replacement
             const handleReset = () => { 
                 setConfirmModal({
                     open: true,
@@ -834,7 +764,6 @@
                         const groupShipFee = (mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? mainOrder.customShippingFee : Number(quickShipping);
                         const isShippingPaid = mainOrder.isShippingPaid;
                         
-                        // Total Shipping Calculation
                         totalShipping += groupShipFee;
 
                         const groupTotalPaid = groupDeposit + groupCard + (isShippingPaid ? groupShipFee : 0); 
@@ -847,12 +776,6 @@
                         processedCustomers[o.customer] = true;
                     }
                 });
-                
-                // Logic: Total Rev = Cash + Card + Shipping
-                // Since Total Order Value = Product + Shipping
-                // And Card is purely payment method
-                // Cash = (Product) - Card (Assuming Card pays for product)
-                // If Card pays for shipping too, this arithmetic implies Cash is the remaining balance.
                 
                 const totalRev = totalProduct + totalShipping;
                 const totalCash = totalProduct - totalCard;
@@ -869,7 +792,6 @@
                     let customer = cleanText.substring(1).trim(); 
                     if (!customer) return null;
                     const product = batchProduct || '기본 상품'; 
-                    // 배치 모드에서도 트림된 키로 가격 조회
                     const unitPrice = Number(batchPrice) || productHistory[product] || productHistory[product.trim()] || 0;
                     const quantity = 1; 
                     const price = quantity * unitPrice;
@@ -880,7 +802,6 @@
                     return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
                 }
 
-                // Speed Input Logic
                 const parts = cleanText.split(/\s+/);
                 let customer = parts[0];
                 let code = '';
@@ -928,7 +849,6 @@
                     }
                 }
                 
-                // [수정] Price Auto-fill from History (공백 제거 후 조회)
                 const pName = product.trim();
                 const unitPrice = productHistory[product] || productHistory[pName] || 0;
                 const price = quantity * unitPrice;
@@ -937,7 +857,6 @@
                 
                 if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
                 
-                // [수정] 코드 저장 시에도 상품명 공백 제거
                 if (code) { setProductNumbers(prev => ({...prev, [pName]: code})); }
                 
                 return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
@@ -1012,15 +931,11 @@
                         const shipFee = (mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? mainOrder.customShippingFee : Number(quickShipping);
                         const isShippingPaid = mainOrder.isShippingPaid;
                         
-                        // New Logic for Filtering (Matching Stats Logic)
                         const totalRequired = data.productTotal + shipFee;
                         const totalPaid = data.totalDeposit + data.totalCard + (isShippingPaid ? shipFee : 0);
                         const totalUnpaid = Math.max(0, totalRequired - totalPaid);
 
-                        // Ship Unpaid: Flag is false AND fee > 0
                         const currentShipUnpaid = (!isShippingPaid && shipFee > 0) ? shipFee : 0;
-                        
-                        // Product Unpaid: Remaining unpaid after accounting for shipping
                         const currentProductUnpaid = Math.max(0, totalUnpaid - currentShipUnpaid);
 
                         if (unpaidFilter === 'ship') { 
@@ -1053,7 +968,6 @@
                 custOrders.forEach(o => { totalProduct += parseNum(o.price); totalDeposit += o.deposit; totalCard += o.cardAmount; });
                 const cardSurcharge = Math.round(totalCard * 0.1); const totalPaid = totalDeposit + totalCard; const totalRequired = totalProduct + shipFee; const totalPaidWithShip = totalPaid + (isShipPaid ? shipFee : 0); const remaining = Math.max(0, totalRequired - totalPaidWithShip);
                 
-                // 1. 헤더 & 상품 목록
                 let text = `💙 ${targetCustomer} 님 💙\n\n\n`;
                 custOrders.forEach(o => { 
                     const priceVal = parseNum(o.price); 
@@ -1068,11 +982,9 @@
                 text += `총 주문금액 ${totalRequired.toLocaleString()}원\n\n`; 
                 text += `------------------\n`;
 
-                // 2. 결제 상태별 분기
                 const isCompletelyPaid = remaining === 0;
 
                 if (totalCard > 0) {
-                    // [카드결제] 케이스
                     if (totalDeposit > 0) {
                         text += `[입금확인]\n${totalDeposit.toLocaleString()}원\n\n`;
                     }
@@ -1083,11 +995,9 @@
                     text += `핸드폰번호 남겨주세요🌸\n`;
                     text += `------------------\n`;
                 } else if (isCompletelyPaid) {
-                    // [완납] 케이스
                     text += `완납 확인! 감사합니다 😍\n`;
                     text += `------------------\n`;
                 } else {
-                    // [미입금/일반] 케이스
                     if (totalDeposit > 0 || isShipPaid) {
                         text += `[입금확인]\n`;
                         if (totalDeposit > 0) text += `${totalDeposit.toLocaleString()}원\n`;
@@ -1104,18 +1014,14 @@
                     text += `------------------\n`;
                 }
 
-                // 3. 하단 공통 문구
                 text += `\n방송마다 1회\n하단의 주문서(배송지입력) 필수!!\n\n이미 참여한 설문 일 경우\n▫ 답변 수정하기 \n▫ 또는 설문 추가 참여\n\n미입력이 많아 계속 안내합니다. \n양해부탁드립니다.`;
                 
                 return text;
             };
 
             const handleCopy = (text) => {
-                // Clipboard API Fallback using deprecated execCommand for broader compatibility/iframe support
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
-                
-                // Avoid scrolling to bottom
                 textArea.style.top = "0";
                 textArea.style.left = "0";
                 textArea.style.position = "fixed";
@@ -1143,7 +1049,6 @@
             const handleSidebarClick = (customerName) => { setSelectedCustomerFolder(customerName); const msg = generateOrderSummary(customerName); setManualMessage(msg); handleCopy(msg); };
             useEffect(() => { setManualMessage(orderMessage); }, [orderMessage]);
 
-            // [수정됨] 상태 의존성을 제거하고 항상 최신 상태를 참조하도록 함수형 업데이트 사용
             const handleUnpaidFilterClick = useCallback((type) => {
                 setUnpaidFilter(prev => (prev === type ? null : type));
             }, []);
@@ -1200,7 +1105,7 @@
                                         <div className="flex-1 overflow-y-auto p-1 space-y-1 min-h-0">
                                             {recentProducts.length > 0 ? recentProducts.map(([name, price], i) => (
                                                 <div key={i} onClick={() => handleRecentProductClick(name, price)} className="flex justify-between items-center text-xs p-1.5 bg-slate-50 dark:bg-dark-input rounded border border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-brand-50 dark:hover:bg-slate-700 transition-colors group">
-                                                    <div className="flex-1 flex items-center min-w-0 gap-1"> {/* Wrapped in div for layout */}
+                                                    <div className="flex-1 flex items-center min-w-0 gap-1"> 
                                                         {productNumbers[name] && <span className="text-[9px] text-slate-400 font-mono shrink-0">[{productNumbers[name]}]</span>}
                                                         <span className="font-bold truncate text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400" title={name}>{name}</span>
                                                     </div>
@@ -1267,7 +1172,6 @@
                     
                     {toast && <div className="fixed top-6 right-6 px-4 py-2.5 bg-slate-800 text-white rounded-md shadow-lg flex items-center gap-2 animate-fade-in z-[100]"><Icon name="CheckCircle" size={14} weight="fill"/><span className="text-xs">{toast.message}</span></div>}
                     
-                    {/* Custom Confirm Modal */}
                     {confirmModal.open && (
                         <div className="modal-overlay">
                             <div className="modal-content">
@@ -1280,7 +1184,6 @@
                         </div>
                     )}
 
-                    {/* Custom Prompt Modal */}
                     {promptModal.open && (
                         <div className="modal-overlay">
                             <div className="modal-content">
@@ -1301,5 +1204,3 @@
     </script>
 </body>
 </html>
-
-구매내역서 탭의 `SingleReceipt` 컴포넌트에서 A4 2장 모드일 때 위쪽 여백을 없애고 영수증을 상단부터 정렬하고, 내용이 15줄을 넘어가면 자동으로 1장 모드로 전환하는 로직을 구현해 주세요. 또한 `A4Page`의 `justify-content` 속성을 `flex-start`로 변경하여 영수증이 위에서부터 배치되게 해주세요.
