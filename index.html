@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서</title>
+    <title>강은지 주문서 PRO</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -387,15 +387,9 @@
 
             const SingleReceipt = ({ customerName }) => {
                 const targetOrders = orders.filter(o => o.customer === customerName);
-                
-                // [수정] 가격을 안전하게 숫자로 변환하여 합산 (문자열 이어붙기 방지)
                 const productTotal = targetOrders.reduce((sum, o) => sum + parseNum(o.price), 0);
-                
                 const mainOrder = targetOrders.reduce((oldest, current) => (current.id < oldest.id ? current : oldest), targetOrders[0]);
-                
-                // [수정] 배송비도 안전하게 숫자로 변환
                 const shipFee = (mainOrder && mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? Number(mainOrder.customShippingFee) : Number(quickShipping);
-                
                 const grandTotal = productTotal + shipFee;
                 const info = customerDB[customerName] || {};
                 
