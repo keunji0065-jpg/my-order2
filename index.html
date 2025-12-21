@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.30 (코드/인쇄수정)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.31 (코드간격/인쇄잘림수정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -59,13 +59,14 @@
             }
             
             html, body {
-                width: 210mm;
-                height: 297mm;
+                width: 100% !important;
+                height: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
                 color: black !important;
                 -webkit-print-color-adjust: exact;
+                overflow: visible !important;
             }
 
             /* 모든 요소 숨김 */
@@ -97,6 +98,7 @@
 
             .a4-page-print {
                 width: 210mm !important;
+                max-width: 100% !important;
                 height: 297mm !important;
                 page-break-after: always !important;
                 overflow: hidden !important;
@@ -334,7 +336,7 @@
                 const info = customerDB[customerName] || {};
                 
                 return (
-                    <div className={`bg-white text-black text-[13px] print:text-[13px] font-sans leading-tight flex flex-col w-full h-full`}>
+                    <div className={`bg-white text-black text-[13px] print:text-[13px] font-sans leading-tight flex flex-col w-full h-full pr-4`}>
                         <div className="flex justify-between items-end mb-2 shrink-0">
                             <div>
                                 <h3 className="text-xl font-extrabold mb-1">{customerName} 님</h3>
@@ -364,7 +366,7 @@
                                 </thead>
                                 <tbody className="divide-y divide-slate-300">
                                     {targetOrders.map(o => {
-                                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : '';
+                                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}]\u00A0\u00A0` : '';
                                         return (
                                         <tr key={o.id} className="align-top">
                                             <td className="py-1 break-keep pr-1 font-bold">{code}{o.product}</td>
