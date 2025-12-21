@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO</title>
+    <title>강은지 주문서</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -52,15 +52,13 @@
         .print-only { display: none; }
 
         @media print {
-            @page { margin: 5mm; size: auto; } /* 여백 최소화 */
+            @page { margin: 0; size: A4; } /* 여백 제거하고 A4 사이즈 지정 */
             
-            /* 모든 요소 초기화 및 강제 표시 설정 */
             html, body {
-                width: 100%;
-                height: 100%; /* 전체 높이 사용 */
+                width: 210mm;
+                height: 297mm;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: visible !important;
                 background: white !important;
                 color: black !important;
             }
@@ -81,43 +79,36 @@
             /* 인쇄 영역만 보이게 하고 절대 위치로 상단 고정 */
             .print-only, .print-only * {
                 visibility: visible !important;
-                display: block !important; /* flex가 필요하면 내부에서 다시 지정 */
             }
             
-            /* Flex 복구 */
-            .print-flex {
-                display: flex !important;
-            }
-            .print-flex-col {
-                display: flex !important;
-                flex-direction: column !important;
-            }
-
             .print-only {
                 position: absolute;
                 top: 0;
                 left: 0;
                 width: 100%;
-                height: 100%;
-                background: white;
                 z-index: 9999;
+                display: block !important;
+            }
+
+            /* A4 페이지 강제 설정 */
+            .a4-page {
+                width: 210mm !important;
+                height: 297mm !important;
+                page-break-after: always !important;
+                margin: 0 !important;
+                padding: 5mm !important; /* 인쇄 시 안전 여백 */
+                box-shadow: none !important;
+                border: none !important;
+                display: flex !important;
+                flex-direction: column !important;
+                box-sizing: border-box !important;
+            }
+
+            .a4-page:last-child {
+                page-break-after: auto !important;
             }
 
             .no-print { display: none !important; }
-
-            .receipt-container { 
-                box-shadow: none !important; 
-                border: none !important; /* 박스 테두리 제거 */
-                background: transparent !important;
-                margin: 0 auto; 
-                padding: 0 !important; /* 패딩 제거 */
-                width: 100% !important; 
-                max-width: 100% !important; 
-                page-break-inside: avoid;
-                color: black !important;
-            }
-            
-            .page-break { page-break-after: always; }
         }
 
         .tab-content { animation: fadeIn 0.2s ease-in-out; }
@@ -217,11 +208,10 @@
             );
         });
 
-        // --- DASHBOARD COMPONENT (4 Columns, Minimized Height) ---
+        // --- DASHBOARD COMPONENT ---
         const SummarySection = React.memo(({ stats, handleUnpaidFilterClick, unpaidFilter }) => {
             return (
                 <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg shadow-sm w-full grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-700 h-auto overflow-hidden">
-                    {/* 1칸: 총 예상 매출 */}
                     <div className="px-4 py-1 flex flex-col justify-center items-start text-left min-w-0">
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-0.5">총 예상 매출</span>
                         <div className="flex items-baseline gap-1">
@@ -229,70 +219,37 @@
                             <span className="text-sm text-slate-400 font-bold">원</span>
                         </div>
                     </div>
-
-                    {/* 2칸: 현금/카드/배송 상세 */}
                     <div className="px-4 py-1 flex flex-col justify-center gap-0 min-w-0">
                         <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="Money" size={16} className="text-amber-500" weight="bold"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">현금</span>
-                            </div>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="Money" size={16} className="text-amber-500" weight="bold"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">현금</span></div>
                             <span className="font-bold text-lg font-mono leading-none">{stats.totalCash.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="CreditCard" size={16} className="text-purple-500" weight="bold"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">카드</span>
-                            </div>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="CreditCard" size={16} className="text-purple-500" weight="bold"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">카드</span></div>
                             <span className="font-bold text-lg font-mono leading-none">{stats.totalCard.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="Truck" size={16} className="text-sky-500" weight="bold"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span>
-                            </div>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="Truck" size={16} className="text-sky-500" weight="bold"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span></div>
                             <span className="font-bold text-lg font-mono leading-none">{stats.totalShipping.toLocaleString()}</span>
                         </div>
                     </div>
-
-                    {/* 3칸: 주문 / 배송 */}
                     <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0">
                         <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 px-1 py-0.5">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="Package" size={18} className="text-indigo-500" weight="fill"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">주문</span>
-                            </div>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="Package" size={18} className="text-indigo-500" weight="fill"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">주문</span></div>
                             <span className="font-bold font-mono text-xl leading-none">{stats.qty}<span className="text-xs font-normal text-slate-400 ml-0.5">개</span></span>
                         </div>
                         <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 px-1 py-0.5">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Icon name="PaperPlaneTilt" size={18} className="text-teal-500" weight="fill"/>
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span>
-                            </div>
+                            <div className="flex items-center gap-2 text-slate-500"><Icon name="PaperPlaneTilt" size={18} className="text-teal-500" weight="fill"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span></div>
                             <span className="font-bold font-mono text-xl leading-none">{stats.shippingCount}<span className="text-xs font-normal text-slate-400 ml-0.5">건</span></span>
                         </div>
                     </div>
-
-                    {/* 4칸: 미수금 현황 (통합) */}
                     <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0">
-                        <div 
-                            className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'cash' ? 'bg-rose-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                            onClick={() => handleUnpaidFilterClick('cash')}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icon name="HandCoins" size={18} className={unpaidFilter === 'cash' ? 'text-white' : 'text-rose-500'} weight="fill"/>
-                                <span className={`${unpaidFilter === 'cash' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>물품미수금</span>
-                            </div>
+                        <div className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'cash' ? 'bg-rose-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`} onClick={() => handleUnpaidFilterClick('cash')}>
+                            <div className="flex items-center gap-2"><Icon name="HandCoins" size={18} className={unpaidFilter === 'cash' ? 'text-white' : 'text-rose-500'} weight="fill"/><span className={`${unpaidFilter === 'cash' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>물품미수금</span></div>
                             <span className={`font-mono text-lg leading-none ${unpaidFilter !== 'cash' && stats.productUnpaid > 0 ? 'text-rose-600 font-bold' : ''}`}>{stats.productUnpaid.toLocaleString()}</span>
                         </div>
-                        <div 
-                            className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'ship' ? 'bg-orange-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                            onClick={() => handleUnpaidFilterClick('ship')}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icon name="Truck" size={18} className={unpaidFilter === 'ship' ? 'text-white' : 'text-orange-500'} weight="fill"/>
-                                <span className={`${unpaidFilter === 'ship' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>배송미수금</span>
-                            </div>
+                        <div className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'ship' ? 'bg-orange-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`} onClick={() => handleUnpaidFilterClick('ship')}>
+                            <div className="flex items-center gap-2"><Icon name="Truck" size={18} className={unpaidFilter === 'ship' ? 'text-white' : 'text-orange-500'} weight="fill"/><span className={`${unpaidFilter === 'ship' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>배송미수금</span></div>
                             <span className={`font-mono text-lg leading-none ${unpaidFilter !== 'ship' && stats.shipUnpaid > 0 ? 'text-orange-600 font-bold' : ''}`}>{stats.shipUnpaid.toLocaleString()}</span>
                         </div>
                     </div>
@@ -301,17 +258,12 @@
         });
 
         const TabNavigation = ({ activeTab, onTabChange }) => {
-            const tabs = [
-                { id: 'order', label: '주문관리', icon: 'ClipboardList' },
-                { id: 'customer', label: '고객관리', icon: 'User' },
-                { id: 'statement', label: '구매내역서', icon: 'Receipt' },
-            ];
+            const tabs = [{ id: 'order', label: '주문관리', icon: 'ClipboardList' }, { id: 'customer', label: '고객관리', icon: 'User' }, { id: 'statement', label: '구매내역서', icon: 'Receipt' }];
             return (
                 <div className="flex items-end px-2 pt-1 border-b border-slate-200 dark:border-dark-border bg-white dark:bg-dark-card shrink-0 gap-1 overflow-x-auto no-scrollbar">
                     {tabs.map(tab => (
                         <button key={tab.id} onClick={() => onTabChange(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-t-lg transition-all border-t border-x relative top-[1px] ${activeTab === tab.id ? 'bg-[#f5f7fa] dark:bg-dark-bg border-slate-200 dark:border-dark-border border-b-[#f5f7fa] dark:border-b-dark-bg text-brand-600 dark:text-brand-400 z-10' : 'bg-slate-50 dark:bg-dark-input border-transparent text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <Icon name={tab.icon} size={14} weight={activeTab === tab.id ? 'fill' : 'regular'} />
-                            <span>{tab.label}</span>
+                            <Icon name={tab.icon} size={14} weight={activeTab === tab.id ? 'fill' : 'regular'} /><span>{tab.label}</span>
                         </button>
                     ))}
                 </div>
@@ -325,13 +277,7 @@
             useEffect(() => { if (selectedOrder) { setLocalAddr({ recipientName: selectedOrder.recipientName || '', phone: selectedOrder.phone || '', addressText: selectedOrder.addressText || '', addressDetail: selectedOrder.addressDetail || '', shippingMemo: selectedOrder.shippingMemo || '' }); setRawText(''); } else { setLocalAddr({ recipientName: '', phone: '', addressText: '', addressDetail: '', shippingMemo: '' }); } }, [selectedOrder]);
             const handleChange = (field, val) => setLocalAddr(prev => ({...prev, [field]: val}));
             const handleSave = () => { if (!selectedOrder) return; handleUpdateOrderBatch(selectedOrder.id, localAddr); showToast('주소 정보 저장 완료'); };
-            const handlePostcode = () => { 
-                try {
-                    new daum.Postcode({ oncomplete: function(data) { setLocalAddr(prev => ({ ...prev, zipCode: data.zonecode, addressText: data.address, addressDetail: '' })); } }).open(); 
-                } catch(e) {
-                    showToast("팝업이 차단되었습니다. 주소를 수동으로 입력해주세요.", "error");
-                }
-            };
+            const handlePostcode = () => { try { new daum.Postcode({ oncomplete: function(data) { setLocalAddr(prev => ({ ...prev, zipCode: data.zonecode, addressText: data.address, addressDetail: '' })); } }).open(); } catch(e) { showToast("팝업이 차단되었습니다. 주소를 수동으로 입력해주세요.", "error"); } };
             const handleParseRaw = () => { if (!rawText.trim()) return; let text = rawText; let name = '', phone = '', address = '', memo = ''; const phoneMatch = text.match(/(01[016789])[- .]?(\d{3,4})[- .]?(\d{4})/); if (phoneMatch) { phone = phoneMatch[0]; text = text.replace(phone, ''); } const zipMatch = text.match(/\d{5}/); if(zipMatch) text = text.replace(zipMatch[0], ''); const lines = text.split('\n').map(l => l.trim()).filter(Boolean); lines.forEach(line => { if (line.match(/^(이름|수령인|받는분):?/)) name = line.replace(/^(이름|수령인|받는분):?/, '').trim();else if (line.match(/^(주소|배송지):?/)) address = line.replace(/^(주소|배송지):?/, '').trim();else if (line.match(/^(메모|요청사항):?/)) memo = line.replace(/^(메모|요청사항):?/, '').trim(); }); if (!name && lines.length > 0) name = lines[0]; if (!address && lines.length > 1) address = lines.find(l => l !== name && l.match(/[시도구군길로]/)) || lines[1]; setLocalAddr(prev => ({ ...prev, recipientName: name || prev.recipientName, phone: phone || prev.phone, addressText: address || prev.addressText, shippingMemo: memo || prev.shippingMemo })); setTab('edit'); showToast("정보가 입력되었습니다. 확인해주세요."); };
             
             if (!selectedOrder) { return (<div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col h-full shadow-soft items-center justify-center text-slate-400 text-xs"><Icon name="MapPin" size={24} className="mb-2 opacity-50"/><p>주문을 선택해주세요</p></div>); }
@@ -385,7 +331,7 @@
             const customers = useMemo(() => { const unique = [...new Set(orders.map(o => o.customer))]; return unique.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())).sort(); }, [orders, searchTerm]);
             const batchCustomers = useMemo(() => { if (printMode !== 'batch') return []; const unique = [...new Set(orders.map(o => o.customer))]; return unique.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())).sort(); }, [orders, searchTerm, printMode, selectedSite]); 
 
-            const SingleReceipt = ({ customerName }) => {
+            const SingleReceipt = ({ customerName, heightClass = "h-full" }) => {
                 const targetOrders = orders.filter(o => o.customer === customerName);
                 const productTotal = targetOrders.reduce((sum, o) => sum + parseNum(o.price), 0);
                 const mainOrder = targetOrders.reduce((oldest, current) => (current.id < oldest.id ? current : oldest), targetOrders[0]);
@@ -394,52 +340,70 @@
                 const info = customerDB[customerName] || {};
                 
                 return (
-                    <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8 print:w-full print:p-0 print:m-0 print:border-none print:shadow-none print:rounded-none`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
-                        <div className="flex justify-between items-end mb-6 print:mb-2 border-b-0">
+                    <div className={`bg-white text-black text-[11px] font-sans leading-tight flex flex-col ${heightClass}`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
+                        <div className="flex justify-between items-end mb-2 border-b-0">
                             <div>
-                                <h3 className="text-lg font-bold print:text-base">{customerName} 님</h3>
-                                <div className="flex flex-col gap-0 print:gap-0">
-                                    <p className="text-xs text-slate-500 mt-1 print:mt-0 print:text-[11px]">{info.phone || ''}</p>
-                                    <p className="text-xs text-slate-500 print:text-[11px]">{info.addressText || ''} {info.addressDetail || ''}</p>
+                                <h3 className="text-base font-bold">{customerName} 님</h3>
+                                <div className="flex flex-col gap-0">
+                                    <p className="text-[11px] text-slate-500 mt-0">{info.phone || ''}</p>
+                                    <p className="text-[11px] text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-sm font-mono print:text-[10px] text-slate-400">{new Date().toLocaleDateString()}</p>
+                                <p className="text-[10px] font-mono text-slate-400">{new Date().toLocaleDateString()}</p>
                             </div>
                         </div>
                         
-                        <table className="w-full text-sm mb-6 print:mb-2 text-xs print:text-[11px]">
-                            <thead className="border-b border-slate-200 print:border-black">
+                        <table className="w-full mb-2 text-[11px]">
+                            <thead className="border-b border-black">
                                 <tr>
-                                    <th className="text-left py-2 print:py-1">상품명</th>
-                                    <th className="text-center py-2 w-12 print:py-1 print:w-8">수량</th>
-                                    <th className="text-right py-2 w-20 print:py-1 print:w-16">금액</th>
+                                    <th className="text-left py-1">상품명</th>
+                                    <th className="text-center py-1 w-8">수량</th>
+                                    <th className="text-right py-1 w-16">금액</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 print:divide-slate-200">
+                            <tbody className="divide-y divide-slate-200">
                                 {targetOrders.map(o => (
                                     <tr key={o.id}>
-                                        <td className="py-2 print:py-0.5">{o.product}</td>
-                                        <td className="py-2 text-center print:py-0.5">{o.quantity}</td>
-                                        <td className="py-2 text-right font-mono print:py-0.5">{parseNum(o.price).toLocaleString()}</td>
+                                        <td className="py-0.5">{o.product}</td>
+                                        <td className="py-0.5 text-center">{o.quantity}</td>
+                                        <td className="py-0.5 text-right font-mono">{parseNum(o.price).toLocaleString()}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                         
-                        <div className="border-t-2 border-slate-800 pt-4 space-y-2 print:border-t print:border-black print:pt-1 print:space-y-0.5">
-                            <div className="flex justify-between text-sm print:text-[11px]"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div>
-                            <div className="flex justify-between text-sm print:text-[11px]"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div>
-                            <div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200 print:text-sm print:mt-1 print:pt-1 print:border-slate-400"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div>
-                        </div>
-                        
-                        <div className="mt-8 text-center text-xs text-slate-400 print:mt-2 print:text-[9px] print:text-slate-500">
-                            감사합니다. 또 이용해주세요!<br/>
-                            강은지 주문서 PRO
+                        <div className="mt-auto border-t border-black pt-1 space-y-0.5">
+                            <div className="flex justify-between text-[11px]"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div>
+                            <div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div>
+                            <div className="flex justify-between text-sm font-black mt-1 pt-1 border-t border-slate-400"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div>
                         </div>
                     </div>
                 );
             };
+
+            const A4Page = ({ children, className = "" }) => (
+                <div className={`a4-page bg-white shadow-lg mx-auto mb-8 box-border flex flex-col p-[5mm] w-[210mm] h-[297mm] ${className}`}>
+                    {children}
+                </div>
+            );
+
+            // 페이지 데이터 계산
+            const pages = useMemo(() => {
+                const targetList = printMode === 'single' ? (selectedCustomer ? [selectedCustomer] : []) : batchCustomers;
+                const result = [];
+                
+                if (printLayout === 'single') {
+                    // 1장씩: 각 고객마다 1페이지
+                    targetList.forEach(c => result.push([c]));
+                } else {
+                    // 2장씩: 2명씩 묶어서 1페이지
+                    for (let i = 0; i < targetList.length; i += 2) {
+                        result.push(targetList.slice(i, i + 2));
+                    }
+                }
+                return result;
+            }, [printMode, selectedCustomer, batchCustomers, printLayout]);
 
             return (
                 <div className="flex h-full tab-content gap-4 p-4">
@@ -452,35 +416,52 @@
                         </div>
                         <div className="flex-1 overflow-y-auto p-1 space-y-0.5">{printMode === 'single' ? customers.map(c => (<button key={c} onClick={() => setSelectedCustomer(c)} className={`w-full text-left px-3 py-2 text-xs rounded transition-colors flex items-center justify-between ${selectedCustomer === c ? 'bg-brand-50 text-brand-700 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600'}`}><span className="truncate">{c}</span><Icon name="CaretRight" size={10} className="opacity-50"/></button>)) : <div className="p-3 text-xs text-slate-500 text-center">총 {batchCustomers.length}명의 고객이<br/>인쇄 대기 중입니다.</div>}</div>
                     </div>
-                    <div className="flex-1 bg-slate-100 dark:bg-dark-bg rounded-lg border border-slate-200 dark:border-dark-border flex flex-col items-center justify-center p-8 overflow-y-auto relative">
-                        {((printMode === 'single' && selectedCustomer) || (printMode === 'batch' && batchCustomers.length > 0)) ? (
-                            <div className="flex flex-col gap-4 items-center w-full h-full justify-center">
-                                <div className="no-print flex gap-2 mb-4"><button onClick={()=>setIsEditMode(!isEditMode)} className={`px-4 py-2 rounded-md font-bold text-xs flex items-center gap-2 ${isEditMode ? 'bg-amber-500 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}><Icon name={isEditMode?"CheckCircle":"Pencil"}/> {isEditMode ? '수정 완료' : '내용 수정하기'}</button><button onClick={()=>window.print()} className="bg-slate-800 text-white px-4 py-2 rounded-md font-bold hover:bg-slate-700 flex items-center gap-2 text-xs"><Icon name="Printer"/> 인쇄하기</button></div>
-                                <div className="no-print shadow-lg rounded-lg overflow-hidden border border-slate-200 bg-white"><SingleReceipt customerName={printMode === 'single' ? selectedCustomer : batchCustomers[0]} /></div>
-                                {printMode === 'batch' && <div className="no-print text-xs text-slate-400 mt-2">...외 {batchCustomers.length - 1}명의 영수증이 인쇄됩니다.</div>}
-                                
-                                <div className="print-only">
-                                    {(printMode === 'single' ? [selectedCustomer] : batchCustomers).map((c, i) => (
-                                        <div key={i}>
-                                            {printLayout === 'single' ? (
-                                                <div className="flex justify-center items-center h-[100vh] page-break print-flex">
-                                                    <SingleReceipt customerName={c} />
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col h-[100vh] page-break print-flex-col">
-                                                    <div className="flex-1 flex flex-col justify-center border-b border-dashed border-black py-4 box-border print-flex-col">
-                                                        <SingleReceipt customerName={c} />
-                                                    </div>
-                                                    <div className="flex-1 flex flex-col justify-center py-4 box-border print-flex-col">
-                                                        <SingleReceipt customerName={c} />
-                                                    </div>
-                                                </div>
+                    <div className="flex-1 bg-slate-100 dark:bg-dark-bg rounded-lg border border-slate-200 dark:border-dark-border flex flex-col items-center p-8 overflow-y-auto relative">
+                        <div className="no-print flex gap-2 mb-4 sticky top-0 z-10">
+                            <button onClick={()=>setIsEditMode(!isEditMode)} className={`px-4 py-2 rounded-md font-bold text-xs flex items-center gap-2 ${isEditMode ? 'bg-amber-500 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}><Icon name={isEditMode?"CheckCircle":"Pencil"}/> {isEditMode ? '수정 완료' : '내용 수정하기'}</button>
+                            <button onClick={()=>window.print()} className="bg-slate-800 text-white px-4 py-2 rounded-md font-bold hover:bg-slate-700 flex items-center gap-2 text-xs"><Icon name="Printer"/> 인쇄하기</button>
+                        </div>
+
+                        {/* 미리보기 및 인쇄 영역 공통 렌더링 */}
+                        <div className={isEditMode ? "" : "pointer-events-none"}>
+                             {pages.length > 0 ? pages.map((pageCustomers, pageIdx) => (
+                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-between"}>
+                                    {pageCustomers.map((customer, cIdx) => (
+                                        <React.Fragment key={customer}>
+                                            <div className={`w-full ${printLayout === 'single' ? 'flex items-center justify-center h-full' : 'h-[48%] flex flex-col justify-center'}`}>
+                                                <SingleReceipt customerName={customer} />
+                                            </div>
+                                            {printLayout === 'double' && cIdx === 0 && pageCustomers.length > 1 && (
+                                                <div className="w-full border-b border-dashed border-slate-300 my-4 h-0"></div>
                                             )}
-                                        </div>
+                                        </React.Fragment>
                                     ))}
+                                </A4Page>
+                             )) : (
+                                <div className="flex flex-col items-center justify-center text-slate-400 h-[50vh]">
+                                    <Icon name="Receipt" size={64} className="mb-4 opacity-20"/>
+                                    <p>대상이 선택되지 않았습니다.</p>
                                 </div>
-                            </div>
-                        ) : (<div className="text-center text-slate-400"><Icon name="Receipt" size={64} className="mb-4 opacity-20 inline-block"/><p>대상이 선택되지 않았습니다.</p></div>)}
+                             )}
+                        </div>
+                        
+                        {/* 인쇄 전용 영역 (미리보기와 동일한 구조 사용, print-only 클래스로 인쇄 시에만 표시) */}
+                         <div className="print-only">
+                             {pages.map((pageCustomers, pageIdx) => (
+                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-between"}>
+                                    {pageCustomers.map((customer, cIdx) => (
+                                        <React.Fragment key={customer}>
+                                            <div className={`w-full ${printLayout === 'single' ? 'flex items-center justify-center h-full' : 'h-[48%] flex flex-col justify-center'}`}>
+                                                <SingleReceipt customerName={customer} />
+                                            </div>
+                                            {printLayout === 'double' && cIdx === 0 && pageCustomers.length > 1 && (
+                                                <div className="w-full border-b border-dashed border-black my-4 h-0"></div>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </A4Page>
+                             ))}
+                        </div>
                     </div>
                 </div>
             );
