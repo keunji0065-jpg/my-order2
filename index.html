@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.11 (인쇄 최적화)</title>
+    <title>강은지 주문서</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -400,11 +400,49 @@
                 const info = customerDB[customerName] || {};
                 
                 return (
-                    <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8 print:w-full print:p-2 print:mb-0 print:border-none print:shadow-none print:rounded-none`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
-                        <div className="flex justify-between items-end mb-6 print:mb-2"><div><h3 className="text-lg font-bold">{customerName} 님</h3><p className="text-xs text-slate-500 mt-1">{info.phone || ''}</p><p className="text-xs text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p></div><div className="text-right"><p className="text-sm font-mono">{new Date().toLocaleDateString()}</p></div></div>
-                        <table className="w-full text-sm mb-6 print:mb-2 text-xs print:text-xs"><thead className="border-b border-slate-200"><tr><th className="text-left py-2">상품명</th><th className="text-center py-2 w-12">수량</th><th className="text-right py-2 w-20">금액</th></tr></thead><tbody className="divide-y divide-slate-100">{targetOrders.map(o => (<tr key={o.id}><td className="py-2">{o.product}</td><td className="py-2 text-center">{o.quantity}</td><td className="py-2 text-right font-mono">{parseNum(o.price).toLocaleString()}</td></tr>))}</tbody></table>
-                        <div className="border-t-2 border-slate-800 pt-4 space-y-2 print:border-t print:border-black print:pt-2 print:space-y-1"><div className="flex justify-between text-sm"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div><div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div><div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div></div>
-                        <div className="mt-8 text-center text-xs text-slate-400 print:mt-4 print:text-black">감사합니다. 또 이용해주세요!<br/>강은지 주문서 PRO</div>
+                    <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8 print:w-full print:p-0 print:m-0 print:border-none print:shadow-none print:rounded-none`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
+                        <div className="flex justify-between items-end mb-6 print:mb-2 border-b-0">
+                            <div>
+                                <h3 className="text-lg font-bold print:text-base">{customerName} 님</h3>
+                                <div className="flex flex-col gap-0 print:gap-0">
+                                    <p className="text-xs text-slate-500 mt-1 print:mt-0 print:text-[11px]">{info.phone || ''}</p>
+                                    <p className="text-xs text-slate-500 print:text-[11px]">{info.addressText || ''} {info.addressDetail || ''}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-mono print:text-[10px] text-slate-400">{new Date().toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        
+                        <table className="w-full text-sm mb-6 print:mb-2 text-xs print:text-[11px]">
+                            <thead className="border-b border-slate-200 print:border-black">
+                                <tr>
+                                    <th className="text-left py-2 print:py-1">상품명</th>
+                                    <th className="text-center py-2 w-12 print:py-1 print:w-8">수량</th>
+                                    <th className="text-right py-2 w-20 print:py-1 print:w-16">금액</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 print:divide-slate-200">
+                                {targetOrders.map(o => (
+                                    <tr key={o.id}>
+                                        <td className="py-2 print:py-0.5">{o.product}</td>
+                                        <td className="py-2 text-center print:py-0.5">{o.quantity}</td>
+                                        <td className="py-2 text-right font-mono print:py-0.5">{parseNum(o.price).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        
+                        <div className="border-t-2 border-slate-800 pt-4 space-y-2 print:border-t print:border-black print:pt-1 print:space-y-0.5">
+                            <div className="flex justify-between text-sm print:text-[11px]"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div>
+                            <div className="flex justify-between text-sm print:text-[11px]"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div>
+                            <div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200 print:text-sm print:mt-1 print:pt-1 print:border-slate-400"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div>
+                        </div>
+                        
+                        <div className="mt-8 text-center text-xs text-slate-400 print:mt-2 print:text-[9px] print:text-slate-500">
+                            감사합니다. 또 이용해주세요!<br/>
+                            강은지 주문서 PRO
+                        </div>
                     </div>
                 );
             };
