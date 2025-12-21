@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.15 (수정기능 제거)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.16 (인쇄 스마트분할)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -394,7 +394,7 @@
                 const info = customerDB[customerName] || {};
                 
                 return (
-                    <div className={`bg-white text-black text-[11px] print:text-[10px] font-sans leading-tight flex flex-col ${heightClass}`}>
+                    <div className={`bg-white text-black text-[11px] print:text-[10px] font-sans leading-tight flex flex-col w-full`}>
                         <div className="flex justify-between items-end mb-2 border-b-0">
                             <div>
                                 <h3 className="text-base font-bold">{customerName} 님</h3>
@@ -434,7 +434,7 @@
                             </tbody>
                         </table>
                         
-                        <div className="mt-auto border-t border-black pt-1 space-y-0.5">
+                        <div className="mt-1 border-t border-black pt-1 space-y-0.5">
                             <div className="flex justify-between text-[11px] print:text-[10px]"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div>
                             <div className="flex justify-between text-[11px] print:text-[10px]"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div>
                             <div className="flex justify-between text-sm font-black mt-1 pt-1 border-t border-slate-400"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div>
@@ -444,27 +444,54 @@
             };
 
             const A4Page = ({ children, className = "" }) => (
-                <div className={`a4-page bg-white shadow-lg mx-auto mb-8 box-border flex flex-col p-[5mm] w-[210mm] h-[297mm] ${className}`}>
+                <div className={`a4-page bg-white shadow-lg mx-auto mb-8 box-border flex flex-col p-[10mm] w-[210mm] h-[297mm] ${className}`}>
                     {children}
                 </div>
             );
 
-            // 페이지 데이터 계산
+            // [수정] 페이지 데이터 계산 로직 개선 (내용 많으면 자동 분리)
             const pages = useMemo(() => {
                 const targetList = printMode === 'single' ? (selectedCustomer ? [selectedCustomer] : []) : batchCustomers;
                 const result = [];
                 
                 if (printLayout === 'single') {
-                    // 1장씩: 각 고객마다 1페이지
+                    // 1장씩: 무조건 1페이지 1명
                     targetList.forEach(c => result.push([c]));
                 } else {
-                    // 2장씩: 2명씩 묶어서 1페이지
-                    for (let i = 0; i < targetList.length; i += 2) {
-                        result.push(targetList.slice(i, i + 2));
+                    // 2장 모아찍기 (스마트 분할)
+                    let currentChunk = [];
+                    const LINES_THRESHOLD = 15; // 상품 종류가 이 개수를 넘으면 한 페이지 다 씀
+                    
+                    targetList.forEach(customer => {
+                         const itemCount = orders.filter(o => o.customer === customer).length;
+                         const isLong = itemCount > LINES_THRESHOLD;
+
+                         if (isLong) {
+                             // 긴 영수증이면
+                             // 1. 현재 대기중인 짝꿍이 있으면 걔 먼저 페이지로 만듦
+                             if (currentChunk.length > 0) {
+                                 result.push(currentChunk);
+                                 currentChunk = [];
+                             }
+                             // 2. 나 혼자 한 페이지 차지
+                             result.push([customer]);
+                         } else {
+                             // 짧은 영수증이면 짝꿍 찾음
+                             currentChunk.push(customer);
+                             if (currentChunk.length === 2) {
+                                 result.push(currentChunk);
+                                 currentChunk = [];
+                             }
+                         }
+                    });
+
+                    // 남은 짝꿍 처리
+                    if (currentChunk.length > 0) {
+                        result.push(currentChunk);
                     }
                 }
                 return result;
-            }, [printMode, selectedCustomer, batchCustomers, printLayout]);
+            }, [printMode, selectedCustomer, batchCustomers, printLayout, orders]);
 
             return (
                 <div className="flex h-full tab-content gap-4 p-4">
@@ -486,14 +513,14 @@
                         {/* 미리보기 및 인쇄 영역 공통 렌더링 */}
                         <div className="">
                              {pages.length > 0 ? pages.map((pageCustomers, pageIdx) => (
-                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-between"}>
+                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-start"}>
                                     {pageCustomers.map((customer, cIdx) => (
                                         <React.Fragment key={customer}>
-                                            <div className={`w-full ${printLayout === 'single' ? 'flex items-center justify-center h-full' : 'h-[48%] flex flex-col justify-center'}`}>
+                                            <div className="w-full">
                                                 <SingleReceipt customerName={customer} />
                                             </div>
                                             {printLayout === 'double' && cIdx === 0 && pageCustomers.length > 1 && (
-                                                <div className="w-full border-b border-dashed border-slate-300 my-4 h-0"></div>
+                                                <div className="w-full border-b border-dashed border-black my-8 h-0"></div>
                                             )}
                                         </React.Fragment>
                                     ))}
@@ -509,14 +536,14 @@
                         {/* 인쇄 전용 영역 (미리보기와 동일한 구조 사용, print-only 클래스로 인쇄 시에만 표시) */}
                          <div className="print-only">
                              {pages.map((pageCustomers, pageIdx) => (
-                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-between"}>
+                                <A4Page key={pageIdx} className={printLayout === 'single' ? "justify-center items-center" : "justify-start"}>
                                     {pageCustomers.map((customer, cIdx) => (
                                         <React.Fragment key={customer}>
-                                            <div className={`w-full ${printLayout === 'single' ? 'flex items-center justify-center h-full' : 'h-[48%] flex flex-col justify-center'}`}>
+                                            <div className="w-full">
                                                 <SingleReceipt customerName={customer} />
                                             </div>
                                             {printLayout === 'double' && cIdx === 0 && pageCustomers.length > 1 && (
-                                                <div className="w-full border-b border-dashed border-black my-4 h-0"></div>
+                                                <div className="w-full border-b border-dashed border-black my-8 h-0"></div>
                                             )}
                                         </React.Fragment>
                                     ))}
@@ -1274,3 +1301,5 @@
     </script>
 </body>
 </html>
+
+구매내역서 탭의 `SingleReceipt` 컴포넌트에서 A4 2장 모드일 때 위쪽 여백을 없애고 영수증을 상단부터 정렬하고, 내용이 15줄을 넘어가면 자동으로 1장 모드로 전환하는 로직을 구현해 주세요. 또한 `A4Page`의 `justify-content` 속성을 `flex-start`로 변경하여 영수증이 위에서부터 배치되게 해주세요.
