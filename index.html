@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.32 (인쇄 여백 최적화)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.33 (인쇄 오류 수정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -60,13 +60,13 @@
             
             html, body {
                 width: 100% !important;
-                height: 100% !important;
+                height: auto !important; /* 높이 제한 해제 */
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
                 color: black !important;
                 -webkit-print-color-adjust: exact;
-                overflow: visible !important;
+                overflow: visible !important; /* 스크롤 숨김 해제 */
             }
 
             /* 모든 요소 숨김 */
@@ -99,15 +99,14 @@
             .a4-page-print {
                 width: 100% !important;
                 max-width: 210mm !important;
-                min-height: 290mm !important; /* 높이를 유동적으로 하되 최소 높이 확보 */
-                height: auto !important; 
+                min-height: 296mm !important; /* A4 높이에 맞춤 */
                 page-break-after: always !important;
-                overflow: visible !important;
+                overflow: hidden !important;
                 background: white !important;
                 position: relative !important;
                 box-shadow: none !important;
                 margin: 0 auto !important;
-                padding-top: 2mm !important; /* 상단 안전 여백 */
+                padding: 0 !important; /* 패딩 제거하고 내부에서 처리 */
             }
             
             .a4-page-print:last-child {
@@ -461,7 +460,7 @@
                                         const custOrders = orders.filter(o => o.customer === customer);
                                         const isLong = custOrders.length > 10;
                                         // 긴 영수증은 Double 모드에서도 전체 페이지 사용
-                                        const itemHeightClass = (isDouble && !isLong) ? 'h-[138mm]' : 'min-h-[280mm]';
+                                        const itemHeightClass = (isDouble && !isLong) ? 'h-[148mm]' : 'min-h-[280mm]';
                                         const showBorder = isDouble && cIdx === 0 && (pageCustomers.length > 1 || !isLong);
 
                                         return (
