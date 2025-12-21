@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.6</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -421,7 +421,7 @@
             useEffect(() => { localStorage.setItem('currentSite', currentSite); }, [currentSite]);
             useEffect(() => { const handleClickOutside = (event) => { if (excelMenuRef.current && !excelMenuRef.current.contains(event.target)) { setIsExcelMenuOpen(false); } }; document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
 
-            const recentProducts = useMemo(() => Object.entries(productHistory).reverse().slice(0, 50), [productHistory]);
+            const recentProducts = useMemo(() => Object.entries(productHistory).reverse().slice(0, 300), [productHistory]);
             const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 2500); };
             
             // Define focusedOrder early to avoid ReferenceError
@@ -441,16 +441,36 @@
                 }
             };
 
+            const handleDeleteProductHistory = (productName) => {
+                setProductHistory(prev => {
+                    const newHistory = { ...prev };
+                    delete newHistory[productName];
+                    return newHistory;
+                });
+            };
+
+            const handleClearProductHistory = () => {
+                 setConfirmModal({
+                    open: true,
+                    message: "최근 등록 상품 목록을 모두 삭제하시겠습니까?",
+                    onConfirm: () => {
+                        setProductHistory({});
+                        setConfirmModal({ open: false, message: '', onConfirm: null });
+                        showToast("상품 목록이 초기화되었습니다.");
+                    }
+                });
+            };
+
             const handleQuickAddOrder = () => {
                 if(quickName.trim()) {
-                     const pName = quickName.trim();
-                     const pPrice = Number(quickPrice);
-                     const pSite = currentSite; 
-                     const pCode = quickCode.trim();
-                     setProductHistory(prev => ({...prev, [pName]: pPrice}));
-                     setProductCategories(prev => ({...prev, [pName]: pSite}));
-                     setProductNumbers(prev => ({...prev, [pName]: pCode}));
-                     setCategoryOrder(prev => prev.includes(pSite) ? prev : [...prev, pSite]);
+                      const pName = quickName.trim();
+                      const pPrice = Number(quickPrice);
+                      const pSite = currentSite; 
+                      const pCode = quickCode.trim();
+                      setProductHistory(prev => ({...prev, [pName]: pPrice}));
+                      setProductCategories(prev => ({...prev, [pName]: pSite}));
+                      setProductNumbers(prev => ({...prev, [pName]: pCode}));
+                      setCategoryOrder(prev => prev.includes(pSite) ? prev : [...prev, pSite]);
                 }
                 setOrders(prev => [sanitizeOrder({ id: Date.now(), customer: '', product: quickName || '', quantity: 1, price: Number(quickPrice) || 0, customShippingFee: Number(quickShipping) }), ...prev]);
                 showToast("주문이 추가되었습니다.");
@@ -628,6 +648,7 @@
             const processTextLine = (text) => {
                 if (!text) return null;
                 const cleanText = text.trim();
+                
                 if (converterTab === 'batch') {
                     if (!cleanText.startsWith('@')) return null;
                     let customer = cleanText.substring(1).trim(); 
@@ -642,20 +663,75 @@
                     if (unitPrice > 0) { setProductHistory(prev => ({...prev, [product]: unitPrice})); }
                     return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
                 }
+
+                // Speed Input Logic
                 const parts = cleanText.split(/\s+/);
                 let customer = parts[0];
+                let code = '';
+
+                // NEW: Parse code attached to nickname (e.g. Nickname#Code or Nickname/Code)
+                if (customer.includes('#')) {
+                    const split = customer.split('#');
+                    customer = split[0];
+                    code = split[1];
+                } else if (customer.includes('/')) {
+                    const split = customer.split('/');
+                    customer = split[0];
+                    code = split[1];
+                }
+                
                 customer = customer.replace(/^@/, '').replace(/[:.,]$/, '');
-                let product = ''; let quantity = 1;
-                if (parts.length > 1) {
-                    const productRaw = parts.slice(1).join(' ');
+                
+                let product = ''; 
+                let quantity = 1;
+                let productStartIndex = 1;
+
+                // Support "Nickname #Code Product" (space separated)
+                if (!code && parts.length > 1 && parts[1].startsWith('#')) {
+                    code = parts[1].substring(1);
+                    productStartIndex = 2;
+                }
+
+                const productRaw = parts.slice(productStartIndex).join(' ');
+
+                if (productRaw) {
+                    // Explicit product provided
                     const qtyMatch = productRaw.match(/(\d+)\s*(?:개|set|ea|box)?$/i);
-                    if (qtyMatch) { quantity = parseInt(qtyMatch[1], 10); product = productRaw.replace(qtyMatch[0], '').trim() || productRaw.replace(/(\s*(?:개|set|ea|box)?)$/i, '').trim(); 
-                    } else { product = productRaw.trim(); }
-                } else { product = quickName || '기본 상품'; }
+                    if (qtyMatch) { 
+                        quantity = parseInt(qtyMatch[1], 10); 
+                        product = productRaw.replace(qtyMatch[0], '').trim() || productRaw.replace(/(\s*(?:개|set|ea|box)?)$/i, '').trim(); 
+                    } else { 
+                        product = productRaw.trim(); 
+                    }
+                } else {
+                    // No product text provided -> Try lookup by code
+                    if (code) {
+                        // Find product name where value matches code
+                        // stored codes might be strings, input code is string. 
+                        // productNumbers format: { "Apple": "1", "Banana": "2" }
+                        const foundName = Object.keys(productNumbers).find(key => productNumbers[key] == code);
+                        if (foundName) {
+                            product = foundName;
+                        }
+                    }
+                    
+                    if (!product) {
+                        product = quickName || '기본 상품'; 
+                    }
+                }
+                
+                // Price Auto-fill from History
                 const unitPrice = productHistory[product] || 0;
                 const price = quantity * unitPrice;
+                
                 const crmData = customerDB[customer];
+                
+                // Update Categories and Codes if present
                 if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
+                
+                // NEW: Update Code in ProductNumbers if code is present
+                if (code) { setProductNumbers(prev => ({...prev, [product]: code})); }
+                
                 return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
             };
 
@@ -807,7 +883,7 @@
                     if (totalDeposit > 0 || isShipPaid) {
                         text += `[입금확인]\n`;
                         if (totalDeposit > 0) text += `${totalDeposit.toLocaleString()}원\n`;
-                        if (isShipPaid) text += `(배송비 결제완료)\n`;
+                        if (isShipPaid) text += `${shipFee.toLocaleString()}원 (배송비)\n`;
                         text += `\n`;
                         text += `------------------\n\n`;
                     }
@@ -904,16 +980,32 @@
                                             )}
                                         </div>
                                     </div>
-                                    <div className="lg:col-span-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col shadow-soft">
-                                        <div className="flex justify-between items-center mb-1 px-1"><h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1"><Icon name="Tag" className="text-brand-500"/> 최근 등록 상품 (클릭시 자동입력)</h3></div>
-                                        <div className="flex-1 overflow-y-auto p-1 space-y-1">
+                                    <div className="lg:col-span-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col shadow-soft h-full overflow-hidden">
+                                        <div className="flex justify-between items-center mb-1 px-1">
+                                            <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                                                <Icon name="Tag" className="text-brand-500"/> 최근 등록 상품 (클릭시 자동입력)
+                                            </h3>
+                                            <button onClick={handleClearProductHistory} className="text-slate-400 hover:text-rose-500" title="전체 삭제">
+                                                <Icon name="Trash2" size={14}/>
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-1 space-y-1 min-h-0">
                                             {recentProducts.length > 0 ? recentProducts.map(([name, price], i) => (
-                                                <div key={i} onClick={() => handleRecentProductClick(name, price)} className="flex justify-between items-center text-xs p-1.5 bg-slate-50 dark:bg-dark-input rounded border border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-brand-50 dark:hover:bg-slate-700 transition-colors group"><span className="font-bold truncate flex-1 text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400" title={name}>{name}</span><span className="font-mono text-slate-500 text-[10px]">{price.toLocaleString()}원</span></div>
+                                                <div key={i} onClick={() => handleRecentProductClick(name, price)} className="flex justify-between items-center text-xs p-1.5 bg-slate-50 dark:bg-dark-input rounded border border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-brand-50 dark:hover:bg-slate-700 transition-colors group">
+                                                    <div className="flex-1 flex items-center min-w-0 gap-1"> {/* Wrapped in div for layout */}
+                                                        {productNumbers[name] && <span className="text-[9px] text-slate-400 font-mono shrink-0">[{productNumbers[name]}]</span>}
+                                                        <span className="font-bold truncate text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400" title={name}>{name}</span>
+                                                    </div>
+                                                    <span className="font-mono text-slate-500 text-[10px] mr-2 shrink-0">{price.toLocaleString()}원</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteProductHistory(name); }} className="text-slate-300 hover:text-rose-500 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                        <Icon name="X" size={10} weight="bold"/>
+                                                    </button>
+                                                </div>
                                             )) : <div className="h-full flex items-center justify-center text-slate-400 text-xs">최근 등록된 상품이 없습니다.</div>}
                                         </div>
                                     </div>
                                     <div className="lg:col-span-1 h-full overflow-hidden"><AddressAdminPanel selectedOrder={focusedOrder} handleUpdateOrderBatch={(id, up) => setOrders(p => p.map(o => o.id===id ? {...o, ...up} : o))} showToast={showToast} /></div>
-                                    <div className="lg:col-span-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col shadow-soft">
+                                    <div className="lg:col-span-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col shadow-soft h-full overflow-hidden">
                                         <div className="flex justify-between items-center mb-1 px-1"><h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1"><Icon name="ChatText" className="text-accent-amber"/> 카카오톡 주문서</h3><button onClick={() => { handleCopy(manualMessage); }} className="text-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 flex items-center gap-1"><Icon name="Copy"/> 복사하기</button></div>
                                         <textarea className="flex-1 w-full p-2 bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/20 rounded-md resize-none text-xs outline-none font-mono" value={manualMessage} onChange={e => setManualMessage(e.target.value)}></textarea>
                                     </div>
