@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.31 (코드간격/인쇄잘림수정)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.32 (인쇄 여백 최적화)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -97,15 +97,17 @@
             }
 
             .a4-page-print {
-                width: 210mm !important;
-                max-width: 100% !important;
-                height: 297mm !important;
+                width: 100% !important;
+                max-width: 210mm !important;
+                min-height: 290mm !important; /* 높이를 유동적으로 하되 최소 높이 확보 */
+                height: auto !important; 
                 page-break-after: always !important;
-                overflow: hidden !important;
+                overflow: visible !important;
                 background: white !important;
                 position: relative !important;
                 box-shadow: none !important;
-                margin: 0 !important;
+                margin: 0 auto !important;
+                padding-top: 2mm !important; /* 상단 안전 여백 */
             }
             
             .a4-page-print:last-child {
@@ -459,14 +461,14 @@
                                         const custOrders = orders.filter(o => o.customer === customer);
                                         const isLong = custOrders.length > 10;
                                         // 긴 영수증은 Double 모드에서도 전체 페이지 사용
-                                        const itemHeightClass = (isDouble && !isLong) ? 'h-[50%]' : 'h-full';
+                                        const itemHeightClass = (isDouble && !isLong) ? 'h-[138mm]' : 'min-h-[280mm]';
                                         const showBorder = isDouble && cIdx === 0 && (pageCustomers.length > 1 || !isLong);
 
                                         return (
                                         <React.Fragment key={customer}>
                                             <div className={isDouble ? 
                                                 `w-full ${itemHeightClass} px-[10mm] py-[5mm] flex flex-col box-border ${showBorder ? 'border-b-2 border-dashed border-black' : ''}` : 
-                                                "w-full"
+                                                `w-full ${itemHeightClass}`
                                             }>
                                                 <SingleReceipt customerName={customer} />
                                             </div>
