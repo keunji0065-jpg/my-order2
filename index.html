@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.6</title>
+    <title>강은지 주문서 PRO (Lite) - v2.7</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -53,7 +53,8 @@
             body { background-color: white; color: black; }
             body * { visibility: hidden; height: 0; overflow: hidden; }
             .print-area, .print-area * { visibility: visible; height: auto; overflow: visible; }
-            .print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+            /* Added display: block !important to force visibility even if parent has display:none/hidden class */
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; display: block !important; }
             .no-print { display: none !important; }
             .receipt-container { box-shadow: none !important; border: 1px solid #ccc !important; margin: 0 auto; width: 100%; max-width: 100%; page-break-inside: avoid; }
             .page-break { page-break-after: always; }
@@ -333,7 +334,7 @@
                 
                 return (
                     <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
-                        <div className="flex justify-between items-end mb-6"><div><p className="text-xs text-slate-500 mb-1">To.</p><h3 className="text-lg font-bold">{customerName} 님</h3><p className="text-xs text-slate-500 mt-1">{info.phone || ''}</p><p className="text-xs text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p></div><div className="text-right"><p className="text-xs text-slate-500">Date</p><p className="text-sm font-mono">{new Date().toLocaleDateString()}</p></div></div>
+                        <div className="flex justify-between items-end mb-6"><div><h3 className="text-lg font-bold">{customerName} 님</h3><p className="text-xs text-slate-500 mt-1">{info.phone || ''}</p><p className="text-xs text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p></div><div className="text-right"><p className="text-sm font-mono">{new Date().toLocaleDateString()}</p></div></div>
                         <table className="w-full text-sm mb-6"><thead className="border-b border-slate-200"><tr><th className="text-left py-2">상품명</th><th className="text-center py-2 w-12">수량</th><th className="text-right py-2 w-20">금액</th></tr></thead><tbody className="divide-y divide-slate-100">{targetOrders.map(o => (<tr key={o.id}><td className="py-2">{o.product}</td><td className="py-2 text-center">{o.quantity}</td><td className="py-2 text-right font-mono">{parseNum(o.price).toLocaleString()}</td></tr>))}</tbody></table>
                         <div className="border-t-2 border-slate-800 pt-4 space-y-2"><div className="flex justify-between text-sm"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div><div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div><div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div></div>
                         <div className="mt-8 text-center text-xs text-slate-400">감사합니다. 또 이용해주세요!<br/>강은지 주문서 PRO</div>
@@ -346,7 +347,7 @@
                     <div className="w-64 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg shadow-sm flex flex-col overflow-hidden no-print">
                         <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20 flex flex-col gap-2">
                             <div className="flex gap-2 mb-2"><button onClick={()=>setPrintMode('single')} className={`flex-1 py-1 text-xs rounded border ${printMode==='single'?'bg-brand-600 text-white border-brand-600':'bg-white text-slate-600 border-slate-200'}`}>개별 인쇄</button><button onClick={()=>setPrintMode('batch')} className={`flex-1 py-1 text-xs rounded border ${printMode==='batch'?'bg-brand-600 text-white border-brand-600':'bg-white text-slate-600 border-slate-200'}`}>일괄 인쇄</button></div>
-                            <select className="w-full bg-white dark:bg-dark-input border border-slate-200 dark:border-slate-700 rounded text-xs outline-none py-1 px-2" value={selectedSite} onChange={e=>setSelectedSite(e.target.value)}><option value="all">전체 사이트</option>{categoryOrder.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                            
                             <div className="relative"><input className="w-full pl-7 pr-2 py-1.5 bg-white dark:bg-dark-input border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-brand-500" placeholder={printMode==='batch'?"필터링할 고객 검색...":"영수증 발급할 고객 검색..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /><div className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="Search" size={12}/></div></div>
                             <div className="flex gap-2 text-xs font-bold text-slate-500 mt-2"><label className="flex items-center gap-1"><input type="radio" name="layout" checked={printLayout==='single'} onChange={()=>setPrintLayout('single')}/> A4 1장 1개</label><label className="flex items-center gap-1"><input type="radio" name="layout" checked={printLayout==='double'} onChange={()=>setPrintLayout('double')}/> A4 1장 2개</label></div>
                         </div>
