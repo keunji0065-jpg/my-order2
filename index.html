@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.35 (스크립트 로딩 수정)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.37 (인쇄 완벽 수정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -55,30 +55,38 @@
         @media print {
             @page { 
                 size: A4; 
-                margin: 0 !important;
+                margin: 5mm; /* 프린터 여백 최소화 */
             }
             
             html, body {
                 width: 100% !important;
-                height: 100% !important;
+                height: auto !important;
+                min-height: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
                 color: black !important;
-                -webkit-print-color-adjust: exact;
+                overflow: visible !important;
             }
 
-            /* 모든 요소 숨김 */
+            /* React App 컨테이너 높이 제한 해제 (중요: 뒷장 나오게 함) */
+            #root, .App, main, .tab-content, .h-screen, .flex-col {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important; /* flex 레이아웃이 페이지 분할 방해하는 것 방지 */
+            }
+
+            /* 모든 화면 요소 숨김 */
             body * {
                 visibility: hidden;
             }
 
-            /* 인쇄 영역 클래스(.print-section)와 그 자식들만 표시 */
+            /* 인쇄 영역만 표시 */
             .print-section, .print-section * {
                 visibility: visible !important;
             }
 
-            /* 인쇄 영역 위치 강제 고정 */
+            /* 인쇄 영역 위치 */
             .print-section {
                 position: absolute;
                 left: 0;
@@ -96,17 +104,30 @@
             }
 
             .a4-page-print {
-                width: 210mm !important;
-                height: 297mm !important; /* A4 높이 고정 */
+                width: 100% !important;
                 page-break-after: always !important;
-                overflow: hidden !important;
                 background: white !important;
                 position: relative !important;
-                box-shadow: none !important;
                 margin: 0 auto !important;
-                padding: 10mm !important; /* 프린터 여백 확보를 위한 패딩 */
                 display: flex !important;
                 flex-direction: column !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            /* Single Mode: 높이 자동 확장 */
+            .a4-page-print.single-mode {
+                min-height: 280mm !important;
+                height: auto !important;
+                padding: 5mm !important;
+            }
+
+            /* Double Mode: 한 페이지 고정, 넘치면 자름 (레이아웃 유지) */
+            .a4-page-print.double-mode {
+                height: 285mm !important; 
+                overflow: hidden !important;
+                padding: 0 !important;
+                justify-content: space-between; /* 상하 분산 배치 */
             }
             
             .a4-page-print:last-child {
@@ -388,8 +409,8 @@
                 );
             };
 
-            const A4Page = ({ children, className = "" }) => (
-                <div className={`a4-page-print bg-white shadow-lg mx-auto mb-8 box-border flex flex-col w-[210mm] h-[297mm] overflow-hidden ${className}`}>
+            const A4Page = ({ children, mode }) => (
+                <div className={`a4-page-print bg-white shadow-lg mx-auto mb-8 box-border flex flex-col w-[210mm] ${mode === 'double' ? 'double-mode' : 'single-mode'}`}>
                     {children}
                 </div>
             );
@@ -448,27 +469,23 @@
                         {/* 화면 미리보기 & 인쇄 영역 (중복 제거됨) */}
                         <div className="print-section">
                              {pages.length > 0 ? pages.map((pageCustomers, pageIdx) => {
-                                // 2장 모아찍기일 때 padding을 제거하고 내부에서 50% 높이로 분할
+                                // 2장 모아찍기 여부 확인
                                 const isDouble = printLayout === 'double';
-                                const pageClass = isDouble
-                                    ? "justify-start items-start p-0"  // padding 0 for double
-                                    : "justify-center items-center p-[10mm]"; // standard padding for single
                                 
                                 return (
-                                <A4Page key={pageIdx} className={pageClass}>
+                                <A4Page key={pageIdx} mode={isDouble ? 'double' : 'single'}>
                                     {pageCustomers.map((customer, cIdx) => {
                                         const custOrders = orders.filter(o => o.customer === customer);
-                                        const isLong = custOrders.length > 10;
-                                        // 긴 영수증은 Double 모드에서도 전체 페이지 사용 (135mm로 축소하여 여백 확보)
-                                        const itemHeightClass = (isDouble && !isLong) ? 'h-[135mm]' : 'min-h-[270mm]';
-                                        const showBorder = isDouble && cIdx === 0 && (pageCustomers.length > 1 || !isLong);
+                                        // const isLong = custOrders.length > 10;
+                                        
+                                        // Double 모드일 때만 높이 49% 강제 (여유 공간 확보), Single 모드는 자동 확장
+                                        const itemStyle = isDouble 
+                                            ? { height: '49%', borderBottom: cIdx === 0 ? '1px dashed #ccc' : 'none', padding: '5mm', overflow: 'hidden' }
+                                            : { height: 'auto', flex: 1, padding: '0' }; // Single 모드는 flex로 자연스럽게 채움
 
                                         return (
                                         <React.Fragment key={customer}>
-                                            <div className={isDouble ? 
-                                                `w-full ${itemHeightClass} px-[10mm] py-[5mm] flex flex-col box-border ${showBorder ? 'border-b-2 border-dashed border-black mb-8' : ''}` : 
-                                                `w-full ${itemHeightClass}`
-                                            }>
+                                            <div style={itemStyle} className="w-full flex flex-col box-border">
                                                 <SingleReceipt customerName={customer} />
                                             </div>
                                         </React.Fragment>
@@ -1052,7 +1069,7 @@
             }, []);
 
             return (
-                <div className="flex flex-col h-screen overflow-hidden text-slate-700 dark:text-gray-300">
+                <div className="flex flex-col h-screen overflow-hidden text-slate-700 dark:text-gray-300 print:h-auto print:overflow-visible">
                     <header className="h-10 bg-white dark:bg-dark-card border-b border-slate-200 dark:border-dark-border flex items-center justify-between px-3 shrink-0 shadow-sm z-50">
                         <div className="flex items-center gap-2"><div className="bg-brand-700 text-white p-0.5 rounded"><Icon name="Lightning" size={14} weight="fill"/></div><span className="font-bold text-xs tracking-tight text-slate-800 dark:text-white">주문관리 PRO (Lite)</span></div>
                         <div className="flex items-center gap-2">
