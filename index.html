@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.7</title>
+    <title>강은지 주문서 PRO (Lite) - v2.8 (수정완료)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -48,17 +48,66 @@
         .grid-rows-compact { grid-template-columns: 75px 100px 70px 1.8fr 50px 80px 30px 1fr 30px; }
         
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
+        
+        /* 인쇄 스타일 수정됨 */
         @media print {
             @page { margin: 0; size: auto; }
-            body { background-color: white; color: black; }
-            body * { visibility: hidden; height: 0; overflow: hidden; }
-            .print-area, .print-area * { visibility: visible; height: auto; overflow: visible; }
-            /* Added display: block !important to force visibility even if parent has display:none/hidden class */
-            .print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; display: block !important; }
+            html, body { 
+                background-color: white; 
+                color: black; 
+                height: auto !important; 
+                overflow: visible !important; 
+            }
+            /* 모든 요소 숨김 처리 */
+            body * { 
+                visibility: hidden; 
+            }
+            
+            /* 루트 및 메인 컨테이너 리셋 */
+            html, body, #root, main, .tab-content {
+                visibility: hidden; 
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            /* 인쇄 영역만 보이게 설정 */
+            .print-area, .print-area * { 
+                visibility: visible; 
+            }
+            
+            .print-area { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%; 
+                margin: 0; 
+                padding: 0; 
+                display: block !important; 
+                background-color: white;
+                height: auto !important;
+                z-index: 9999;
+            }
+            
+            /* 인쇄 영역 내부 요소들도 확실하게 보이도록 */
+            .print-area * {
+                visibility: visible !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            
             .no-print { display: none !important; }
-            .receipt-container { box-shadow: none !important; border: 1px solid #ccc !important; margin: 0 auto; width: 100%; max-width: 100%; page-break-inside: avoid; }
+            
+            .receipt-container { 
+                box-shadow: none !important; 
+                border: 1px solid #ccc !important; 
+                margin: 0 auto; 
+                width: 100%; 
+                max-width: 100%; 
+                page-break-inside: avoid; 
+            }
             .page-break { page-break-after: always; }
         }
+
         .tab-content { animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
         [contenteditable="true"]:focus { outline: 2px dashed #627d98; background-color: rgba(98, 125, 152, 0.05); border-radius: 4px; padding: 2px; }
@@ -78,6 +127,7 @@
         const parseNum = (val) => {
             if (typeof val === 'number') return val;
             if (!val) return 0;
+            // 문자열일 경우 콤마 제거 후 파싱
             const firstLine = String(val).split('\n')[0].replace(/,/g, '');
             const num = parseFloat(firstLine);
             return isNaN(num) ? 0 : num;
@@ -86,8 +136,9 @@
         const sanitizeOrder = (order) => {
             if (!order || typeof order !== 'object') return null;
             
-            const rawPrice = order.price !== undefined ? order.price : 0;
-            const rawQty = order.quantity !== undefined ? order.quantity : 1;
+            // 여기서 가격과 수량을 숫자로 강제 변환하여 저장
+            const rawPrice = parseNum(order.price !== undefined ? order.price : 0);
+            const rawQty = parseNum(order.quantity !== undefined ? order.quantity : 1);
 
             const sanitized = {
                 id: order.id || Date.now() + Math.random(),
@@ -326,9 +377,15 @@
 
             const SingleReceipt = ({ customerName }) => {
                 const targetOrders = orders.filter(o => o.customer === customerName);
-                const productTotal = targetOrders.reduce((sum, o) => sum + o.price, 0);
+                
+                // [수정] 가격을 안전하게 숫자로 변환하여 합산 (문자열 이어붙기 방지)
+                const productTotal = targetOrders.reduce((sum, o) => sum + parseNum(o.price), 0);
+                
                 const mainOrder = targetOrders.reduce((oldest, current) => (current.id < oldest.id ? current : oldest), targetOrders[0]);
-                const shipFee = (mainOrder && mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? mainOrder.customShippingFee : Number(quickShipping);
+                
+                // [수정] 배송비도 안전하게 숫자로 변환
+                const shipFee = (mainOrder && mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? Number(mainOrder.customShippingFee) : Number(quickShipping);
+                
                 const grandTotal = productTotal + shipFee;
                 const info = customerDB[customerName] || {};
                 
