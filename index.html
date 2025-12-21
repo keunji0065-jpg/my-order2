@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.10 (인쇄오류 해결)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.11 (인쇄 최적화)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -52,12 +52,12 @@
         .print-only { display: none; }
 
         @media print {
-            @page { margin: 10mm; size: auto; }
+            @page { margin: 5mm; size: auto; } /* 여백 최소화 */
             
             /* 모든 요소 초기화 및 강제 표시 설정 */
             html, body {
                 width: 100%;
-                height: auto !important;
+                height: 100%; /* 전체 높이 사용 */
                 margin: 0 !important;
                 padding: 0 !important;
                 overflow: visible !important;
@@ -73,7 +73,7 @@
                 display: block !important;
             }
 
-            /* 화면에 보이는 모든 요소 숨김 (공간은 차지하지 않도록 처리하고 싶으나 React 구조상 visibility로 제어) */
+            /* 화면에 보이는 모든 요소 숨김 */
             body * {
                 visibility: hidden;
             }
@@ -81,7 +81,16 @@
             /* 인쇄 영역만 보이게 하고 절대 위치로 상단 고정 */
             .print-only, .print-only * {
                 visibility: visible !important;
-                display: block !important;
+                display: block !important; /* flex가 필요하면 내부에서 다시 지정 */
+            }
+            
+            /* Flex 복구 */
+            .print-flex {
+                display: flex !important;
+            }
+            .print-flex-col {
+                display: flex !important;
+                flex-direction: column !important;
             }
 
             .print-only {
@@ -89,6 +98,7 @@
                 top: 0;
                 left: 0;
                 width: 100%;
+                height: 100%;
                 background: white;
                 z-index: 9999;
             }
@@ -97,8 +107,10 @@
 
             .receipt-container { 
                 box-shadow: none !important; 
-                border: 1px solid #000 !important; /* 테두리 더 진하게 */
+                border: none !important; /* 박스 테두리 제거 */
+                background: transparent !important;
                 margin: 0 auto; 
+                padding: 0 !important; /* 패딩 제거 */
                 width: 100% !important; 
                 max-width: 100% !important; 
                 page-break-inside: avoid;
@@ -388,11 +400,11 @@
                 const info = customerDB[customerName] || {};
                 
                 return (
-                    <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
-                        <div className="flex justify-between items-end mb-6"><div><h3 className="text-lg font-bold">{customerName} 님</h3><p className="text-xs text-slate-500 mt-1">{info.phone || ''}</p><p className="text-xs text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p></div><div className="text-right"><p className="text-sm font-mono">{new Date().toLocaleDateString()}</p></div></div>
-                        <table className="w-full text-sm mb-6"><thead className="border-b border-slate-200"><tr><th className="text-left py-2">상품명</th><th className="text-center py-2 w-12">수량</th><th className="text-right py-2 w-20">금액</th></tr></thead><tbody className="divide-y divide-slate-100">{targetOrders.map(o => (<tr key={o.id}><td className="py-2">{o.product}</td><td className="py-2 text-center">{o.quantity}</td><td className="py-2 text-right font-mono">{parseNum(o.price).toLocaleString()}</td></tr>))}</tbody></table>
-                        <div className="border-t-2 border-slate-800 pt-4 space-y-2"><div className="flex justify-between text-sm"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div><div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div><div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div></div>
-                        <div className="mt-8 text-center text-xs text-slate-400">감사합니다. 또 이용해주세요!<br/>강은지 주문서 PRO</div>
+                    <div className={`bg-white p-8 rounded-lg w-[400px] receipt-container text-slate-800 page-break mb-8 print:w-full print:p-2 print:mb-0 print:border-none print:shadow-none print:rounded-none`} contentEditable={isEditMode} suppressContentEditableWarning={true}>
+                        <div className="flex justify-between items-end mb-6 print:mb-2"><div><h3 className="text-lg font-bold">{customerName} 님</h3><p className="text-xs text-slate-500 mt-1">{info.phone || ''}</p><p className="text-xs text-slate-500">{info.addressText || ''} {info.addressDetail || ''}</p></div><div className="text-right"><p className="text-sm font-mono">{new Date().toLocaleDateString()}</p></div></div>
+                        <table className="w-full text-sm mb-6 print:mb-2 text-xs print:text-xs"><thead className="border-b border-slate-200"><tr><th className="text-left py-2">상품명</th><th className="text-center py-2 w-12">수량</th><th className="text-right py-2 w-20">금액</th></tr></thead><tbody className="divide-y divide-slate-100">{targetOrders.map(o => (<tr key={o.id}><td className="py-2">{o.product}</td><td className="py-2 text-center">{o.quantity}</td><td className="py-2 text-right font-mono">{parseNum(o.price).toLocaleString()}</td></tr>))}</tbody></table>
+                        <div className="border-t-2 border-slate-800 pt-4 space-y-2 print:border-t print:border-black print:pt-2 print:space-y-1"><div className="flex justify-between text-sm"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div><div className="flex justify-between text-sm"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div><div className="flex justify-between text-xl font-black mt-4 pt-2 border-t border-slate-200"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div></div>
+                        <div className="mt-8 text-center text-xs text-slate-400 print:mt-4 print:text-black">감사합니다. 또 이용해주세요!<br/>강은지 주문서 PRO</div>
                     </div>
                 );
             };
@@ -419,14 +431,17 @@
                                     {(printMode === 'single' ? [selectedCustomer] : batchCustomers).map((c, i) => (
                                         <div key={i}>
                                             {printLayout === 'single' ? (
-                                                <div className="flex justify-center items-center h-[100vh] page-break">
+                                                <div className="flex justify-center items-center h-[100vh] page-break print-flex">
                                                     <SingleReceipt customerName={c} />
                                                 </div>
                                             ) : (
-                                                <div className="flex flex-col justify-between h-[100vh] py-10 page-break">
-                                                    <div className="flex justify-center"><SingleReceipt customerName={c} /></div>
-                                                    <div className="border-b border-dashed border-slate-400 w-full my-4"></div>
-                                                    <div className="flex justify-center"><SingleReceipt customerName={c} /></div>
+                                                <div className="flex flex-col h-[100vh] page-break print-flex-col">
+                                                    <div className="flex-1 flex flex-col justify-center border-b border-dashed border-black py-4 box-border print-flex-col">
+                                                        <SingleReceipt customerName={c} />
+                                                    </div>
+                                                    <div className="flex-1 flex flex-col justify-center py-4 box-border print-flex-col">
+                                                        <SingleReceipt customerName={c} />
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -748,9 +763,7 @@
                 if (!text) return null;
                 const cleanText = text.trim();
                 
-                // ... (일괄입력 로직 생략) ...
                 if (converterTab === 'batch') {
-                    // ... existing batch logic ...
                     if (!cleanText.startsWith('@')) return null;
                     let customer = cleanText.substring(1).trim(); 
                     if (!customer) return null;
