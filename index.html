@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.8 (수정완료)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.10 (인쇄오류 해결)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -49,62 +49,62 @@
         
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
         
-        /* 인쇄 스타일 수정됨 */
+        .print-only { display: none; }
+
         @media print {
-            @page { margin: 0; size: auto; }
-            html, body { 
-                background-color: white; 
-                color: black; 
-                height: auto !important; 
-                overflow: visible !important; 
-            }
-            /* 모든 요소 숨김 처리 */
-            body * { 
-                visibility: hidden; 
-            }
+            @page { margin: 10mm; size: auto; }
             
-            /* 루트 및 메인 컨테이너 리셋 */
-            html, body, #root, main, .tab-content {
-                visibility: hidden; 
+            /* 모든 요소 초기화 및 강제 표시 설정 */
+            html, body {
+                width: 100%;
                 height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
                 overflow: visible !important;
+                background: white !important;
+                color: black !important;
             }
 
-            /* 인쇄 영역만 보이게 설정 */
-            .print-area, .print-area * { 
-                visibility: visible; 
-            }
-            
-            .print-area { 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 100%; 
-                margin: 0; 
-                padding: 0; 
-                display: block !important; 
-                background-color: white;
-                height: auto !important;
-                z-index: 9999;
-            }
-            
-            /* 인쇄 영역 내부 요소들도 확실하게 보이도록 */
-            .print-area * {
-                visibility: visible !important;
+            /* 상위 컨테이너들의 레이아웃 제한 해제 */
+            #root, main, .tab-content, div {
                 height: auto !important;
                 overflow: visible !important;
+                position: static !important;
+                display: block !important;
             }
-            
+
+            /* 화면에 보이는 모든 요소 숨김 (공간은 차지하지 않도록 처리하고 싶으나 React 구조상 visibility로 제어) */
+            body * {
+                visibility: hidden;
+            }
+
+            /* 인쇄 영역만 보이게 하고 절대 위치로 상단 고정 */
+            .print-only, .print-only * {
+                visibility: visible !important;
+                display: block !important;
+            }
+
+            .print-only {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                background: white;
+                z-index: 9999;
+            }
+
             .no-print { display: none !important; }
-            
+
             .receipt-container { 
                 box-shadow: none !important; 
-                border: 1px solid #ccc !important; 
+                border: 1px solid #000 !important; /* 테두리 더 진하게 */
                 margin: 0 auto; 
-                width: 100%; 
-                max-width: 100%; 
-                page-break-inside: avoid; 
+                width: 100% !important; 
+                max-width: 100% !important; 
+                page-break-inside: avoid;
+                color: black !important;
             }
+            
             .page-break { page-break-after: always; }
         }
 
@@ -127,7 +127,6 @@
         const parseNum = (val) => {
             if (typeof val === 'number') return val;
             if (!val) return 0;
-            // 문자열일 경우 콤마 제거 후 파싱
             const firstLine = String(val).split('\n')[0].replace(/,/g, '');
             const num = parseFloat(firstLine);
             return isNaN(num) ? 0 : num;
@@ -136,7 +135,6 @@
         const sanitizeOrder = (order) => {
             if (!order || typeof order !== 'object') return null;
             
-            // 여기서 가격과 수량을 숫자로 강제 변환하여 저장
             const rawPrice = parseNum(order.price !== undefined ? order.price : 0);
             const rawQty = parseNum(order.quantity !== undefined ? order.quantity : 1);
 
@@ -416,7 +414,24 @@
                                 <div className="no-print flex gap-2 mb-4"><button onClick={()=>setIsEditMode(!isEditMode)} className={`px-4 py-2 rounded-md font-bold text-xs flex items-center gap-2 ${isEditMode ? 'bg-amber-500 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}><Icon name={isEditMode?"CheckCircle":"Pencil"}/> {isEditMode ? '수정 완료' : '내용 수정하기'}</button><button onClick={()=>window.print()} className="bg-slate-800 text-white px-4 py-2 rounded-md font-bold hover:bg-slate-700 flex items-center gap-2 text-xs"><Icon name="Printer"/> 인쇄하기</button></div>
                                 <div className="no-print shadow-lg rounded-lg overflow-hidden border border-slate-200 bg-white"><SingleReceipt customerName={printMode === 'single' ? selectedCustomer : batchCustomers[0]} /></div>
                                 {printMode === 'batch' && <div className="no-print text-xs text-slate-400 mt-2">...외 {batchCustomers.length - 1}명의 영수증이 인쇄됩니다.</div>}
-                                <div className="print-area hidden">{(printMode === 'single' ? [selectedCustomer] : batchCustomers).map((c, i) => (<div key={i}>{printLayout === 'single' ? (<div className="flex justify-center items-center h-[100vh] page-break"><SingleReceipt customerName={c} /></div>) : (<div className="flex flex-col justify-between h-[100vh] py-10 page-break"><div className="flex justify-center"><SingleReceipt customerName={c} /></div><div className="border-b border-dashed border-slate-400 w-full my-4"></div><div className="flex justify-center"><SingleReceipt customerName={c} /></div></div>)}</div>))}</div>
+                                
+                                <div className="print-only">
+                                    {(printMode === 'single' ? [selectedCustomer] : batchCustomers).map((c, i) => (
+                                        <div key={i}>
+                                            {printLayout === 'single' ? (
+                                                <div className="flex justify-center items-center h-[100vh] page-break">
+                                                    <SingleReceipt customerName={c} />
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col justify-between h-[100vh] py-10 page-break">
+                                                    <div className="flex justify-center"><SingleReceipt customerName={c} /></div>
+                                                    <div className="border-b border-dashed border-slate-400 w-full my-4"></div>
+                                                    <div className="flex justify-center"><SingleReceipt customerName={c} /></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ) : (<div className="text-center text-slate-400"><Icon name="Receipt" size={64} className="mb-4 opacity-20 inline-block"/><p>대상이 선택되지 않았습니다.</p></div>)}
                     </div>
@@ -539,10 +554,36 @@
                     if (o.id !== id) return o; 
                     let updates = { [field]: value };
                     const numValue = parseNum(value);
-                    if (field === 'quantity') { const unitPrice = productHistory[o.product] || 0; if (unitPrice > 0) updates.price = numValue * unitPrice; }
-                    if (field === 'product') { const unitPrice = productHistory[value] || 0; updates.price = parseNum(o.quantity) * unitPrice; }
-                    if (field === 'price' && o.product) { const qty = parseNum(o.quantity); if (qty > 0) { setProductHistory(h => ({...h, [o.product]: numValue/qty})); } }
-                    if (field === 'codeInput') { setProductNumbers(prev => ({...prev, [o.product]: value})); return o; }
+                    
+                    // [수정] 수량 변경 시 가격 업데이트 (공백 제거 후 조회)
+                    if (field === 'quantity') { 
+                        const pName = o.product ? o.product.trim() : '';
+                        const unitPrice = productHistory[o.product] || productHistory[pName] || 0; 
+                        if (unitPrice > 0) updates.price = numValue * unitPrice; 
+                    }
+                    
+                    // [수정] 상품명 변경 시 가격 업데이트 (공백 제거 후 조회)
+                    if (field === 'product') { 
+                        const pName = value.trim();
+                        // 입력된 값 그대로, 혹은 공백 제거된 값으로 가격 찾기
+                        const unitPrice = productHistory[value] || productHistory[pName] || 0; 
+                        updates.price = parseNum(o.quantity) * unitPrice; 
+                    }
+                    
+                    // [수정] 가격 직접 입력 시 히스토리 저장 (키 값 공백 제거하여 저장)
+                    if (field === 'price' && o.product) { 
+                        const qty = parseNum(o.quantity); 
+                        if (qty > 0) { 
+                            setProductHistory(h => ({...h, [o.product.trim()]: numValue/qty})); 
+                        } 
+                    }
+                    
+                    // [수정] 코드 입력 시 저장 (공백 제거)
+                    if (field === 'codeInput') { 
+                        setProductNumbers(prev => ({...prev, [o.product.trim()]: value})); 
+                        return o; 
+                    }
+                    
                     return sanitizeOrder({ ...o, ...updates }); 
                 })); 
             };
@@ -707,18 +748,21 @@
                 if (!text) return null;
                 const cleanText = text.trim();
                 
+                // ... (일괄입력 로직 생략) ...
                 if (converterTab === 'batch') {
+                    // ... existing batch logic ...
                     if (!cleanText.startsWith('@')) return null;
                     let customer = cleanText.substring(1).trim(); 
                     if (!customer) return null;
                     const product = batchProduct || '기본 상품'; 
-                    const unitPrice = Number(batchPrice) || productHistory[product] || 0;
+                    // 배치 모드에서도 트림된 키로 가격 조회
+                    const unitPrice = Number(batchPrice) || productHistory[product] || productHistory[product.trim()] || 0;
                     const quantity = 1; 
                     const price = quantity * unitPrice;
                     const crmData = customerDB[customer];
                     if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
                     if (batchCode) { setProductNumbers(prev => ({...prev, [product]: batchCode})); }
-                    if (unitPrice > 0) { setProductHistory(prev => ({...prev, [product]: unitPrice})); }
+                    if (unitPrice > 0) { setProductHistory(prev => ({...prev, [product.trim()]: unitPrice})); }
                     return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
                 }
 
@@ -727,7 +771,6 @@
                 let customer = parts[0];
                 let code = '';
 
-                // NEW: Parse code attached to nickname (e.g. Nickname#Code or Nickname/Code)
                 if (customer.includes('#')) {
                     const split = customer.split('#');
                     customer = split[0];
@@ -744,7 +787,6 @@
                 let quantity = 1;
                 let productStartIndex = 1;
 
-                // Support "Nickname #Code Product" (space separated)
                 if (!code && parts.length > 1 && parts[1].startsWith('#')) {
                     code = parts[1].substring(1);
                     productStartIndex = 2;
@@ -753,7 +795,6 @@
                 const productRaw = parts.slice(productStartIndex).join(' ');
 
                 if (productRaw) {
-                    // Explicit product provided
                     const qtyMatch = productRaw.match(/(\d+)\s*(?:개|set|ea|box)?$/i);
                     if (qtyMatch) { 
                         quantity = parseInt(qtyMatch[1], 10); 
@@ -762,33 +803,28 @@
                         product = productRaw.trim(); 
                     }
                 } else {
-                    // No product text provided -> Try lookup by code
                     if (code) {
-                        // Find product name where value matches code
-                        // stored codes might be strings, input code is string. 
-                        // productNumbers format: { "Apple": "1", "Banana": "2" }
                         const foundName = Object.keys(productNumbers).find(key => productNumbers[key] == code);
                         if (foundName) {
                             product = foundName;
                         }
                     }
-                    
                     if (!product) {
                         product = quickName || '기본 상품'; 
                     }
                 }
                 
-                // Price Auto-fill from History
-                const unitPrice = productHistory[product] || 0;
+                // [수정] Price Auto-fill from History (공백 제거 후 조회)
+                const pName = product.trim();
+                const unitPrice = productHistory[product] || productHistory[pName] || 0;
                 const price = quantity * unitPrice;
                 
                 const crmData = customerDB[customer];
                 
-                // Update Categories and Codes if present
                 if (product && !productCategories[product]) { setProductCategories(prev => ({ ...prev, [product]: currentSite })); }
                 
-                // NEW: Update Code in ProductNumbers if code is present
-                if (code) { setProductNumbers(prev => ({...prev, [product]: code})); }
+                // [수정] 코드 저장 시에도 상품명 공백 제거
+                if (code) { setProductNumbers(prev => ({...prev, [pName]: code})); }
                 
                 return sanitizeOrder({ id: Date.now() + Math.random(), originalText: text, customer, product, quantity, price, recipientName: crmData?.recipientName || '', phone: crmData?.phone || '', zipCode: crmData?.zipCode || '', addressText: crmData?.addressText || '', shippingMemo: crmData?.shippingMemo || '', isCRM: !!crmData });
             };
