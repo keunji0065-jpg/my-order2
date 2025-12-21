@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.20 (글씨확대/여백조정)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.30 (코드/인쇄수정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -315,7 +315,7 @@
             );
         };
 
-        const StatementTab = ({ orders, quickShipping, customerDB, categoryOrder }) => {
+        const StatementTab = ({ orders, quickShipping, customerDB, categoryOrder, productNumbers }) => {
             const [selectedCustomer, setSelectedCustomer] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
             const [selectedSite, setSelectedSite] = useState('all');
@@ -348,7 +348,7 @@
                             </div>
                         </div>
                         
-                        <div className="flex-1 overflow-hidden">
+                        <div className="overflow-hidden">
                             <table className="w-full mb-1 text-[13px] print:text-[13px] table-fixed">
                                 <colgroup>
                                     <col className="w-[55%]" />
@@ -363,18 +363,20 @@
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-300">
-                                    {targetOrders.map(o => (
+                                    {targetOrders.map(o => {
+                                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : '';
+                                        return (
                                         <tr key={o.id} className="align-top">
-                                            <td className="py-1 break-keep pr-1 font-bold">{o.product}</td>
+                                            <td className="py-1 break-keep pr-1 font-bold">{code}{o.product}</td>
                                             <td className="py-1 text-center whitespace-nowrap">{o.quantity}</td>
                                             <td className="py-1 text-right font-mono whitespace-nowrap font-bold">{parseNum(o.price).toLocaleString()}</td>
                                         </tr>
-                                    ))}
+                                    )})}
                                 </tbody>
                             </table>
                         </div>
                         
-                        <div className="mt-auto pt-1 border-t-2 border-black space-y-1 shrink-0 pb-6">
+                        <div className="pt-1 border-t-2 border-black space-y-1 shrink-0 pb-6 mt-2">
                             <div className="flex justify-between text-[13px] print:text-[13px]"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div>
                             <div className="flex justify-between text-[13px] print:text-[13px]"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div>
                             <div className="flex justify-between text-lg font-black mt-1 pt-1 border-t border-slate-400"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div>
@@ -671,7 +673,8 @@
                     const excelHeaders = ['', '', '', '', '상품명', '수령인', '연락처', '주소', '배송메모', '', '메모', '우편번호', '']; 
                     const csv = [excelHeaders.join(',')].concat(list.map(o => { 
                         let quantitySuffix = ''; const qtyNum = parseNum(o.quantity); if (qtyNum >= 2) { quantitySuffix = ` ★${qtyNum}`; } 
-                        const productName = `[${o.customer || '미지정'}] ${o.product}${quantitySuffix}`; 
+                        const code = productNumbers[o.product] ? `[${o.customer}] ${productNumbers[o.product]} - ` : `[${o.customer || '미지정'}] `;
+                        const productName = `${code}${o.product}${quantitySuffix}`; 
                         return ['', '', '', '', clean(productName), clean(o.recipientName), cleanPhone(o.phone), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), '', clean(o.memo), cleanPhone(o.zipCode), ''].join(','); 
                     })).join('\n'); return "\ufeff" + csv; 
                 } else { 
@@ -679,12 +682,21 @@
                     const csv = [headers.join(',')].concat(list.map(o => { 
                         const isFirst = firstIds[o.customer] === o.id; const ship = o.customShippingFee ?? quickShipping; const shipCharge = isFirst ? ship : 0; const priceNum = parseNum(o.price);
                         const unpaid = Math.max(0, (priceNum + shipCharge) - (o.deposit + o.cardAmount + (isFirst && o.isShippingPaid ? ship : 0))); 
-                        return [clean(o.customer), clean(o.phone), clean(o.product), o.quantity, priceNum, clean(o.deposit), clean(o.cardAmount), clean(shipCharge), clean(unpaid), clean(o.recipientName), cleanPhone(o.phone), cleanPhone(o.zipCode), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), clean(o.memo)].join(','); 
+                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : '';
+                        return [clean(o.customer), clean(o.phone), clean(code + o.product), o.quantity, priceNum, clean(o.deposit), clean(o.cardAmount), clean(shipCharge), clean(unpaid), clean(o.recipientName), cleanPhone(o.phone), cleanPhone(o.zipCode), clean((o.addressText||'') + ' ' + (o.addressDetail||'')), clean(o.shippingMemo), clean(o.memo)].join(','); 
                     })).join('\n'); return "\ufeff" + csv; 
                 } 
             };
             const handleDownloadCSV = (mode) => { const csvString = getCSVString(orders, mode); const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; const timestamp = new Date().toISOString().slice(0, 10); link.setAttribute('download', `${mode === 'invoice' ? '송장용_' : '전체주문_'}${timestamp}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
-            const handleDownloadProductCSV = () => { const summary = {}; orders.forEach(o => { const key = o.product || '미지정'; summary[key] = (summary[key] || 0) + parseNum(o.quantity); }); const csvContent = "\ufeff상품명,수량\n" + Object.entries(summary).map(e => e.join(',')).join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.setAttribute('download', `발주리스트_${new Date().toISOString().slice(0, 10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+            const handleDownloadProductCSV = () => { 
+                const summary = {}; 
+                orders.forEach(o => { 
+                    const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : '';
+                    const key = (code + o.product) || '미지정'; 
+                    summary[key] = (summary[key] || 0) + parseNum(o.quantity); 
+                }); 
+                const csvContent = "\ufeff상품명,수량\n" + Object.entries(summary).map(e => e.join(',')).join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.setAttribute('download', `발주리스트_${new Date().toISOString().slice(0, 10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); 
+            };
             
             const handleSetGoogleUrl = () => { 
                 setPromptModal({
@@ -1150,7 +1162,7 @@
                             </>
                         )}
                         {activeTab === 'customer' && <CustomerTab customerDB={customerDB} setCustomerDB={setCustomerDB} orders={orders} showToast={showToast} />}
-                        {activeTab === 'statement' && <StatementTab orders={orders} quickShipping={quickShipping} customerDB={customerDB} categoryOrder={categoryOrder} />}
+                        {activeTab === 'statement' && <StatementTab orders={orders} quickShipping={quickShipping} customerDB={customerDB} categoryOrder={categoryOrder} productNumbers={productNumbers} />}
                     </main>
                     
                     {toast && <div className="fixed top-6 right-6 px-4 py-2.5 bg-slate-800 text-white rounded-md shadow-lg flex items-center gap-2 animate-fade-in z-[100]"><Icon name="CheckCircle" size={14} weight="fill"/><span className="text-xs">{toast.message}</span></div>}
