@@ -1,7 +1,9 @@
-<html lang="ko" class="antialiased"><head>
+<!DOCTYPE html>
+<html lang="ko" class="antialiased">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.40 (인쇄 여백/분할 완벽 수정)</title>
+    <title>깔로픽 주문서 PRO </title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -23,15 +25,11 @@
                     colors: {
                         brand: { 50: '#f0f4f8', 100: '#d9e2ec', 200: '#bcccdc', 300: '#9fb3c8', 400: '#829ab1', 500: '#627d98', 600: '#486581', 700: '#334e68', 800: '#243b53', 900: '#102a43' },
                         accent: { rose: '#d64545', teal: '#3ebd93', amber: '#f0b429', indigo: '#5c7cfa' },
-                        sky: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1' },
                         dark: { bg: '#121212', card: '#1e1e1e', border: '#2c2c2c', input: '#252525' }
                     },
                     boxShadow: { 'soft': '0 1px 3px 0 rgba(0, 0, 0, 0.05)', 'inner-soft': 'inset 0 1px 2px 0 rgba(0, 0, 0, 0.03)' },
                     fontSize: { 'xxs': '0.65rem' },
-                    animation: { spin: 'spin 1s linear infinite' },
-                    screens: {
-                        'print': {'raw': 'print'},
-                    }
+                    animation: { spin: 'spin 1s linear infinite' }
                 }
             }
         }
@@ -49,82 +47,55 @@
         *:focus { outline: none !important; }
         
         .grid-rows-compact { grid-template-columns: 75px 100px 70px 1.8fr 50px 80px 30px 1fr 30px; }
-        .dragging { opacity: 0.5; border: 2px dashed #627d98; }
-        
-        /* --- 인쇄 전용 스타일 (수정됨) --- */
-        @media print {
-            @page { 
-                size: A4; 
-                margin: 0; /* 브라우저 기본 여백 제거 */
-            }
-            
-            html, body {
-                width: 100%;
-                height: 100%;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white;
-            }
-
-            #root, .App, main, .tab-content, .h-screen, .flex-col {
-                display: block !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            body * { visibility: hidden; }
-            .print-section, .print-section * { visibility: visible !important; }
-            
-            .print-section {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-
-            .no-print { display: none !important; }
-
-            .a4-page-print {
-                width: 210mm;
-                /* height: 297mm;  높이 강제 제거하고 아래 모드별 설정 사용 */
-                page-break-after: always;
-                background: white;
-                margin: 0 auto;
-                position: relative;
-                left: 0;
-                top: 0;
-                box-sizing: border-box;
-            }
-
-            /* 1분할 모드: 높이를 내용에 맞게, 상단 여백 최소화 */
-            .a4-page-print.single-mode {
-                min-height: auto;
-                padding: 5mm 10mm; /* 상하 5mm, 좌우 10mm */
-                display: block;
-            }
-
-            /* 2분할 모드: 전체 높이를 약간 줄여(280mm) 상하 여백 확보 -> 잘림 방지 */
-            .a4-page-print.double-mode {
-                height: 297mm; /* 페이지 전체 사용 */
-                padding: 5mm 0; /* 상하 5mm 안전 여백 */
-                display: flex;
-                flex-direction: column;
-                justify-content: center; /* 수직 중앙 정렬 */
-                align-items: center;
-            }
-            
-            .a4-page-print:last-child {
-                page-break-after: auto;
-            }
-        }
-
         .tab-content { animation: fadeIn 0.2s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
-        [contenteditable="true"]:focus { outline: 2px dashed #627d98; background-color: rgba(98, 125, 152, 0.05); border-radius: 4px; padding: 2px; }
         
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; max-width: 90%; }
         .dark .modal-content { background: #1e1e1e; border: 1px solid #333; color: #fff; }
+
+        /* 인쇄 스타일 */
+        @media print {
+            @page { size: A4; margin: 0; } /* 여백 제거하고 CSS로 제어 */
+            html, body { background: white; height: auto; overflow: visible; font-size: 12px; }
+            .no-print, header, .tab-nav, .sidebar, .print-hidden { display: none !important; }
+            #root, .App, main, .tab-content { height: auto !important; overflow: visible !important; display: block !important; padding: 0 !important; background: white !important; }
+            
+            /* 구매내역서 전용 스타일 */
+            .statement-page {
+                width: 210mm;
+                height: 297mm;
+                padding: 15mm;
+                page-break-after: always;
+                background: white;
+                position: relative;
+                box-sizing: border-box;
+            }
+            .statement-double-container {
+                width: 210mm;
+                height: 296mm; /* 살짝 줄여서 오버플로우 방지 */
+                page-break-after: always;
+                display: flex;
+                flex-direction: column;
+            }
+            .statement-half {
+                flex: 1;
+                padding: 10mm 15mm;
+                border-bottom: 1px dashed #ccc;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+            .statement-half:last-child {
+                border-bottom: none;
+            }
+            
+            /* 다크모드 강제 해제 (인쇄 시) */
+            .dark * { 
+                background-color: white !important; 
+                color: black !important; 
+                border-color: #e5e7eb !important; 
+            }
+        }
     </style>
 </head>
 <body>
@@ -132,7 +103,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-        // --- GLOBAL UTILITIES ---
+        // --- UTILITIES ---
         const parseNum = (val) => {
             if (typeof val === 'number') return val;
             if (!val) return 0;
@@ -143,10 +114,8 @@
 
         const sanitizeOrder = (order) => {
             if (!order || typeof order !== 'object') return null;
-            
             const rawPrice = parseNum(order.price !== undefined ? order.price : 0);
             const rawQty = parseNum(order.quantity !== undefined ? order.quantity : 1);
-
             const sanitized = {
                 id: order.id || Date.now() + Math.random(),
                 customer: order.customer || '',
@@ -173,6 +142,7 @@
             return sanitized;
         };
 
+        // --- COMPONENTS ---
         const Icon = React.memo(({ name, size = 14, className = "", weight = "regular", spin = false }) => {
             const map = {
                 ClipboardList: "ph-clipboard-text", FileDown: "ph-download-simple", Trash2: "ph-trash", Plus: "ph-plus",
@@ -211,6 +181,39 @@
                 <button onClick={onClick} disabled={loading} className={`${base} ${colors[color] || colors.white} ${active ? 'ring-1 ring-brand-500' : ''} ${className} ${loading ? 'opacity-70 cursor-wait' : ''}`}>
                     {loading ? <Icon name="Spinner" size={12} spin={true}/> : <Icon name={icon} size={12} weight="bold"/>} {text}
                 </button>
+            );
+        });
+
+        // --- ORDER ROW COMPONENT (OPTIMIZED) ---
+        const OrderRow = React.memo(({ 
+            order, idx, isFocused, productCode, editingAmountId, editingShippingId, editSource, quickShipping,
+            onFocus, onUpdate, onKeyDown, onAutoDeposit, onAutoCard, onToggleAmount, onToggleShipping, onToggleShippingEdit, onDelete, onSetDeposit, onSetCard
+        }) => {
+            const isFirst = order.isFirst; // Passed from parent logic
+            const isCombinedPayment = order.deposit > 0 && order.cardAmount > 0;
+            const cashButtonClass = order.deposit > 0 ? (isCombinedPayment ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200') : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
+            const cardButtonClass = order.cardAmount > 0 ? (isCombinedPayment ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200' : 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200') : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
+            const shipButtonClass = order.isShippingPaid ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
+
+            return (
+                <div onClick={() => onFocus(order.id)} className={`grid grid-rows-compact gap-2 px-3 py-0.5 items-center text-xs hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer ${isFocused ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                    <div className="grid grid-cols-3 gap-0.5 w-full">
+                        <button onClick={(e) => { e.stopPropagation(); onAutoDeposit(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggleAmount(order.id); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold border transition-all flex items-center justify-center ${cashButtonClass}`} title={`현금 결제 ${order.deposit > 0 ? `(${order.deposit.toLocaleString()}원)` : '(클릭: 전액, 우클릭: 복합/입력)'}`}>현금</button>
+                        {isFirst ? (<button onClick={(e) => { e.stopPropagation(); onToggleShipping(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggleShippingEdit(order.id); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold transition-all border flex items-center justify-center ${shipButtonClass}`} title={order.isShippingPaid ? "배송비 결제 완료" : "배송비 미결제"}>배송</button>) : <div></div>} 
+                        <button onClick={(e) => { e.stopPropagation(); onAutoCard(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onToggleAmount(order.id, 'card'); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold border transition-all flex items-center justify-center ${cardButtonClass}`} title={`카드 결제 ${order.cardAmount > 0 ? `(${order.cardAmount.toLocaleString()}원)` : '(클릭: 전액, 우클릭: 복합/입력)'}`}>카드</button>
+                    </div>
+                    <div className="relative"><input id={`cell-customer-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.customer} onChange={e => onUpdate(order.id, 'customer', e.target.value)} onKeyDown={e => onKeyDown(e, 'customer', idx)} /></div>
+                    <div className="relative"><input id={`cell-code-${idx}`} className="w-full bg-transparent font-mono outline-none text-slate-500" value={productCode || ''} onChange={e => onUpdate(order.id, 'codeInput', e.target.value)} onKeyDown={e => onKeyDown(e, 'code', idx)} /></div>
+                    <div className="relative"><input id={`cell-product-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.product} onChange={e => onUpdate(order.id, 'product', e.target.value)} onKeyDown={e => onKeyDown(e, 'product', idx)} /></div>
+                    <div className="flex justify-center"><input id={`cell-quantity-${idx}`} type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => onUpdate(order.id, 'quantity', e.target.value)} onKeyDown={e => onKeyDown(e, 'quantity', idx)} /></div>
+                    <div className="text-right"><input id={`cell-price-${idx}`} className="w-full text-right bg-transparent font-mono outline-none focus:border-b focus:border-blue-500 cursor-text" value={order.price.toLocaleString()} onChange={e => onUpdate(order.id, 'price', e.target.value)} onKeyDown={e => onKeyDown(e, 'price', idx)} /></div>
+                    <div className="flex justify-center"><div className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-default ${order.isAddressFilled ? 'bg-brand-600 text-white' : 'text-slate-300 bg-slate-100 dark:bg-slate-800'}`}><Icon name="MapPin" size={10}/></div></div>
+                    <div><input id={`cell-memo-${idx}`} className="w-full bg-transparent text-slate-500 outline-none" value={order.memo} onChange={e => onUpdate(order.id, 'memo', e.target.value)} onKeyDown={e => onKeyDown(e, 'memo', idx)} /></div>
+                    <div className="flex justify-end"><button onClick={(e) => { e.stopPropagation(); onDelete(order.id); }} className="text-slate-300 hover:text-rose-500"><Icon name="X" size={10}/></button></div>
+                    
+                    {editingAmountId === order.id && (<div className="col-span-full p-2 bg-slate-50 flex gap-2 justify-start pl-4 items-center border-y border-slate-100" onClick={e=>e.stopPropagation()}><span className="text-[10px] text-slate-500 font-bold">현금:</span><input type="number" placeholder="현금 금액" className="w-20 p-1 border rounded text-xs text-right font-mono outline-none focus:border-brand-500" value={order.deposit} autoFocus={true} onChange={e => onSetDeposit(order.id, e.target.value, editSource)} onBlur={() => onToggleAmount(null)} onKeyDown={(e) => { if (e.key === 'Enter') onToggleAmount(null); }} /><span className="text-[10px] text-slate-500 font-bold ml-4">카드:</span><input type="number" placeholder="카드 금액" className="w-20 p-1 border rounded text-xs text-right font-mono outline-none focus:border-rose-500" value={order.cardAmount} onChange={e => onSetCard(order.id, e.target.value)} onBlur={() => onToggleAmount(null)} onKeyDown={(e) => { if (e.key === 'Enter') onToggleAmount(null); }} /></div>)}
+                    {editingShippingId === order.id && (<div className="col-span-full p-1.5 bg-brand-50 dark:bg-brand-900/20 border-y border-brand-100 dark:border-brand-800 flex gap-2 justify-start pl-4 items-center animate-fade-in shadow-inner" onClick={e=>e.stopPropagation()}><span className="text-[10px] font-bold text-brand-600 dark:text-brand-300">개별 배송비:</span><input type="number" className="w-16 p-0.5 rounded-sm border border-brand-200 text-right font-bold text-xs text-brand-700 outline-none" value={order.customShippingFee ?? quickShipping} onChange={e => onUpdate(order.id, 'customShippingFee', Number(e.target.value))} onBlur={() => onToggleShippingEdit(null)} onKeyDown={(e) => { if (e.key === 'Enter') onToggleShippingEdit(null); }} /><button onClick={() => onUpdate(order.id, 'customShippingFee', null)} className="text-[10px] bg-white text-brand-600 px-2 py-0.5 rounded-sm border border-brand-200 hover:bg-brand-50">기본값</button><button onClick={() => onToggleShippingEdit(null)} className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded-sm hover:bg-brand-700 ml-1">확인</button></div>)}
+                </div>
             );
         });
 
@@ -262,7 +265,7 @@
                 { id: 'statement', label: '구매내역서', icon: 'Receipt' },
             ];
             return (
-                <div className="flex items-end px-2 pt-1 border-b border-slate-200 dark:border-dark-border bg-white dark:bg-dark-card shrink-0 gap-1 overflow-x-auto no-scrollbar">
+                <div className="flex items-end px-2 pt-1 border-b border-slate-200 dark:border-dark-border bg-white dark:bg-dark-card shrink-0 gap-1 overflow-x-auto no-scrollbar tab-nav">
                     {tabs.map(tab => (
                         <button key={tab.id} onClick={() => onTabChange(tab.id)} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-t-lg transition-all border-t border-x relative top-[1px] ${activeTab === tab.id ? 'bg-[#f5f7fa] dark:bg-dark-bg border-slate-200 dark:border-dark-border border-b-[#f5f7fa] dark:border-b-dark-bg text-brand-600 dark:text-brand-400 z-10' : 'bg-slate-50 dark:bg-dark-input border-transparent text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                             <Icon name={tab.icon} size={14} weight={activeTab === tab.id ? 'fill' : 'regular'} /><span>{tab.label}</span>
@@ -322,172 +325,164 @@
             );
         };
 
-        const StatementTab = ({ orders, quickShipping, customerDB, categoryOrder, productNumbers }) => {
-            const [selectedCustomer, setSelectedCustomer] = useState(null);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [selectedSite, setSelectedSite] = useState('all');
-            const [printLayout, setPrintLayout] = useState('single');
-            const [printMode, setPrintMode] = useState('single'); 
+        const StatementTab = ({ orders, customerDB, quickShipping, productNumbers }) => {
+            const [selectedCustomers, setSelectedCustomers] = useState(new Set());
+            const [search, setSearch] = useState('');
+            const [isDoubleLayout, setIsDoubleLayout] = useState(false);
 
-            const customers = useMemo(() => { const unique = [...new Set(orders.map(o => o.customer))]; return unique.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())).sort(); }, [orders, searchTerm]);
-            const batchCustomers = useMemo(() => { if (printMode !== 'batch') return []; const unique = [...new Set(orders.map(o => o.customer))]; return unique.filter(c => c.toLowerCase().includes(searchTerm.toLowerCase())).sort(); }, [orders, searchTerm, printMode, selectedSite]); 
+            const customers = useMemo(() => {
+                const unique = [...new Set(orders.map(o => o.customer).filter(Boolean))].sort();
+                if (!search) return unique;
+                return unique.filter(c => c.toLowerCase().includes(search.toLowerCase()));
+            }, [orders, search]);
 
-            const SingleReceipt = ({ customerName }) => {
-                const targetOrders = orders.filter(o => o.customer === customerName);
-                const productTotal = targetOrders.reduce((sum, o) => sum + parseNum(o.price), 0);
-                const mainOrder = targetOrders.reduce((oldest, current) => (current.id < oldest.id ? current : oldest), targetOrders[0]);
-                const shipFee = (mainOrder && mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? Number(mainOrder.customShippingFee) : Number(quickShipping);
-                const grandTotal = productTotal + shipFee;
-                const info = customerDB[customerName] || {};
-                
+            const toggleCustomer = (c) => {
+                const next = new Set(selectedCustomers);
+                if (next.has(c)) next.delete(c);
+                else next.add(c);
+                setSelectedCustomers(next);
+            };
+
+            const toggleAll = () => {
+                if (selectedCustomers.size === customers.length) setSelectedCustomers(new Set());
+                else setSelectedCustomers(new Set(customers));
+            };
+
+            const printStatements = () => window.print();
+
+            const renderStatement = (customer, isHalf = false) => {
+                const custOrders = orders.filter(o => o.customer === customer);
+                if (!custOrders.length) return null;
+
+                const mainOrder = custOrders.reduce((oldest, current) => (current.id < oldest.id ? current : oldest), custOrders[0]);
+                const shipFee = (mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? mainOrder.customShippingFee : Number(quickShipping);
+
+                let totalProduct = 0; 
+                custOrders.forEach(o => { 
+                    totalProduct += parseNum(o.price); 
+                });
+
+                const totalRequired = totalProduct + shipFee;
+
                 return (
-                    <div className={`bg-white text-black text-[13px] print:text-[13px] font-sans leading-tight flex flex-col w-full h-full pr-4 overflow-hidden`}>
-                        <div className="flex justify-between items-end mb-2 shrink-0">
-                            <div>
-                                <h3 className="text-xl font-extrabold mb-1">{customerName} 님</h3>
-                                <div className="flex flex-col gap-0.5">
-                                    <p className="text-[12px] print:text-[12px] text-slate-600 font-bold">{info.phone || ''}</p>
-                                    <p className="text-[12px] print:text-[12px] text-slate-600">{info.addressText || ''} {info.addressDetail || ''}</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[11px] font-mono text-slate-500 font-bold">{new Date().toLocaleDateString()}</p>
-                            </div>
+                    <div className={`${isHalf ? 'statement-half' : 'statement-page'} flex flex-col font-sans text-slate-800`}>
+                        <div className="flex justify-between items-end border-b-2 border-slate-800 pb-2 mb-4">
+                            <h1 className="text-3xl font-extrabold tracking-tight">{customer} 님</h1>
+                            <span className="text-sm text-slate-500">{new Date().toLocaleDateString()}</span>
                         </div>
                         
-                        <div className="overflow-hidden">
-                            <table className="w-full mb-1 text-[13px] print:text-[13px] table-fixed">
-                                <colgroup>
-                                    <col className="w-[55%]" />
-                                    <col className="w-[15%]" />
-                                    <col className="w-[30%]" />
-                                </colgroup>
-                                <thead className="border-b-2 border-black">
+                        <div className="flex-1 overflow-hidden flex flex-col min-h-0 mt-4">
+                            <table className="w-full text-sm mb-4">
+                                <thead className="bg-slate-100 border-y border-slate-300 text-slate-600">
                                     <tr>
-                                        <th className="text-left py-1.5">상품명</th>
-                                        <th className="text-center py-1.5">수량</th>
-                                        <th className="text-right py-1.5">금액</th>
+                                        <th className="py-2 text-left pl-2">상품명</th>
+                                        <th className="py-2 text-center w-12">수량</th>
+                                        <th className="py-2 text-right pr-2 w-24">금액</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-300">
-                                    {targetOrders.map(o => {
-                                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}]\u00A0\u00A0` : '';
+                                <tbody className="divide-y divide-slate-100">
+                                    {custOrders.map(o => {
+                                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : '';
                                         return (
-                                        <tr key={o.id} className="align-top">
-                                            <td className="py-1 break-keep pr-1 font-bold">{code}{o.product}</td>
-                                            <td className="py-1 text-center whitespace-nowrap">{o.quantity}</td>
-                                            <td className="py-1 text-right font-mono whitespace-nowrap font-bold">{parseNum(o.price).toLocaleString()}</td>
-                                        </tr>
-                                    )})}
+                                            <tr key={o.id}>
+                                                <td className="py-2 pl-2">
+                                                    <div className="font-bold text-slate-700">{code}{o.product}</div>
+                                                    {o.memo && <div className="text-xs text-slate-400">{o.memo}</div>}
+                                                </td>
+                                                <td className="py-2 text-center text-slate-600">{o.quantity}</td>
+                                                <td className="py-2 text-right pr-2 font-mono">{o.price.toLocaleString()}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                    <tr className="border-t border-slate-300 font-bold bg-slate-50">
+                                        <td className="py-2 pl-2 text-slate-500">배송비</td>
+                                        <td className="py-2 text-center text-slate-500">-</td>
+                                        <td className="py-2 text-right pr-2 font-mono">{shipFee.toLocaleString()}</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
-                        
-                        <div className="mt-auto pt-1 border-t-2 border-black space-y-1 shrink-0 pb-2">
-                            <div className="flex justify-between text-[13px] print:text-[13px]"><span>상품 합계</span><span className="font-mono">{productTotal.toLocaleString()}원</span></div>
-                            <div className="flex justify-between text-[13px] print:text-[13px]"><span>배송비</span><span className="font-mono">{shipFee.toLocaleString()}원</span></div>
-                            <div className="flex justify-between text-lg font-black mt-1 pt-1 border-t border-slate-400"><span>Total</span><span>{grandTotal.toLocaleString()}원</span></div>
+
+                        <div className="border-t-2 border-slate-800 pt-4 mt-auto">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="font-bold text-xl text-slate-800">합계금액</span>
+                                <span className="font-extrabold text-2xl font-mono text-slate-800">{totalRequired.toLocaleString()}원</span>
+                            </div>
                         </div>
                     </div>
                 );
             };
 
-            const A4Page = ({ children, mode }) => (
-                <div className={`a4-page-print bg-white shadow-lg mx-auto mb-8 box-border flex flex-col w-[210mm] ${mode === 'double' ? 'double-mode' : 'single-mode'}`}>
-                    {children}
-                </div>
-            );
-
-            const pages = useMemo(() => {
-                const targetList = printMode === 'single' ? (selectedCustomer ? [selectedCustomer] : []) : batchCustomers;
-                const result = [];
-                
-                if (printLayout === 'single') {
-                    targetList.forEach(c => result.push([c]));
-                } else {
-                    let currentChunk = [];
-                    const LINES_THRESHOLD = 10; 
-                    
-                    targetList.forEach(customer => {
-                         const itemCount = orders.filter(o => o.customer === customer).length;
-                         const isLong = itemCount > LINES_THRESHOLD;
-
-                         if (isLong) {
-                             if (currentChunk.length > 0) {
-                                 result.push(currentChunk);
-                                 currentChunk = [];
-                             }
-                             result.push([customer]);
-                         } else {
-                             currentChunk.push(customer);
-                             if (currentChunk.length === 2) {
-                                 result.push(currentChunk);
-                                 currentChunk = [];
-                             }
-                         }
-                    });
-                    if (currentChunk.length > 0) {
-                        result.push(currentChunk);
-                    }
+            const chunkedCustomers = useMemo(() => {
+                const selected = Array.from(selectedCustomers).sort();
+                if (!isDoubleLayout) return selected;
+                const chunks = [];
+                for (let i = 0; i < selected.length; i += 2) {
+                    chunks.push(selected.slice(i, i + 2));
                 }
-                return result;
-            }, [printMode, selectedCustomer, batchCustomers, printLayout, orders]);
+                return chunks;
+            }, [selectedCustomers, isDoubleLayout]);
 
             return (
                 <div className="flex h-full tab-content gap-4 p-4">
                     <div className="w-64 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg shadow-sm flex flex-col overflow-hidden no-print">
                         <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20 flex flex-col gap-2">
-                            <div className="flex gap-2 mb-2"><button onClick={()=>setPrintMode('single')} className={`flex-1 py-1 text-xs rounded border ${printMode==='single'?'bg-brand-600 text-white border-brand-600':'bg-white text-slate-600 border-slate-200'}`}>개별 인쇄</button><button onClick={()=>setPrintMode('batch')} className={`flex-1 py-1 text-xs rounded border ${printMode==='batch'?'bg-brand-600 text-white border-brand-600':'bg-white text-slate-600 border-slate-200'}`}>일괄 인쇄</button></div>
-                            
-                            <div className="relative"><input className="w-full pl-7 pr-2 py-1.5 bg-white dark:bg-dark-input border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-brand-500" placeholder={printMode==='batch'?"필터링할 고객 검색...":"영수증 발급할 고객 검색..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /><div className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="Search" size={12}/></div></div>
-                            <div className="flex gap-2 text-xs font-bold text-slate-500 mt-2"><label className="flex items-center gap-1"><input type="radio" name="layout" checked={printLayout==='single'} onChange={()=>setPrintLayout('single')}/> A4 1장 1개</label><label className="flex items-center gap-1"><input type="radio" name="layout" checked={printLayout==='double'} onChange={()=>setPrintLayout('double')}/> A4 1장 2개</label></div>
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><Icon name="Receipt" size={14}/> 출력 대상 선택</h3>
+                                <button onClick={toggleAll} className="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded hover:bg-slate-300 dark:hover:bg-slate-600">
+                                    {selectedCustomers.size === customers.length ? '전체해제' : '전체선택'}
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <input className="w-full pl-7 pr-2 py-1.5 bg-white dark:bg-dark-input border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-brand-500" placeholder="고객 검색..." value={search} onChange={e => setSearch(e.target.value)} />
+                                <div className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="Search" size={12}/></div>
+                            </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-1 space-y-0.5">{printMode === 'single' ? customers.map(c => (<button key={c} onClick={() => setSelectedCustomer(c)} className={`w-full text-left px-3 py-2 text-xs rounded transition-colors flex items-center justify-between ${selectedCustomer === c ? 'bg-brand-50 text-brand-700 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600'}`}><span className="truncate">{c}</span><Icon name="CaretRight" size={10} className="opacity-50"/></button>)) : <div className="p-3 text-xs text-slate-500 text-center">총 {batchCustomers.length}명의 고객이<br/>인쇄 대기 중입니다.</div>}</div>
+                        <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
+                            {customers.map(c => (
+                                <button key={c} onClick={() => toggleCustomer(c)} className={`w-full text-left px-3 py-2 text-xs rounded transition-colors flex items-center justify-between group ${selectedCustomers.has(c) ? 'bg-brand-50 text-brand-700 font-bold dark:bg-brand-900/30 dark:text-brand-400' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                                    <span className="truncate">{c}</span>
+                                    {selectedCustomers.has(c) && <Icon name="CheckCircle" size={12} weight="fill" className="text-brand-500"/>}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="flex-1 bg-slate-100 dark:bg-dark-bg rounded-lg border border-slate-200 dark:border-dark-border flex flex-col items-center p-8 overflow-y-auto relative">
-                        <div className="no-print flex gap-2 mb-4 sticky top-0 z-10">
-                            <button onClick={()=>window.print()} className="bg-slate-800 text-white px-4 py-2 rounded-md font-bold hover:bg-slate-700 flex items-center gap-2 text-xs"><Icon name="Printer"/> 인쇄하기</button>
+
+                    <div className="flex-1 flex flex-col overflow-hidden bg-slate-100/50 dark:bg-black/20 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+                        <div className="flex justify-between items-center mb-4 no-print">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">미리보기 ({selectedCustomers.size}명)</span>
+                                <div className="h-4 w-px bg-slate-300 mx-2"></div>
+                                <button onClick={() => setIsDoubleLayout(false)} className={`px-3 py-1.5 text-xs rounded border ${!isDoubleLayout ? 'bg-brand-600 text-white border-brand-600' : 'bg-white dark:bg-dark-input text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>1장/1인</button>
+                                <button onClick={() => setIsDoubleLayout(true)} className={`px-3 py-1.5 text-xs rounded border ${isDoubleLayout ? 'bg-brand-600 text-white border-brand-600' : 'bg-white dark:bg-dark-input text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>1장/2인 (분할)</button>
+                            </div>
+                            <button onClick={printStatements} disabled={selectedCustomers.size === 0} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                <Icon name="Printer" size={16} weight="fill"/> 인쇄하기
+                            </button>
                         </div>
 
-                        {/* 화면 미리보기 & 인쇄 영역 (중복 제거됨) */}
-                        <div className="print-section">
-                             {pages.length > 0 ? pages.map((pageCustomers, pageIdx) => {
-                                // 2장 모아찍기 여부 확인
-                                const isDouble = printLayout === 'double';
-                                
-                                return (
-                                <A4Page key={pageIdx} mode={isDouble ? 'double' : 'single'}>
-                                    {pageCustomers.map((customer, cIdx) => {
-                                        const custOrders = orders.filter(o => o.customer === customer);
-                                        // const isLong = custOrders.length > 10;
-                                        
-                                        // Double 모드일 때만 높이 50% 강제 (정확히 절반), Single 모드는 자동 확장
-                                        // box-sizing: border-box 추가하여 패딩과 보더 포함 높이 계산
-                                        const itemStyle = isDouble 
-                                            ? { 
-                                                height: '50%', 
-                                                borderBottom: cIdx === 0 ? '2px dashed black' : 'none', 
-                                                padding: '5mm 10mm', 
-                                                overflow: 'hidden', 
-                                                boxSizing: 'border-box' 
-                                              }
-                                            : { height: 'auto', flex: 1, padding: '0' }; // Single 모드는 flex로 자연스럽게 채움
-
-                                        return (
-                                        <React.Fragment key={customer}>
-                                            <div style={itemStyle} className="w-full flex flex-col box-border">
-                                                <SingleReceipt customerName={customer} />
-                                            </div>
-                                        </React.Fragment>
-                                        );
-                                    })}
-                                </A4Page>
-                             )}) : (
-                                <div className="flex flex-col items-center justify-center text-slate-400 h-[50vh]">
+                        <div className="flex-1 overflow-y-auto bg-slate-200 dark:bg-slate-900 p-8 flex flex-col items-center gap-8 print:p-0 print:block print:bg-white print:overflow-visible">
+                            {selectedCustomers.size === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-slate-400 no-print">
                                     <Icon name="Receipt" size={64} className="mb-4 opacity-20"/>
-                                    <p>대상이 선택되지 않았습니다.</p>
+                                    <p>왼쪽에서 인쇄할 고객을 선택해주세요.</p>
                                 </div>
-                             )}
+                            ) : (
+                                isDoubleLayout ? (
+                                    chunkedCustomers.map((chunk, i) => (
+                                        <div key={i} className="bg-white shadow-lg print:shadow-none print:w-full statement-double-container w-[210mm] min-h-[297mm] mx-auto">
+                                            {renderStatement(chunk[0], true)}
+                                            {chunk[1] && renderStatement(chunk[1], true)}
+                                        </div>
+                                    ))
+                                ) : (
+                                    Array.from(selectedCustomers).sort().map(c => (
+                                        <div key={c} className="bg-white shadow-lg print:shadow-none print:w-full statement-page w-[210mm] min-h-[297mm] mx-auto mb-8 print:mb-0">
+                                            {renderStatement(c, false)}
+                                        </div>
+                                    ))
+                                )
+                            )}
                         </div>
                     </div>
                 </div>
@@ -587,22 +582,8 @@
                 });
             };
 
-            const handleQuickAddOrder = () => {
-                if(quickName.trim()) {
-                      const pName = quickName.trim();
-                      const pPrice = Number(quickPrice);
-                      const pSite = currentSite; 
-                      const pCode = quickCode.trim();
-                      setProductHistory(prev => ({...prev, [pName]: pPrice}));
-                      setProductCategories(prev => ({...prev, [pName]: pSite}));
-                      setProductNumbers(prev => ({...prev, [pName]: pCode}));
-                      setCategoryOrder(prev => prev.includes(pSite) ? prev : [...prev, pSite]);
-                }
-                setOrders(prev => [sanitizeOrder({ id: Date.now(), customer: '', product: quickName || '', quantity: 1, price: Number(quickPrice) || 0, customShippingFee: Number(quickShipping) }), ...prev]);
-                showToast("주문이 추가되었습니다.");
-            };
-
-            const handleUpdateOrder = (id, field, value) => { 
+            // Stable Handlers for OrderRow (Performance Optimization)
+            const handleUpdateOrder = useCallback((id, field, value) => { 
                 setOrders(prev => prev.map(o => { 
                     if (o.id !== id) return o; 
                     let updates = { [field]: value };
@@ -629,50 +610,68 @@
                     }
                     return sanitizeOrder({ ...o, ...updates }); 
                 })); 
-            };
+            }, [productHistory]);
 
-            const handleDelete = (id) => setOrders(prev => prev.filter(o => o.id !== id));
+            const handleDelete = useCallback((id) => setOrders(prev => prev.filter(o => o.id !== id)), []);
             
-            const handleAutoDepositFull = (id) => {
+            const handleAutoDepositFull = useCallback((id) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id !== id) return o;
                     const price = parseNum(o.price);
                     const currentDeposit = o.deposit;
-                    if (window.event && window.event.type === 'contextmenu') { window.event.preventDefault(); handleToggleAmountEdit(id); return o; }
+                    // Note: Context menu logic is handled in the UI trigger
                     const isFullCash = currentDeposit === price && o.cardAmount === 0;
                     const nextDeposit = isFullCash ? 0 : price;
                     return sanitizeOrder({ ...o, deposit: nextDeposit, cardAmount: isFullCash ? o.cardAmount : 0, isPaid: nextDeposit > 0 ? true : false });
                 }));
-            };
+            }, []);
 
-            const handleAutoCardFull = (id) => {
+            const handleAutoCardFull = useCallback((id) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id !== id) return o;
                     const price = parseNum(o.price);
-                    if (window.event && window.event.type === 'contextmenu') { window.event.preventDefault(); handleToggleAmountEdit(id, 'card'); return o; }
                     const isFullCard = o.cardAmount === price && o.deposit === 0;
                     const nextCard = isFullCard ? 0 : price;
                     return sanitizeOrder({ ...o, cardAmount: nextCard, deposit: isFullCard ? o.deposit : 0, isCardPaid: nextCard > 0, isPaid: nextCard > 0 });
                 }));
-            };
+            }, []);
 
-            const handleSetCardAmount = (id, amount) => { 
+            const handleSetCardAmount = useCallback((id, amount) => { 
                 setOrders(prev => prev.map(o => { if (o.id !== id) return o; const newAmount = Number(amount) || 0; const price = parseNum(o.price); return sanitizeOrder({ ...o, cardAmount: newAmount, isCardPaid: newAmount > 0, isPaid: (o.deposit + newAmount) >= price }); }));
-            };
+            }, []);
 
-            const handleSetDepositAmount = (id, amount) => {
-                setOrders(prev => prev.map(o => { if (o.id !== id) return o; const newAmount = Number(amount) || 0; const price = parseNum(o.price); return sanitizeOrder({ ...o, deposit: newAmount, isPaid: (newAmount + o.cardAmount) >= price }); }));
-            };
+            const handleSetDepositAmount = useCallback((id, amount, source) => {
+                setOrders(prev => prev.map(o => { 
+                    if (o.id !== id) return o; 
+                    const newAmount = Number(amount) || 0; 
+                    const price = parseNum(o.price); 
+                    
+                    let updates = { deposit: newAmount };
+                    // If source was card (context menu logic), auto-adjust card amount
+                    if (source === 'card') {
+                        const remainder = Math.max(0, price - newAmount);
+                        updates.cardAmount = remainder;
+                        updates.isCardPaid = remainder > 0;
+                    }
+                    
+                    return sanitizeOrder({ ...o, ...updates, isPaid: (newAmount + (updates.cardAmount ?? o.cardAmount)) >= price }); 
+                }));
+            }, []);
 
-            const handleToggleAmountEdit = (id, source = null) => { setEditingAmountId(id === editingAmountId ? null : id); setEditSource(source); setEditingShippingId(null); };
-            const handleToggleShippingEdit = (id) => { setEditingShippingId(id === editingShippingId ? null : id); setEditingAmountId(null); };
-            const handleShippingToggle = (id) => {
-                const targetOrder = orders.find(o => o.id === id); if (!targetOrder) return; const customer = targetOrder.customer; const newStatus = !targetOrder.isShippingPaid;
-                if (window.event && window.event.type === 'contextmenu') { window.event.preventDefault(); setEditingShippingId(id === editingShippingId ? null : id); return; }
-                setOrders(prev => prev.map(o => { if (o.customer === customer) { return sanitizeOrder({ ...o, isShippingPaid: newStatus }); } return o; }));
-            };
+            const handleToggleAmountEdit = useCallback((id, source = null) => { setEditingAmountId(prev => prev === id ? null : id); setEditSource(source); setEditingShippingId(null); }, []);
+            const handleToggleShippingEdit = useCallback((id) => { setEditingShippingId(prev => prev === id ? null : id); setEditingAmountId(null); }, []);
+            
+            const handleShippingToggle = useCallback((id) => {
+                setOrders(prev => {
+                    const targetOrder = prev.find(o => o.id === id); 
+                    if (!targetOrder) return prev; 
+                    const customer = targetOrder.customer; 
+                    const newStatus = !targetOrder.isShippingPaid;
+                    return prev.map(o => { if (o.customer === customer) { return sanitizeOrder({ ...o, isShippingPaid: newStatus }); } return o; });
+                });
+            }, []);
 
-            const handleGridKeyDown = (e, field, idx) => { if (e.key === 'Enter') { e.preventDefault(); const nextId = `cell-${field}-${idx + 1}`; const nextEl = document.getElementById(nextId); if (nextEl) { nextEl.focus(); nextEl.select(); } } };
+            const handleGridKeyDown = useCallback((e, field, idx) => { if (e.key === 'Enter') { e.preventDefault(); const nextId = `cell-${field}-${idx + 1}`; const nextEl = document.getElementById(nextId); if (nextEl) { nextEl.focus(); nextEl.select(); } } }, []);
 
             const getCSVString = (listData, mode) => { 
                 const list = [...listData].map(sanitizeOrder).sort((a, b) => (a.customer || '').localeCompare(b.customer || '')); 
@@ -850,7 +849,7 @@
                         }
                     }
                     if (!product) {
-                        product = quickName || '기본 상품'; 
+                        product = quickName || ''; // 스피드 입력 시 기본 상품명 공백 처리
                     }
                 }
                 
@@ -956,6 +955,14 @@
                 return result;
             }, [orders, filterText, unpaidFilter, quickShipping, selectedCustomerFolder]);
 
+            // Pre-calculate first orders map for visual grouping
+            const orderListWithFlags = useMemo(() => {
+                return filteredOrders.map(o => ({
+                    ...o,
+                    isFirst: firstOrderIds[o.customer] === o.id
+                }));
+            }, [filteredOrders, firstOrderIds]);
+
             const customerFolders = useMemo(() => {
                 let base = orders;
                 if (folderSearch) { const lower = folderSearch.toLowerCase(); base = base.filter(o => o.customer && o.customer.toLowerCase().includes(lower)); }
@@ -995,7 +1002,7 @@
                     }
                     text += `[카드결제]\n`;
                     text += `금액 ${totalCard.toLocaleString()}원\n`;
-                    text += `10%       ${cardSurcharge.toLocaleString()}원\n`;
+                    text += `10%        ${cardSurcharge.toLocaleString()}원\n`;
                     text += `👉총 ${(totalCard + cardSurcharge).toLocaleString()}원 예정\n\n`;
                     text += `핸드폰번호 남겨주세요🌸\n`;
                     text += `------------------\n`;
@@ -1030,23 +1037,14 @@
                 textArea.style.top = "0";
                 textArea.style.left = "0";
                 textArea.style.position = "fixed";
-            
                 document.body.appendChild(textArea);
                 textArea.focus();
                 textArea.select();
-            
                 try {
                     const successful = document.execCommand('copy');
-                    if (successful) {
-                        showToast("주문서가 복사되었습니다.");
-                    } else {
-                        showToast("복사 실패 (브라우저 제한)", "error");
-                    }
-                } catch (err) {
-                    console.error('Fallback: Oops, unable to copy', err);
-                    showToast("복사 실패 (권한 오류)", "error");
-                }
-            
+                    if (successful) showToast("주문서가 복사되었습니다.");
+                    else showToast("복사 실패", "error");
+                } catch (err) { showToast("복사 실패 (권한 오류)", "error"); }
                 document.body.removeChild(textArea);
             };
 
@@ -1140,39 +1138,39 @@
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-0 relative">
                                             <div className="grid grid-rows-compact gap-2 px-3 py-1 bg-slate-100 dark:bg-dark-card border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 text-center sticky top-0 z-10 shadow-sm"><div>상태</div><div className="text-left">닉네임</div><div className="text-left">코드</div><div className="text-left">상품명</div><div>수량</div><div className="text-right">금액</div><div>주소</div><div className="text-left">메모</div><div></div></div>
-                                            {filteredOrders.map((order, idx) => {
-                                                const isFirst = firstOrderIds[order.customer] === order.id; const isCombinedPayment = order.deposit > 0 && order.cardAmount > 0;
-                                                const cashButtonClass = order.deposit > 0 ? (isCombinedPayment ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200') : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
-                                                const cardButtonClass = order.cardAmount > 0 ? (isCombinedPayment ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200' : 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200') : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
-                                                const shipButtonClass = order.isShippingPaid ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
-                                                return (
-                                                    <div key={order.id} onClick={() => setFocusedOrderId(order.id)} className={`grid grid-rows-compact gap-2 px-3 py-0.5 items-center text-xs hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer ${focusedOrderId === order.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
-                                                        <div className="grid grid-cols-3 gap-0.5 w-full">
-                                                            <button onClick={(e) => { e.stopPropagation(); handleAutoDepositFull(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleAmountEdit(order.id); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold border transition-all flex items-center justify-center ${cashButtonClass}`} title={`현금 결제 ${order.deposit > 0 ? `(${order.deposit.toLocaleString()}원)` : '(클릭: 전액, 우클릭: 복합/입력)'}`}>현금</button>
-                                                            {isFirst ? (<button onClick={(e) => { e.stopPropagation(); handleShippingToggle(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleShippingEdit(order.id); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold transition-all border flex items-center justify-center ${shipButtonClass}`} title={order.isShippingPaid ? "배송비 결제 완료" : "배송비 미결제"}>배송</button>) : <div></div>} 
-                                                            <button onClick={(e) => { e.stopPropagation(); handleAutoCardFull(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleAmountEdit(order.id, 'card'); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold border transition-all flex items-center justify-center ${cardButtonClass}`} title={`카드 결제 ${order.cardAmount > 0 ? `(${order.cardAmount.toLocaleString()}원)` : '(클릭: 전액, 우클릭: 복합/입력)'}`}>카드</button>
-                                                        </div>
-                                                        <div className="relative"><input id={`cell-customer-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.customer} onChange={e => handleUpdateOrder(order.id, 'customer', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'customer', idx)} /></div>
-                                                        <div className="relative"><input id={`cell-code-${idx}`} className="w-full bg-transparent font-mono outline-none text-slate-500" value={productNumbers[order.product] || ''} onChange={e => handleUpdateOrder(order.id, 'codeInput', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'code', idx)} /></div>
-                                                        <div className="relative"><input id={`cell-product-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'product', idx)} /></div>
-                                                        <div className="flex justify-center"><input id={`cell-quantity-${idx}`} type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'quantity', idx)} /></div>
-                                                        <div className="text-right"><input id={`cell-price-${idx}`} className="w-full text-right bg-transparent font-mono outline-none focus:border-b focus:border-blue-500 cursor-text" value={order.price.toLocaleString()} onChange={e => handleUpdateOrder(order.id, 'price', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'price', idx)} /></div>
-                                                        <div className="flex justify-center"><div className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-default ${order.isAddressFilled ? 'bg-brand-600 text-white' : 'text-slate-300 bg-slate-100 dark:bg-slate-800'}`}><Icon name="MapPin" size={10}/></div></div>
-                                                        <div><input id={`cell-memo-${idx}`} className="w-full bg-transparent text-slate-500 outline-none" value={order.memo} onChange={e => handleUpdateOrder(order.id, 'memo', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'memo', idx)} /></div>
-                                                        <div className="flex justify-end"><button onClick={(e) => { e.stopPropagation(); handleDelete(order.id); }} className="text-slate-300 hover:text-rose-500"><Icon name="X" size={10}/></button></div>
-                                                        
-                                                        {editingAmountId === order.id && (<div className="col-span-full p-2 bg-slate-50 flex gap-2 justify-start pl-4 items-center border-y border-slate-100" onClick={e=>e.stopPropagation()}><span className="text-[10px] text-slate-500 font-bold">현금:</span><input type="number" placeholder="현금 금액" className="w-20 p-1 border rounded text-xs text-right font-mono outline-none focus:border-brand-500" value={order.deposit} autoFocus={true} onChange={e => { const val = Number(e.target.value); handleSetDepositAmount(order.id, val); if (editSource === 'card') { const priceNum = parseNum(order.price); const remainder = Math.max(0, priceNum - val); handleSetCardAmount(order.id, remainder); } }} onBlur={() => handleToggleAmountEdit(null)} onKeyDown={(e) => { if (e.key === 'Enter') handleToggleAmountEdit(null); }} /><span className="text-[10px] text-slate-500 font-bold ml-4">카드:</span><input type="number" placeholder="카드 금액" className="w-20 p-1 border rounded text-xs text-right font-mono outline-none focus:border-rose-500" value={order.cardAmount} onChange={e => handleSetCardAmount(order.id, e.target.value)} onBlur={() => handleToggleAmountEdit(null)} onKeyDown={(e) => { if (e.key === 'Enter') handleToggleAmountEdit(null); }} /></div>)}
-                                                        {editingShippingId === order.id && (<div className="col-span-full p-1.5 bg-brand-50 dark:bg-brand-900/20 border-y border-brand-100 dark:border-brand-800 flex gap-2 justify-start pl-4 items-center animate-fade-in shadow-inner" onClick={e=>e.stopPropagation()}><span className="text-[10px] font-bold text-brand-600 dark:text-brand-300">개별 배송비:</span><input type="number" className="w-16 p-0.5 rounded-sm border border-brand-200 text-right font-bold text-xs text-brand-700 outline-none" value={order.customShippingFee ?? quickShipping} onChange={e => handleUpdateOrder(order.id, 'customShippingFee', Number(e.target.value))} onBlur={() => setEditingShippingId(null)} onKeyDown={(e) => { if (e.key === 'Enter') setEditingShippingId(null); }} /><button onClick={() => handleUpdateOrder(order.id, 'customShippingFee', null)} className="text-[10px] bg-white text-brand-600 px-2 py-0.5 rounded-sm border border-brand-200 hover:bg-brand-50">기본값</button><button onClick={() => setEditingShippingId(null)} className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded-sm hover:bg-brand-700 ml-1">확인</button></div>)}
-                                                    </div>
-                                                );
-                                            })}
+                                            {/* Optimized List Rendering */}
+                                            {orderListWithFlags.map((order, idx) => (
+                                                <OrderRow 
+                                                    key={order.id} 
+                                                    order={order} 
+                                                    idx={idx}
+                                                    isFocused={focusedOrderId === order.id}
+                                                    productCode={productNumbers[order.product]}
+                                                    editingAmountId={editingAmountId}
+                                                    editingShippingId={editingShippingId}
+                                                    editSource={editSource}
+                                                    quickShipping={quickShipping}
+                                                    onFocus={setFocusedOrderId}
+                                                    onUpdate={handleUpdateOrder}
+                                                    onKeyDown={handleGridKeyDown}
+                                                    onAutoDeposit={handleAutoDepositFull}
+                                                    onAutoCard={handleAutoCardFull}
+                                                    onToggleAmount={handleToggleAmountEdit}
+                                                    onToggleShipping={handleShippingToggle}
+                                                    onToggleShippingEdit={handleToggleShippingEdit}
+                                                    onDelete={handleDelete}
+                                                    onSetDeposit={handleSetDepositAmount}
+                                                    onSetCard={handleSetCardAmount}
+                                                />
+                                            ))}
+                                            {orderListWithFlags.length === 0 && <div className="p-8 text-center text-slate-400 text-xs">표시할 주문이 없습니다.</div>}
                                         </div>
                                     </div>
                                 </div>
                             </>
                         )}
                         {activeTab === 'customer' && <CustomerTab customerDB={customerDB} setCustomerDB={setCustomerDB} orders={orders} showToast={showToast} />}
-                        {activeTab === 'statement' && <StatementTab orders={orders} quickShipping={quickShipping} customerDB={customerDB} categoryOrder={categoryOrder} productNumbers={productNumbers} />}
+                        {activeTab === 'statement' && <StatementTab orders={orders} customerDB={customerDB} quickShipping={quickShipping} productNumbers={productNumbers} />}
                     </main>
                     
                     {toast && <div className="fixed top-6 right-6 px-4 py-2.5 bg-slate-800 text-white rounded-md shadow-lg flex items-center gap-2 animate-fade-in z-[100]"><Icon name="CheckCircle" size={14} weight="fill"/><span className="text-xs">{toast.message}</span></div>}
