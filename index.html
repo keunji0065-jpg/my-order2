@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.50 (최적화 버전)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.51 (인쇄 최적화)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -56,42 +56,60 @@
 
         /* 인쇄 스타일 */
         @media print {
-            @page { size: A4; margin: 0; } /* 여백 제거하고 CSS로 제어 */
-            html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: white; font-size: 12px; }
+            @page { 
+                size: A4 portrait; 
+                margin: 0; 
+            }
+            html, body { 
+                width: 210mm; 
+                height: 297mm; 
+                margin: 0; 
+                padding: 0; 
+                background: white; 
+            }
             .no-print, header, .tab-nav, .sidebar, .print-hidden { display: none !important; }
-            #root, .App, main, .tab-content { width: 100% !important; height: auto !important; overflow: visible !important; display: block !important; padding: 0 !important; margin: 0 !important; background: white !important; }
+            #root, .App, main, .tab-content { 
+                width: 100% !important; 
+                height: 100% !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                display: block !important; 
+                background: white !important; 
+            }
             
-            /* 구매내역서 전용 스타일 - 비율 및 잘림 방지 수정 */
+            /* 구매내역서 전용 스타일 - 높이 고정 및 오버플로우 방지 */
             .statement-page {
-                width: 100%;
-                max-width: 210mm;
-                min-height: 290mm; /* A4 높이 근사치 */
-                padding: 10mm; /* 여백 축소 */
+                width: 210mm;
+                height: 296mm; /* 1mm 여유 */
+                padding: 15mm;
                 margin: 0 auto;
                 page-break-after: always;
+                page-break-inside: avoid;
                 background: white;
                 position: relative;
                 box-sizing: border-box;
                 display: flex;
                 flex-direction: column;
+                justify-content: space-between; /* 상단 헤더와 하단 합계 사이 공간 분배 */
             }
             .statement-double-container {
-                width: 100%;
-                max-width: 210mm;
-                min-height: 290mm;
+                width: 210mm;
+                height: 296mm;
                 margin: 0 auto;
                 page-break-after: always;
                 display: flex;
                 flex-direction: column;
             }
             .statement-half {
-                flex: 1;
-                padding: 10mm;
+                width: 100%;
+                height: 50%;
+                padding: 10mm 15mm;
                 border-bottom: 1px dashed #ccc;
                 box-sizing: border-box;
                 overflow: hidden;
                 display: flex;
                 flex-direction: column;
+                justify-content: space-between;
             }
             .statement-half:last-child {
                 border-bottom: none;
@@ -374,14 +392,14 @@
 
                 return (
                     <div className={`${isHalf ? 'statement-half' : 'statement-page'} flex flex-col font-sans text-slate-800`}>
-                        <div className="flex justify-between items-end border-b-2 border-slate-800 pb-2 mb-4">
+                        <div className="flex justify-between items-end border-b-2 border-slate-800 pb-2">
                             <h1 className="text-3xl font-extrabold tracking-tight">{customer} 님</h1>
                             <span className="text-sm text-slate-500">{new Date().toLocaleDateString()}</span>
                         </div>
                         
                         <div className="flex-1 overflow-hidden flex flex-col min-h-0 mt-4">
-                            <table className="w-full text-sm mb-4">
-                                <thead className="bg-slate-100 border-y border-slate-300 text-slate-600">
+                            <table className="w-full text-base mb-4">
+                                <thead className="border-y-2 border-slate-800 text-slate-800">
                                     <tr>
                                         <th className="py-2 text-left pl-2">상품명</th>
                                         <th className="py-2 text-center w-12">수량</th>
@@ -402,7 +420,7 @@
                                             </tr>
                                         );
                                     })}
-                                    <tr className="border-t border-slate-300 font-bold bg-slate-50">
+                                    <tr className="border-t border-slate-300 font-bold">
                                         <td className="py-2 pl-2 text-slate-500">배송비</td>
                                         <td className="py-2 text-center text-slate-500">-</td>
                                         <td className="py-2 text-right pr-2 font-mono">{shipFee.toLocaleString()}</td>
@@ -411,7 +429,7 @@
                             </table>
                         </div>
 
-                        <div className="border-t-2 border-slate-800 pt-4 mt-auto">
+                        <div className="border-t-2 border-slate-800 pt-4">
                             <div className="flex justify-between items-center mb-1">
                                 <span className="font-bold text-xl text-slate-800">합계금액</span>
                                 <span className="font-extrabold text-2xl font-mono text-slate-800">{totalRequired.toLocaleString()}원</span>
