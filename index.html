@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.51 (인쇄 최적화)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.52 (인쇄 여백 해결)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -54,15 +54,15 @@
         .modal-content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; max-width: 90%; }
         .dark .modal-content { background: #1e1e1e; border: 1px solid #333; color: #fff; }
 
-        /* 인쇄 스타일 */
+        /* 인쇄 스타일 수정 - 100% 유동 너비 사용 */
         @media print {
             @page { 
                 size: A4 portrait; 
-                margin: 0; 
+                margin: 5mm; /* 프린터 물리 여백 고려한 최소 여백 */
             }
             html, body { 
-                width: 210mm; 
-                height: 297mm; 
+                width: 100%; 
+                height: 100%; 
                 margin: 0; 
                 padding: 0; 
                 background: white; 
@@ -77,25 +77,22 @@
                 background: white !important; 
             }
             
-            /* 구매내역서 전용 스타일 - 높이 고정 및 오버플로우 방지 */
+            /* 구매내역서 - 컨테이너가 부모(종이) 크기에 맞춰짐 */
             .statement-page {
-                width: 210mm;
-                height: 296mm; /* 1mm 여유 */
-                padding: 15mm;
-                margin: 0 auto;
+                width: 100%; /* 고정폭 제거 */
+                height: 98vh; /* 한 페이지 꽉 채우기 */
+                padding: 5mm; /* 내부 여백 */
                 page-break-after: always;
-                page-break-inside: avoid;
                 background: white;
                 position: relative;
                 box-sizing: border-box;
                 display: flex;
                 flex-direction: column;
-                justify-content: space-between; /* 상단 헤더와 하단 합계 사이 공간 분배 */
+                justify-content: space-between;
             }
             .statement-double-container {
-                width: 210mm;
-                height: 296mm;
-                margin: 0 auto;
+                width: 100%;
+                height: 99vh; /* 2분할 컨테이너 */
                 page-break-after: always;
                 display: flex;
                 flex-direction: column;
@@ -103,7 +100,7 @@
             .statement-half {
                 width: 100%;
                 height: 50%;
-                padding: 10mm 15mm;
+                padding: 5mm 5mm 10mm 5mm; /* 하단 여백 조금 더 줌 */
                 border-bottom: 1px dashed #ccc;
                 box-sizing: border-box;
                 overflow: hidden;
@@ -115,7 +112,7 @@
                 border-bottom: none;
             }
             
-            /* 다크모드 강제 해제 (인쇄 시) */
+            /* 다크모드 강제 해제 */
             .dark * { 
                 background-color: white !important; 
                 color: black !important; 
@@ -435,6 +432,7 @@
                                 <span className="font-extrabold text-2xl font-mono text-slate-800">{totalRequired.toLocaleString()}원</span>
                             </div>
                         </div>
+                        {/* 계좌정보 삭제됨 */}
                     </div>
                 );
             };
