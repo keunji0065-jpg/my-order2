@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로픽 주문서 PRO </title>
+    <title>강은지 주문서 PRO (Lite) - v2.50 (최적화 버전)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -57,33 +57,41 @@
         /* 인쇄 스타일 */
         @media print {
             @page { size: A4; margin: 0; } /* 여백 제거하고 CSS로 제어 */
-            html, body { background: white; height: auto; overflow: visible; font-size: 12px; }
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: white; font-size: 12px; }
             .no-print, header, .tab-nav, .sidebar, .print-hidden { display: none !important; }
-            #root, .App, main, .tab-content { height: auto !important; overflow: visible !important; display: block !important; padding: 0 !important; background: white !important; }
+            #root, .App, main, .tab-content { width: 100% !important; height: auto !important; overflow: visible !important; display: block !important; padding: 0 !important; margin: 0 !important; background: white !important; }
             
-            /* 구매내역서 전용 스타일 */
+            /* 구매내역서 전용 스타일 - 비율 및 잘림 방지 수정 */
             .statement-page {
-                width: 210mm;
-                height: 297mm;
-                padding: 15mm;
+                width: 100%;
+                max-width: 210mm;
+                min-height: 290mm; /* A4 높이 근사치 */
+                padding: 10mm; /* 여백 축소 */
+                margin: 0 auto;
                 page-break-after: always;
                 background: white;
                 position: relative;
                 box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
             }
             .statement-double-container {
-                width: 210mm;
-                height: 296mm; /* 살짝 줄여서 오버플로우 방지 */
+                width: 100%;
+                max-width: 210mm;
+                min-height: 290mm;
+                margin: 0 auto;
                 page-break-after: always;
                 display: flex;
                 flex-direction: column;
             }
             .statement-half {
                 flex: 1;
-                padding: 10mm 15mm;
+                padding: 10mm;
                 border-bottom: 1px dashed #ccc;
                 box-sizing: border-box;
                 overflow: hidden;
+                display: flex;
+                flex-direction: column;
             }
             .statement-half:last-child {
                 border-bottom: none;
