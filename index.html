@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.38 (2분할 절취선 및 정렬)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.39 (인쇄 정밀 조정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -55,7 +55,7 @@
         @media print {
             @page { 
                 size: A4; 
-                margin: 0; /* 여백 0으로 설정하여 꽉 차게 */
+                margin: 0; /* 프린터 기본 여백 제거 */
             }
             
             html, body {
@@ -69,24 +69,15 @@
                 overflow: visible !important;
             }
 
-            /* React App 컨테이너 높이 제한 해제 */
             #root, .App, main, .tab-content, .h-screen, .flex-col {
                 height: auto !important;
                 overflow: visible !important;
                 display: block !important; 
             }
 
-            /* 모든 화면 요소 숨김 */
-            body * {
-                visibility: hidden;
-            }
-
-            /* 인쇄 영역만 표시 */
-            .print-section, .print-section * {
-                visibility: visible !important;
-            }
-
-            /* 인쇄 영역 위치 */
+            body * { visibility: hidden; }
+            .print-section, .print-section * { visibility: visible !important; }
+            
             .print-section {
                 position: absolute;
                 left: 0;
@@ -104,7 +95,7 @@
             }
 
             .a4-page-print {
-                width: 210mm !important; /* A4 가로 */
+                width: 210mm !important;
                 page-break-after: always !important;
                 background: white !important;
                 position: relative !important;
@@ -115,20 +106,21 @@
                 border: none !important;
             }
 
-            /* Single Mode: 높이 자동 확장, 여백 있음 */
+            /* Single Mode: 높이를 유동적으로 하되, A4 한 장보다 약간 작게 min-height 잡아 빈 페이지 방지 */
             .a4-page-print.single-mode {
-                min-height: 297mm !important;
+                min-height: 290mm !important; /* 297mm보다 약간 작게 */
                 height: auto !important;
-                padding: 10mm !important;
-                box-sizing: border-box;
+                padding: 10mm !important; /* 상하좌우 여백 */
+                box-sizing: border-box !important;
             }
 
-            /* Double Mode: 한 페이지 고정, 정확히 절반씩 */
+            /* Double Mode: 정확히 A4 한 장 높이 */
             .a4-page-print.double-mode {
                 height: 297mm !important; 
                 overflow: hidden !important;
                 padding: 0 !important;
-                justify-content: flex-start !important; /* 위에서부터 배치 */
+                justify-content: flex-start !important;
+                box-sizing: border-box !important;
             }
             
             .a4-page-print:last-child {
@@ -479,15 +471,17 @@
                                         const custOrders = orders.filter(o => o.customer === customer);
                                         // const isLong = custOrders.length > 10;
                                         
-                                        // Double 모드일 때만 높이 50% 고정 (정확히 절반), Single 모드는 자동 확장
+                                        // Double 모드일 때만 높이 148.5mm 고정 (정확히 절반), Single 모드는 자동 확장
                                         // box-sizing: border-box 추가하여 패딩과 보더 포함 높이 계산
                                         const itemStyle = isDouble 
                                             ? { 
-                                                height: '50%', 
-                                                borderBottom: cIdx === 0 ? '2px dashed black' : 'none', 
+                                                height: '148.5mm', // A4 절반 정확히 지정 
+                                                borderBottom: cIdx === 0 ? '1px dashed black' : 'none', 
                                                 padding: '5mm', 
                                                 overflow: 'hidden', 
-                                                boxSizing: 'border-box' 
+                                                boxSizing: 'border-box',
+                                                display: 'flex',
+                                                flexDirection: 'column'
                                               }
                                             : { height: 'auto', flex: 1, padding: '0' }; // Single 모드는 flex로 자연스럽게 채움
 
