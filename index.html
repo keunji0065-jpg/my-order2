@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.58 (사용자 지정 인쇄 스타일 적용)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.59 (전체 통합 및 오류 수정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -54,16 +54,15 @@
         .modal-content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; max-width: 90%; }
         .dark .modal-content { background: #1e1e1e; border: 1px solid #333; color: #fff; }
 
-        /* 인쇄 스타일 수정 (사용자 요청 반영) */
+        /* 인쇄 스타일 */
         @media print {
             @page { 
                 size: A4 portrait; 
-                margin: 10mm; 
+                margin: 0; 
             }
-            
             html, body { 
-                width: 100%; 
-                height: 100%; 
+                width: 210mm;
+                height: auto; 
                 margin: 0; 
                 padding: 0; 
                 background: white !important; 
@@ -72,9 +71,7 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            
             .no-print, header, .tab-nav, .sidebar, .print-hidden { display: none !important; }
-            
             #root, .App, main, .tab-content { 
                 width: 100% !important; 
                 height: auto !important; 
@@ -84,7 +81,6 @@
                 background: white !important; 
             }
 
-            /* 모든 배경색 제거 및 텍스트 검정 강제 */
             * {
                 background: transparent !important;
                 color: #000 !important;
@@ -93,44 +89,45 @@
                 box-shadow: none !important;
             }
             
-            /* 1페이지 (전체 인쇄) 스타일 */
+            /* 구매내역서 스타일 */
             .statement-page {
-                min-height: calc(297mm - 22mm); /* A4 - margin (20mm) - buffer */
+                width: 210mm;
+                height: 296mm; /* A4 정사이즈에 근접하게 고정 */
                 padding: 10mm;
                 page-break-after: always;
-                background: white;
+                position: relative;
                 box-sizing: border-box;
                 display: flex;
                 flex-direction: column;
-                justify-content: space-between;
-                border: none;
             }
 
             /* 2분할 컨테이너 */
             .statement-double-container {
-                height: calc(297mm - 22mm); /* 여백 제외한 전체 높이 */
-                display: flex;
-                flex-direction: column;
+                width: 210mm;
+                height: 296mm;
+                margin: 0;
+                padding: 0;
                 page-break-after: always;
+                display: block; 
             }
 
-            /* 2분할 개별 영역 */
+            /* 2분할 개별 영역 - 높이 강제 고정 */
             .statement-half {
-                flex: 1 1 50%;
-                overflow: hidden;
-                padding: 5mm 0;
+                width: 100%;
+                height: 148mm; /* 정확히 절반 */
+                padding: 10mm;
                 border-bottom: 1px dashed #000;
                 box-sizing: border-box;
+                overflow: hidden; 
                 display: flex;
                 flex-direction: column;
-                justify-content: space-between;
+                position: relative;
             }
             
             .statement-half:last-child {
                 border-bottom: none;
             }
 
-            /* 테이블 헤더 스타일 조정 (배경 대신 테두리) */
             thead th {
                 border-top: 2px solid #000 !important;
                 border-bottom: 2px solid #000 !important;
@@ -143,14 +140,12 @@
                 padding: 4px 0;
             }
             
-            /* 합계 라인 스타일 */
             .total-row {
                 border-top: 2px solid #000 !important;
                 margin-top: 5px;
                 padding-top: 5px;
             }
 
-            /* 다크모드 강제 해제 */
             .dark * { 
                 background-color: white !important; 
                 color: black !important; 
@@ -245,7 +240,6 @@
             );
         });
 
-        // --- ORDER ROW COMPONENT ---
         const OrderRow = React.memo(({ 
             order, idx, isFocused, productCode, editingAmountId, editingShippingId, editSource, quickShipping,
             onFocus, onUpdate, onKeyDown, onAutoDeposit, onAutoCard, onToggleAmount, onToggleShipping, onToggleShippingEdit, onDelete, onSetDeposit, onSetCard
@@ -389,7 +383,6 @@
         const StatementTab = ({ orders, customerDB, quickShipping, productNumbers }) => {
             const [selectedCustomers, setSelectedCustomers] = useState(new Set());
             const [search, setSearch] = useState('');
-            // Removed isDoubleLayout manual toggle state, replaced by auto logic
 
             const customers = useMemo(() => {
                 const unique = [...new Set(orders.map(o => o.customer).filter(Boolean))].sort();
@@ -465,7 +458,6 @@
                                     </tr>
                                 </tbody>
                             </table>
-                             {/* 합계 금액을 테이블 바로 아래에 붙임 */}
                             <div className="border-t-2 border-slate-800 pt-2">
                                 <div className="flex justify-between items-center">
                                     <span className="font-bold text-xl text-slate-800">합계금액</span>
@@ -477,43 +469,33 @@
                 );
             };
 
-            // Smart Layout Logic
             const layoutQueue = useMemo(() => {
                 const selected = Array.from(selectedCustomers).sort();
                 const queue = [];
                 let buffer = null;
-                
-                const MAX_ITEMS_FOR_HALF = 15; // Threshold
+                const MAX_ITEMS_FOR_HALF = 15; 
 
                 selected.forEach(customer => {
                     const count = orders.filter(o => o.customer === customer).length;
                     
                     if (count > MAX_ITEMS_FOR_HALF) {
-                        // If current needs full page
-                        // First flush buffer if exists
                         if (buffer) {
-                            queue.push({ type: 'half', customers: [buffer] }); // Push as single half (orphan)
+                            queue.push({ type: 'half', customers: [buffer] }); 
                             buffer = null;
                         }
                         queue.push({ type: 'full', customer: customer });
                     } else {
-                        // Current fits in half page
                         if (buffer) {
-                            // Pair with buffer
                             queue.push({ type: 'half', customers: [buffer, customer] });
                             buffer = null;
                         } else {
-                            // Add to buffer
                             buffer = customer;
                         }
                     }
                 });
-
-                // Flush remaining buffer
                 if (buffer) {
                     queue.push({ type: 'half', customers: [buffer] });
                 }
-
                 return queue;
             }, [selectedCustomers, orders]);
 
