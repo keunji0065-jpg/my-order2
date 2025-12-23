@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.52 (인쇄 여백 해결)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.53 (인쇄 80% 및 흑백 고정)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -65,7 +65,10 @@
                 height: 100%; 
                 margin: 0; 
                 padding: 0; 
-                background: white; 
+                background: white;
+                zoom: 0.8; /* 80% 자동 축소 적용 */
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
             .no-print, header, .tab-nav, .sidebar, .print-hidden { display: none !important; }
             #root, .App, main, .tab-content { 
@@ -75,6 +78,14 @@
                 padding: 0 !important; 
                 display: block !important; 
                 background: white !important; 
+            }
+
+            /* 인쇄 시 모든 색상 강제 검정 */
+            * {
+                color: #000 !important;
+                border-color: #000 !important;
+                text-shadow: none !important;
+                box-shadow: none !important;
             }
             
             /* 구매내역서 - 컨테이너가 부모(종이) 크기에 맞춰짐 */
@@ -101,7 +112,7 @@
                 width: 100%;
                 height: 50%;
                 padding: 5mm 5mm 10mm 5mm; /* 하단 여백 조금 더 줌 */
-                border-bottom: 1px dashed #ccc;
+                border-bottom: 1px dashed #000; /* 점선도 완전 검정 */
                 box-sizing: border-box;
                 overflow: hidden;
                 display: flex;
@@ -116,7 +127,7 @@
             .dark * { 
                 background-color: white !important; 
                 color: black !important; 
-                border-color: #e5e7eb !important; 
+                border-color: #000 !important; 
             }
         }
     </style>
@@ -432,7 +443,6 @@
                                 <span className="font-extrabold text-2xl font-mono text-slate-800">{totalRequired.toLocaleString()}원</span>
                             </div>
                         </div>
-                        {/* 계좌정보 삭제됨 */}
                     </div>
                 );
             };
