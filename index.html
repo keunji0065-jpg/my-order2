@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v3.2 (인쇄 자동 분할 구현)</title>
+    <title>강은지 주문서 PRO</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -137,7 +137,7 @@
                 border: 1px solid #d1d5db !important;
                 border-radius: 8px !important;
                 padding: 12px 15px !important;
-                margin-top: auto !important; /* 바닥에 붙이기 */
+                margin-top: auto !important;
             }
 
             .print-page-single {
@@ -146,7 +146,7 @@
                 box-sizing: border-box;
                 page-break-after: always;
                 page-break-inside: avoid;
-                min-height: 290mm; /* A4 높이 근사치 */
+                min-height: 290mm;
             }
 
             .print-page-double {
@@ -167,7 +167,7 @@
                 justify-content: flex-start;
                 border-bottom: 1px dashed black;
                 overflow: hidden;
-                height: 50%; /* 정확히 절반 */
+                height: 50%;
             }
             .print-half-page:last-child { border-bottom: none; }
 
@@ -316,7 +316,7 @@
             const tabs = [
                 { id: 'order', label: '주문관리', icon: 'ClipboardList' },
                 { id: 'customer', label: '고객관리', icon: 'User' },
-                { id: 'receipt', label: '영수증', icon: 'Receipt' },
+                { id: 'receipt', label: '구매내역서', icon: 'Receipt' },
             ];
             return (
                 <div className="flex items-end px-2 pt-1 border-b border-slate-200 dark:border-dark-border bg-white dark:bg-dark-card shrink-0 gap-1 overflow-x-auto no-scrollbar">
@@ -416,7 +416,7 @@
                 return (
                     <div className="receipt-card p-6 w-full text-black h-full flex flex-col justify-start">
                         <div className="receipt-header-box print-flex-between flex justify-between items-center shrink-0">
-                            <span className="text-xl font-bold">{customer} 님 <span className="text-sm font-normal text-slate-500 ml-1">({pageIndex + 1}/{totalPages})</span></span>
+                            <span className="text-xl font-bold">{customer} 님 {totalPages > 1 && <span className="text-sm font-normal text-slate-500 ml-1">({pageIndex + 1}/{totalPages})</span>}</span>
                             <span className="text-xs font-normal">{new Date().toLocaleDateString()}</span>
                         </div>
                         <div className="flex-1 overflow-hidden">
@@ -446,7 +446,11 @@
                                 <>
                                      <div className="print-flex-between flex justify-between items-center text-sm text-black">
                                         <span>상품 합계</span>
-                                        <span className="font-mono">{(orders.reduce((sum, o) => sum + (o.price || 0), 0)).toLocaleString()}원 (페이지 소계)</span>
+                                        <span className="font-mono">{(orders.reduce((sum, o) => sum + (o.price || 0), 0)).toLocaleString()}원</span>
+                                    </div>
+                                    <div className="print-flex-between flex justify-between items-center text-sm text-black">
+                                        <span>배송비</span>
+                                        <span className="font-mono">{(grandTotal - (orders.reduce((sum, o) => sum + (o.price || 0), 0))).toLocaleString()}원</span>
                                     </div>
                                     <div className="receipt-total-box print-flex-between flex justify-between items-center text-lg font-extrabold text-black">
                                         <span>총 결제금액</span>
@@ -510,7 +514,7 @@
                 <div className="flex h-full tab-content gap-4 p-4">
                     <div className="w-64 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg shadow-sm flex flex-col overflow-hidden no-print">
                         <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20 flex flex-col gap-2">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><Icon name="Receipt" size={14}/> 영수증 대상 선택</h3>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><Icon name="Receipt" size={14}/> 구매내역서 대상 선택</h3>
                             <div className="flex gap-2">
                                 <button onClick={() => setPrintMode('single')} className={`flex-1 py-1 text-xs rounded border ${printMode === 'single' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200'}`}>1장 1개</button>
                                 <button onClick={() => setPrintMode('double')} className={`flex-1 py-1 text-xs rounded border ${printMode === 'double' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200'}`}>1장 2개</button>
@@ -553,7 +557,7 @@
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-400 no-print">
                                     <Icon name="Receipt" size={64} className="mb-4 opacity-20"/>
-                                    <p>좌측에서 영수증을 출력할 고객을 선택하세요.</p>
+                                    <p>좌측에서 구매내역서를 출력할 고객을 선택하세요.</p>
                                 </div>
                             )}
                         </div>
@@ -1149,7 +1153,7 @@
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
                             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-500"><Icon name={isDarkMode ? "Sun" : "Moon"} size={14}/></button>
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
-                            <ActionButton onClick={() => setActiveTab('receipt')} color="brand" icon="Receipt" text="영수증" active={activeTab === 'receipt'}/>
+                            <ActionButton onClick={() => setActiveTab('receipt')} color="brand" icon="Receipt" text="구매내역서" active={activeTab === 'receipt'}/>
                             <div className="relative" ref={excelMenuRef}><ActionButton onClick={()=>setIsExcelMenuOpen(!isExcelMenuOpen)} color="ghost" icon="FileXls" text="엑셀"/>{isExcelMenuOpen && (<div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border shadow-soft rounded-md z-50 py-1"><button onClick={()=>{handleDownloadCSV('full'); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 text-slate-700 dark:text-gray-300"><Icon name="FileXls" className="text-accent-teal"/> 전체</button><button onClick={()=>{handleDownloadCSV('invoice'); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 text-slate-700 dark:text-gray-300"><Icon name="Truck" className="text-brand-600"/> 송장</button><button onClick={()=>{handleDownloadProductCSV(); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 border-t border-slate-100 dark:border-dark-border mt-0.5 pt-0.5 text-slate-700 dark:text-gray-300"><Icon name="List" className="text-accent-amber"/> 발주</button></div>)}</div>
                             <ActionButton onClick={handleDownloadHTML} color="white" icon="FloppyDisk" text="백업"/>
                             <ActionButton onClick={handleUploadClick} color="white" icon="UploadSimple" text="복원"/>
