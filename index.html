@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v2.53 (인쇄 80% 및 흑백 고정)</title>
+    <title>강은지 주문서 PRO (Lite) - v2.55 (오류 수정 및 전체 통합)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -54,11 +54,11 @@
         .modal-content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; max-width: 90%; }
         .dark .modal-content { background: #1e1e1e; border: 1px solid #333; color: #fff; }
 
-        /* 인쇄 스타일 수정 - 100% 유동 너비 사용 */
+        /* 인쇄 스타일 */
         @media print {
             @page { 
                 size: A4 portrait; 
-                margin: 5mm; /* 프린터 물리 여백 고려한 최소 여백 */
+                margin: 5mm; 
             }
             html, body { 
                 width: 100%; 
@@ -66,7 +66,7 @@
                 margin: 0; 
                 padding: 0; 
                 background: white;
-                zoom: 0.8; /* 80% 자동 축소 적용 */
+                zoom: 0.8; /* 80% 자동 축소 */
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -80,7 +80,6 @@
                 background: white !important; 
             }
 
-            /* 인쇄 시 모든 색상 강제 검정 */
             * {
                 color: #000 !important;
                 border-color: #000 !important;
@@ -88,18 +87,17 @@
                 box-shadow: none !important;
             }
             
-            /* 구매내역서 - 컨테이너가 부모(종이) 크기에 맞춰짐 */
+            /* 구매내역서 스타일 */
             .statement-page {
-                width: 100%; /* 고정폭 제거 */
-                height: 98vh; /* 한 페이지 꽉 채우기 */
-                padding: 5mm; /* 내부 여백 */
+                width: 100%;
+                min-height: 290mm; /* A4 */
+                padding: 5mm;
                 page-break-after: always;
                 background: white;
-                position: relative;
                 box-sizing: border-box;
                 display: flex;
                 flex-direction: column;
-                justify-content: space-between;
+                /* justify-content 제거하여 상단 정렬 (합계 붙이기 위해) */
             }
             .statement-double-container {
                 width: 100%;
@@ -111,19 +109,17 @@
             .statement-half {
                 width: 100%;
                 height: 50%;
-                padding: 5mm 5mm 10mm 5mm; /* 하단 여백 조금 더 줌 */
-                border-bottom: 1px dashed #000; /* 점선도 완전 검정 */
+                padding: 5mm 5mm 10mm 5mm;
+                border-bottom: 1px dashed #000;
                 box-sizing: border-box;
                 overflow: hidden;
                 display: flex;
                 flex-direction: column;
-                justify-content: space-between;
             }
             .statement-half:last-child {
                 border-bottom: none;
             }
             
-            /* 다크모드 강제 해제 */
             .dark * { 
                 background-color: white !important; 
                 color: black !important; 
@@ -218,12 +214,12 @@
             );
         });
 
-        // --- ORDER ROW COMPONENT (OPTIMIZED) ---
+        // --- ORDER ROW COMPONENT ---
         const OrderRow = React.memo(({ 
             order, idx, isFocused, productCode, editingAmountId, editingShippingId, editSource, quickShipping,
             onFocus, onUpdate, onKeyDown, onAutoDeposit, onAutoCard, onToggleAmount, onToggleShipping, onToggleShippingEdit, onDelete, onSetDeposit, onSetCard
         }) => {
-            const isFirst = order.isFirst; // Passed from parent logic
+            const isFirst = order.isFirst; 
             const isCombinedPayment = order.deposit > 0 && order.cardAmount > 0;
             const cashButtonClass = order.deposit > 0 ? (isCombinedPayment ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200') : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
             const cardButtonClass = order.cardAmount > 0 ? (isCombinedPayment ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200' : 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200') : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600';
@@ -362,7 +358,7 @@
         const StatementTab = ({ orders, customerDB, quickShipping, productNumbers }) => {
             const [selectedCustomers, setSelectedCustomers] = useState(new Set());
             const [search, setSearch] = useState('');
-            const [isDoubleLayout, setIsDoubleLayout] = useState(false);
+            // Removed isDoubleLayout manual toggle state, replaced by auto logic
 
             const customers = useMemo(() => {
                 const unique = [...new Set(orders.map(o => o.customer).filter(Boolean))].sort();
@@ -406,9 +402,10 @@
                         </div>
                         
                         <div className="flex-1 overflow-hidden flex flex-col min-h-0 mt-4">
-                            <table className="w-full text-base mb-4">
+                            <table className="w-full text-base mb-2">
                                 <thead className="border-y-2 border-slate-800 text-slate-800">
                                     <tr>
+                                        <th className="py-2 text-center w-14">코드</th>
                                         <th className="py-2 text-left pl-2">상품명</th>
                                         <th className="py-2 text-center w-12">수량</th>
                                         <th className="py-2 text-right pr-2 w-24">금액</th>
@@ -416,11 +413,12 @@
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {custOrders.map(o => {
-                                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : '';
+                                        const code = productNumbers[o.product] || '';
                                         return (
                                             <tr key={o.id}>
+                                                <td className="py-2 text-center text-slate-600 font-mono text-sm">{code}</td>
                                                 <td className="py-2 pl-2">
-                                                    <div className="font-bold text-slate-700">{code}{o.product}</div>
+                                                    <div className="font-bold text-slate-700">{o.product}</div>
                                                     {o.memo && <div className="text-xs text-slate-400">{o.memo}</div>}
                                                 </td>
                                                 <td className="py-2 text-center text-slate-600">{o.quantity}</td>
@@ -429,33 +427,64 @@
                                         );
                                     })}
                                     <tr className="border-t border-slate-300 font-bold">
+                                        <td></td>
                                         <td className="py-2 pl-2 text-slate-500">배송비</td>
                                         <td className="py-2 text-center text-slate-500">-</td>
                                         <td className="py-2 text-right pr-2 font-mono">{shipFee.toLocaleString()}</td>
                                     </tr>
                                 </tbody>
                             </table>
-                        </div>
-
-                        <div className="border-t-2 border-slate-800 pt-4">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="font-bold text-xl text-slate-800">합계금액</span>
-                                <span className="font-extrabold text-2xl font-mono text-slate-800">{totalRequired.toLocaleString()}원</span>
+                             {/* 합계 금액을 테이블 바로 아래에 붙임 */}
+                            <div className="border-t-2 border-slate-800 pt-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="font-bold text-xl text-slate-800">합계금액</span>
+                                    <span className="font-extrabold text-2xl font-mono text-slate-800">{totalRequired.toLocaleString()}원</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 );
             };
 
-            const chunkedCustomers = useMemo(() => {
+            // Smart Layout Logic
+            const layoutQueue = useMemo(() => {
                 const selected = Array.from(selectedCustomers).sort();
-                if (!isDoubleLayout) return selected;
-                const chunks = [];
-                for (let i = 0; i < selected.length; i += 2) {
-                    chunks.push(selected.slice(i, i + 2));
+                const queue = [];
+                let buffer = null;
+                
+                const MAX_ITEMS_FOR_HALF = 15; // Threshold
+
+                selected.forEach(customer => {
+                    const count = orders.filter(o => o.customer === customer).length;
+                    
+                    if (count > MAX_ITEMS_FOR_HALF) {
+                        // If current needs full page
+                        // First flush buffer if exists
+                        if (buffer) {
+                            queue.push({ type: 'half', customers: [buffer] }); // Push as single half (orphan)
+                            buffer = null;
+                        }
+                        queue.push({ type: 'full', customer: customer });
+                    } else {
+                        // Current fits in half page
+                        if (buffer) {
+                            // Pair with buffer
+                            queue.push({ type: 'half', customers: [buffer, customer] });
+                            buffer = null;
+                        } else {
+                            // Add to buffer
+                            buffer = customer;
+                        }
+                    }
+                });
+
+                // Flush remaining buffer
+                if (buffer) {
+                    queue.push({ type: 'half', customers: [buffer] });
                 }
-                return chunks;
-            }, [selectedCustomers, isDoubleLayout]);
+
+                return queue;
+            }, [selectedCustomers, orders]);
 
             return (
                 <div className="flex h-full tab-content gap-4 p-4">
@@ -486,9 +515,7 @@
                         <div className="flex justify-between items-center mb-4 no-print">
                             <div className="flex items-center gap-2">
                                 <span className="text-sm font-bold text-slate-600 dark:text-slate-300">미리보기 ({selectedCustomers.size}명)</span>
-                                <div className="h-4 w-px bg-slate-300 mx-2"></div>
-                                <button onClick={() => setIsDoubleLayout(false)} className={`px-3 py-1.5 text-xs rounded border ${!isDoubleLayout ? 'bg-brand-600 text-white border-brand-600' : 'bg-white dark:bg-dark-input text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>1장/1인</button>
-                                <button onClick={() => setIsDoubleLayout(true)} className={`px-3 py-1.5 text-xs rounded border ${isDoubleLayout ? 'bg-brand-600 text-white border-brand-600' : 'bg-white dark:bg-dark-input text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>1장/2인 (분할)</button>
+                                <span className="text-xs text-slate-400 ml-2">* 15개 초과 품목은 자동 1페이지 인쇄</span>
                             </div>
                             <button onClick={printStatements} disabled={selectedCustomers.size === 0} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                                 <Icon name="Printer" size={16} weight="fill"/> 인쇄하기
@@ -502,20 +529,22 @@
                                     <p>왼쪽에서 인쇄할 고객을 선택해주세요.</p>
                                 </div>
                             ) : (
-                                isDoubleLayout ? (
-                                    chunkedCustomers.map((chunk, i) => (
-                                        <div key={i} className="bg-white shadow-lg print:shadow-none print:w-full statement-double-container w-[210mm] min-h-[297mm] mx-auto">
-                                            {renderStatement(chunk[0], true)}
-                                            {chunk[1] && renderStatement(chunk[1], true)}
-                                        </div>
-                                    ))
-                                ) : (
-                                    Array.from(selectedCustomers).sort().map(c => (
-                                        <div key={c} className="bg-white shadow-lg print:shadow-none print:w-full statement-page w-[210mm] min-h-[297mm] mx-auto mb-8 print:mb-0">
-                                            {renderStatement(c, false)}
-                                        </div>
-                                    ))
-                                )
+                                layoutQueue.map((page, i) => {
+                                    if (page.type === 'full') {
+                                        return (
+                                            <div key={i} className="bg-white shadow-lg print:shadow-none print:w-full statement-page w-[210mm] min-h-[297mm] mx-auto mb-8 print:mb-0">
+                                                {renderStatement(page.customer, false)}
+                                            </div>
+                                        );
+                                    } else {
+                                        return (
+                                            <div key={i} className="bg-white shadow-lg print:shadow-none print:w-full statement-double-container w-[210mm] min-h-[297mm] mx-auto">
+                                                {renderStatement(page.customers[0], true)}
+                                                {page.customers[1] && renderStatement(page.customers[1], true)}
+                                            </div>
+                                        );
+                                    }
+                                })
                             )}
                         </div>
                     </div>
