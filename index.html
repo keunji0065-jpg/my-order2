@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v4.07 (설문결과 원본 자동인식)</title>
+    <title>강은지 주문서 PRO (Lite) - v4.08 (설문결과 원본 자동인식)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -385,7 +385,7 @@
                 showToast(`닉네임이 '${selectedCustomer}' → '${newName}'으로 변경되었습니다.`);
             };
             
-            // [스마트 업로드] 엑셀(.xlsx) 및 CSV 원본 지원 + 데이터 자동 정제
+            // [스마트 업로드] 엑셀/CSV 호환 + 데이터 자동 정제
             const handleFileUpload = async (e) => { 
                 const file = e.target.files[0]; 
                 if (!file) return; 
@@ -480,6 +480,7 @@
                 e.target.value = null; 
             };
 
+            // [데이터 보존] 다운로드 시 우편번호/전화번호 0 유지 (="010..." 포맷 사용)
             const handleFileDownload = () => { 
                 try {
                     if (!customerDB) {
