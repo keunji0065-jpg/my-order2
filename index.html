@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v4.40 (레이아웃 최적화 & 기능 복구)</title>
+    <title>강은지 주문서 PRO (Lite) - v4.50 (엑셀 원본 선택가능 & 최종 URL)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -50,7 +50,6 @@
         *:focus { outline: none !important; }
         
         /* [수정] 그리드 레이아웃 최적화: 닉네임(160px), 상품명(2fr), 금액(90px) 확보 */
-        /* 체크(30) 날짜(60) 상태(90) 닉네임(160) 코드(40) 상품명(2fr) 수량(40) 금액(90) 주소(30) 메모(1fr) 삭제(30) */
         .grid-rows-compact { grid-template-columns: 30px 60px 90px 160px 40px 2fr 40px 90px 30px 1fr 30px; }
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
         
@@ -930,7 +929,7 @@
             const [customerDB, setCustomerDB] = useState(() => JSON.parse(localStorage.getItem('customerDB')) || {}); 
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [archives, setArchives] = useState(() => JSON.parse(localStorage.getItem('orderArchives')) || []); 
-            const [googleScriptUrl, setGoogleScriptUrl] = useState('https://script.google.com/macros/s/AKfycbwYLsiPsvlpoaoMJrybKHrhsXmvrhY1OGtyizPIevq9fWTfBSB3ClMZOsRZi0nyVSq4Sw/exec');
+            const [googleScriptUrl, setGoogleScriptUrl] = useState('https://script.google.com/macros/s/AKfycbzw-bZdXE5B6jzSCv0YYblSrUTiS9jwa0bJAVWyTYkfTIujkZ6Wd0z7Os-_b-_H-aCl1g/exec');
             const [quickShipping, setQuickShipping] = useState(4000); 
             const [speedInput, setSpeedInput] = useState('');
             const [isProcessing, setIsProcessing] = useState(false);
