@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v4.50 (엑셀 원본 선택가능 & 최종 URL)</title>
+    <title>강은지 주문서 PRO </title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -49,8 +49,9 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         *:focus { outline: none !important; }
         
-        /* [수정] 그리드 레이아웃 최적화: 닉네임(160px), 상품명(2fr), 금액(90px) 확보 */
-        .grid-rows-compact { grid-template-columns: 30px 60px 90px 160px 40px 2fr 40px 90px 30px 1fr 30px; }
+        /* [수정] 그리드 레이아웃 최적화: 닉네임(180px), 상품명(2.5fr), 금액(100px) 확보 */
+        /* 체크(30) 날짜(60) 상태(90) 닉네임(180) 코드(40) 상품명(2.5fr) 수량(40) 금액(100) 주소(30) 메모(1fr) 삭제(30) */
+        .grid-rows-compact { grid-template-columns: 30px 60px 90px 180px 40px 2.5fr 40px 100px 30px 1fr 30px; }
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
         
         @media print {
@@ -442,7 +443,7 @@
             );
         };
 
-        const CustomerTab = ({ customerDB, setCustomerDB, orders, showToast, setOrders, onResetCustomers }) => {
+        const CustomerTab = ({ customerDB, setCustomerDB, orders, showToast, setOrders, onResetCustomers, handleSidebarClick }) => {
             const [selectedCustomer, setSelectedCustomer] = useState(null);
             const [search, setSearch] = useState('');
             const [isRenaming, setIsRenaming] = useState(false);
@@ -489,7 +490,6 @@
                 showToast(`닉네임이 '${selectedCustomer}' → '${newName}'으로 변경되었습니다.`);
             };
             
-            // [스마트 업로드] 엑셀(.xlsx) 및 CSV 원본 지원 + 데이터 자동 정제
             const handleFileUpload = async (e) => { 
                 const file = e.target.files[0]; 
                 if (!file) return; 
@@ -500,7 +500,6 @@
                     
                     const headers = Object.keys(data[0] || {});
                     
-                    // [수정] 닉네임 인식 우선순위 (닉네임 > 이름 > 성함)
                     const findColumn = (keywords) => {
                          for (const keyword of keywords) {
                              const match = headers.find(h => h.includes(keyword));
@@ -524,14 +523,12 @@
                     data.forEach(row => {
                         const nick = row[nameField]?.toString().trim();
                         if (nick) {
-                            // 전화번호 포맷팅 (010-xxxx-xxxx)
                             let phone = row[phoneField] ? row[phoneField].toString() : '';
                             if (phone.startsWith('="') && phone.endsWith('"')) phone = phone.slice(2, -1);
                             
                             const phoneMatch = phone.match(/(01[016789])\D*(\d{3,4})\D*(\d{4})/);
                             if (phoneMatch) phone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`;
 
-                            // 주소 파싱 및 우편번호 분리
                             let fullAddr = row[addrField] ? row[addrField].toString() : '';
                             let zipCode = row[zipField] ? row[zipField].toString() : '';
                             let addressText = fullAddr;
@@ -929,7 +926,7 @@
             const [customerDB, setCustomerDB] = useState(() => JSON.parse(localStorage.getItem('customerDB')) || {}); 
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [archives, setArchives] = useState(() => JSON.parse(localStorage.getItem('orderArchives')) || []); 
-            const [googleScriptUrl, setGoogleScriptUrl] = useState('https://script.google.com/macros/s/AKfycbzw-bZdXE5B6jzSCv0YYblSrUTiS9jwa0bJAVWyTYkfTIujkZ6Wd0z7Os-_b-_H-aCl1g/exec');
+            const [googleScriptUrl, setGoogleScriptUrl] = useState('https://script.google.com/macros/s/AKfycbxTnz-75lpaGVw1FuGyAp5svDYeQIp1oLmcgvwoXrKN8XPM1SANjfS0P-1iWKaxi6Bamg/exec');
             const [quickShipping, setQuickShipping] = useState(4000); 
             const [speedInput, setSpeedInput] = useState('');
             const [isProcessing, setIsProcessing] = useState(false);
@@ -1293,6 +1290,10 @@
                         setCustomerDB(newDB);
                         customerCount = Object.keys(newDB).length;
                     } 
+                    // [NEW] Load Archives
+                    if (data.archives) {
+                        setArchives(JSON.parse(data.archives));
+                    }
                     showToast(`불러오기 완료 (고객 ${customerCount}명 / 주문 ${orderCount}건)`); 
                 } catch (e) { 
                     showToast("실패: " + e.message, "error"); 
@@ -1305,12 +1306,17 @@
                 if (!googleScriptUrl) { showToast("설정된 Google Script URL이 없습니다.", "error"); return; } 
                 setIsSyncing(true); 
                 try { 
-                    const payload = { orders: JSON.stringify(orders), products: JSON.stringify(productHistory), customers: JSON.stringify(customerDB) }; 
+                    const payload = { 
+                        orders: JSON.stringify(orders), 
+                        products: JSON.stringify(productHistory), 
+                        customers: JSON.stringify(customerDB),
+                        archives: JSON.stringify(archives) // [NEW] Save Archives
+                    }; 
                     const res = await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(payload) }); 
                     const json = await res.json(); 
                     
                     if (json.result === 'success') {
-                        showToast("저장 완료 (고객주소 및 주문내역)"); 
+                        showToast("저장 완료 (고객주소, 주문내역 및 보관함)"); 
                     } else {
                         throw new Error(json.error || json.message || "Unknown Error"); 
                     }
@@ -1729,15 +1735,10 @@
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
                             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-500"><Icon name={isDarkMode ? "sun" : "moon"} size={14}/></button>
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
-                            <ActionButton onClick={() => setActiveTab('receipt')} color="brand" icon="receipt" text="구매내역서" active={activeTab === 'receipt'}/>
-                            {/* [NEW] 주문완료 탭 버튼 추가 */}
-                            <ActionButton onClick={() => setActiveTab('archive')} color="brand" icon="archive-box" text="주문완료" active={activeTab === 'archive'}/>
                             <div className="relative" ref={excelMenuRef}><ActionButton onClick={()=>setIsExcelMenuOpen(!isExcelMenuOpen)} color="ghost" icon="file-xls" text="엑셀"/>{isExcelMenuOpen && (<div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border shadow-soft rounded-md z-50 py-1"><button onClick={()=>{handleDownloadCSV('full'); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 text-slate-700 dark:text-gray-300"><Icon name="file-xls" className="text-accent-teal"/> 전체</button><button onClick={()=>{handleDownloadCSV('invoice'); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 text-slate-700 dark:text-gray-300"><Icon name="truck" className="text-brand-600"/> 송장</button><button onClick={()=>{handleDownloadProductCSV(); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 border-t border-slate-100 dark:border-dark-border mt-0.5 pt-0.5 text-slate-700 dark:text-gray-300"><Icon name="list" className="text-accent-amber"/> 발주</button></div>)}</div>
-                            <ActionButton onClick={handleDownloadHTML} color="white" icon="floppy-disk" text="백업"/>
-                            <ActionButton onClick={handleUploadClick} color="white" icon="upload-simple" text="복원"/>
                             <ActionButton onClick={handleReset} color="ghost" icon="eraser" text="초기화"/>
-                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" style={{display:'none'}} />
-                            <input type="file" ref={customerFileRef} onChange={handleCustomerFileUpload} accept=".csv" style={{display:'none'}} />
+                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv,.xlsx,.xls" style={{display:'none'}} />
+                            <input type="file" ref={customerFileRef} onChange={handleCustomerFileUpload} accept=".csv,.xlsx,.xls" style={{display:'none'}} />
                         </div>
                     </header>
                     <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
@@ -1845,7 +1846,7 @@
                                 </div>
                             </>
                         )}
-                        {activeTab === 'customer' && <CustomerTab customerDB={customerDB} setCustomerDB={setCustomerDB} orders={orders} showToast={showToast} setOrders={setOrders} onResetCustomers={handleResetCustomers} />}
+                        {activeTab === 'customer' && <CustomerTab customerDB={customerDB} setCustomerDB={setCustomerDB} orders={orders} showToast={showToast} setOrders={setOrders} onResetCustomers={handleResetCustomers} handleSidebarClick={handleSidebarClick} />}
                         {activeTab === 'receipt' && <ReceiptTab orders={orders} productNumbers={productNumbers} quickShipping={quickShipping} />}
                         {activeTab === 'archive' && <ArchiveTab archives={archives} setArchives={setArchives} onRestore={(id) => handleRestoreArchive(id)} onDeleteArchive={(id) => handleDeleteArchive(id)} />}
                     </main>
