@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO </title>
+    <title>강은지 주문서 PRO 2.0 </title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -49,9 +49,8 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         *:focus { outline: none !important; }
         
-        /* [수정] 그리드 레이아웃 최적화: 상태(80), 닉네임(160), 코드(35), 상품명(2fr), 수량(35), 금액(75) */
-        /* 체크(30) 날짜(60) 상태(80) 닉네임(160) 코드(35) 상품명(2fr) 수량(35) 금액(75) 주소(30) 메모(1fr) 삭제(30) */
-        .grid-rows-compact { grid-template-columns: 30px 60px 80px 160px 35px 2fr 35px 75px 30px 1fr 30px; }
+        /* 체크(30) 날짜(60) 상태(100) 닉네임(150) 코드(40) 상품명(1.8fr) 수량(40) 금액(80) 주소(30) 메모(1fr) 삭제(30) */
+        .grid-rows-compact { grid-template-columns: 30px 60px 100px 150px 40px 1.8fr 40px 80px 30px 1fr 30px; }
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
         
         @media print {
@@ -1754,15 +1753,10 @@
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
                             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-500"><Icon name={isDarkMode ? "sun" : "moon"} size={14}/></button>
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
-                            <ActionButton onClick={() => setActiveTab('receipt')} color="brand" icon="receipt" text="구매내역서" active={activeTab === 'receipt'}/>
-                            {/* [NEW] 주문완료 탭 버튼 추가 */}
-                            <ActionButton onClick={() => setActiveTab('archive')} color="brand" icon="archive-box" text="주문완료" active={activeTab === 'archive'}/>
                             <div className="relative" ref={excelMenuRef}><ActionButton onClick={()=>setIsExcelMenuOpen(!isExcelMenuOpen)} color="ghost" icon="file-xls" text="엑셀"/>{isExcelMenuOpen && (<div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border shadow-soft rounded-md z-50 py-1"><button onClick={()=>{handleDownloadCSV('full'); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 text-slate-700 dark:text-gray-300"><Icon name="file-xls" className="text-accent-teal"/> 전체</button><button onClick={()=>{handleDownloadCSV('invoice'); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 text-slate-700 dark:text-gray-300"><Icon name="truck" className="text-brand-600"/> 송장</button><button onClick={()=>{handleDownloadProductCSV(); setIsExcelMenuOpen(false);}} className="w-full text-left px-3 py-1.5 text-[11px] hover:bg-slate-50 dark:hover:bg-dark-input flex items-center gap-2 border-t border-slate-100 dark:border-dark-border mt-0.5 pt-0.5 text-slate-700 dark:text-gray-300"><Icon name="list" className="text-accent-amber"/> 발주</button></div>)}</div>
-                            <ActionButton onClick={handleDownloadHTML} color="white" icon="floppy-disk" text="백업"/>
-                            <ActionButton onClick={handleUploadClick} color="white" icon="upload-simple" text="복원"/>
                             <ActionButton onClick={handleReset} color="ghost" icon="eraser" text="초기화"/>
                             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv,.xlsx,.xls" style={{display:'none'}} />
-                            <input type="file" ref={customerFileRef} onChange={handleCustomerFileUpload} accept=".csv,.xlsx,.xls" style={{display:'none'}} />
+                            <input type="file" ref={customerFileRef} onChange={handleCustomerFileUpload} accept=".csv" style={{display:'none'}} />
                         </div>
                     </header>
                     <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
@@ -1852,7 +1846,7 @@
                                                             <button onClick={(e) => { e.stopPropagation(); handleAutoCardFull(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleAmountEdit(order.id, 'card'); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold border transition-all flex items-center justify-center ${cardButtonClass}`} title={`카드 결제 ${order.cardAmount > 0 ? `(${order.cardAmount.toLocaleString()}원)` : '(클릭: 전액, 우클릭: 복합/입력)'}`}>카드</button>
                                                         </div>
                                                         <div className="relative"><input id={`cell-customer-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.customer} onChange={e => handleUpdateOrder(order.id, 'customer', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'customer', idx)} /></div>
-                                                        <div className="relative"><input id={`cell-code-${idx}`} className="w-full bg-transparent font-mono outline-none text-slate-500" value={order.code || productNumbers[order.product] || ''} onChange={e => handleUpdateOrder(order.id, 'codeInput', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'code', idx)} /></div>
+                                                        <div className="relative"><input id={`cell-code-${idx}`} className="w-full bg-transparent font-mono outline-none text-slate-500" value={productNumbers[order.product] || ''} onChange={e => handleUpdateOrder(order.id, 'codeInput', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'code', idx)} /></div>
                                                         <div className="relative"><input id={`cell-product-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'product', idx)} /></div>
                                                         <div className="flex justify-center"><input id={`cell-quantity-${idx}`} type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'quantity', idx)} /></div>
                                                         <div className="text-right"><input id={`cell-price-${idx}`} className="w-full text-right bg-transparent font-mono outline-none focus:border-b focus:border-blue-500 cursor-text" value={order.price.toLocaleString()} onChange={e => handleUpdateOrder(order.id, 'price', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'price', idx)} /></div>
