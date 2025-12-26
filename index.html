@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>강은지 주문서 PRO (Lite) - v4.32 (엑셀 원본 지원 & 오류 수정)</title>
+    <title>강은지 주문서 PRO (Lite) - v4.40 (레이아웃 최적화 & 기능 복구)</title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -10,7 +10,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparser.min.js" crossorigin="anonymous"></script>
-    <!-- [필수] 엑셀 파일(.xlsx) 처리를 위한 라이브러리 -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <script>
@@ -50,7 +49,9 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         *:focus { outline: none !important; }
         
-        .grid-rows-compact { grid-template-columns: 30px 60px 140px 50px 1.5fr 40px 70px 30px 1fr 30px; }
+        /* [수정] 그리드 레이아웃 최적화: 닉네임(160px), 상품명(2fr), 금액(90px) 확보 */
+        /* 체크(30) 날짜(60) 상태(90) 닉네임(160) 코드(40) 상품명(2fr) 수량(40) 금액(90) 주소(30) 메모(1fr) 삭제(30) */
+        .grid-rows-compact { grid-template-columns: 30px 60px 90px 160px 40px 2fr 40px 90px 30px 1fr 30px; }
         .dragging { opacity: 0.5; border: 2px dashed #627d98; }
         
         @media print {
