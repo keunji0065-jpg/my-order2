@@ -1,7 +1,7 @@
 <html lang="ko" class="antialiased"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO 2.2 </title>
+    <title>깔로 주문서 PRO </title>
     
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -207,52 +207,25 @@
             );
         });
 
-        // SummarySection 컴포넌트 복구 및 위치 수정
+        // SummarySection
         const SummarySection = ({ stats, handleUnpaidFilterClick, unpaidFilter }) => (
             <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg shadow-sm w-full grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-700 h-auto overflow-hidden">
-                {/* 1열: 실제 들어온 돈 (통장입금 + 카드결제) */}
                 <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0 bg-blue-50/30 dark:bg-blue-900/10">
                     <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 px-1 py-0.5">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Icon name="wallet" size={18} className="text-blue-500"/>
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-400">통장입금</span>
-                        </div>
-                        <span className="font-bold text-xl font-mono leading-none text-blue-600 dark:text-blue-400">
-                            {(stats.currentCashRevenue).toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-2 text-slate-500"><Icon name="wallet" size={18} className="text-blue-500"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">통장입금</span></div><span className="font-bold text-xl font-mono leading-none text-blue-600 dark:text-blue-400">{(stats.currentCashRevenue).toLocaleString()}</span>
                     </div>
-                    <div 
-                        className={`flex justify-between items-center px-1 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'card' ? 'bg-purple-500 text-white shadow-md transform scale-[1.02]' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-                        onClick={() => handleUnpaidFilterClick('card')}
-                        title="클릭 시 카드결제 건만 필터링"
-                    >
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Icon name="credit-card" size={18} className={unpaidFilter === 'card' ? 'text-white' : 'text-purple-500'}/>
-                            <span className={`text-sm font-bold ${unpaidFilter === 'card' ? 'text-white' : 'text-slate-600 dark:text-slate-400'}`}>카드결제</span>
-                        </div>
-                        <span className="font-bold text-xl font-mono leading-none">{stats.totalCard.toLocaleString()}</span>
+                    <div className={`flex justify-between items-center px-1 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'card' ? 'bg-purple-500 text-white shadow-md transform scale-[1.02]' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}`} onClick={() => handleUnpaidFilterClick('card')} title="클릭 시 카드결제 건만 필터링">
+                        <div className="flex items-center gap-2 text-slate-500"><Icon name="credit-card" size={18} className={unpaidFilter === 'card' ? 'text-white' : 'text-purple-500'}/><span className={`text-sm font-bold ${unpaidFilter === 'card' ? 'text-white' : 'text-slate-600 dark:text-slate-400'}`}>카드결제</span></div><span className="font-bold text-xl font-mono leading-none">{stats.totalCard.toLocaleString()}</span>
                     </div>
                 </div>
-
-                {/* 2열: 입금 상세 (상품 입금 + 배송 입금) */}
                 <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0">
                     <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 px-1 py-0.5">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Icon name="money" size={18} className="text-emerald-500"/>
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-400">상품입금</span>
-                        </div>
-                        <span className="font-bold text-xl font-mono leading-none">{stats.totalCash.toLocaleString()}</span>
+                        <div className="flex items-center gap-2 text-slate-500"><Icon name="money" size={18} className="text-emerald-500"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">상품입금</span></div><span className="font-bold text-xl font-mono leading-none">{stats.totalCash.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 px-1 py-0.5">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Icon name="truck" size={18} className="text-sky-500"/>
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송입금</span>
-                        </div>
-                        <span className="font-bold text-xl font-mono leading-none">{stats.paidShippingTotal.toLocaleString()}</span>
+                        <div className="flex items-center gap-2 text-slate-500"><Icon name="truck" size={18} className="text-sky-500"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송입금</span></div><span className="font-bold text-xl font-mono leading-none">{stats.paidShippingTotal.toLocaleString()}</span>
                     </div>
                 </div>
-
-                {/* 3열: 작업 물량 (주문 + 배송) */}
                 <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0">
                     <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 px-1 py-0.5">
                         <div className="flex items-center gap-2 text-slate-500"><Icon name="package" size={18} className="text-indigo-500"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">주문</span></div><span className="font-bold font-mono text-xl leading-none">{stats.qty}<span className="text-xs font-normal text-slate-400 ml-0.5">개</span></span>
@@ -261,8 +234,6 @@
                         <div className="flex items-center gap-2 text-slate-500"><Icon name="paper-plane-tilt" size={18} className="text-teal-500"/><span className="text-sm font-bold text-slate-600 dark:text-slate-400">배송</span></div><span className="font-bold font-mono text-xl leading-none">{stats.shippingCount}<span className="text-xs font-normal text-slate-400 ml-0.5">건</span></span>
                     </div>
                 </div>
-
-                {/* 4열: 미수금 (물품미수금 + 배송미수금) - 필터링 가능 */}
                 <div className="px-4 py-1 flex flex-col justify-center gap-1 min-w-0">
                     <div className={`flex justify-between items-center text-sm px-2 py-0.5 rounded cursor-pointer transition-all ${unpaidFilter === 'cash' ? 'bg-rose-500 text-white font-bold shadow-md transform scale-[1.02]' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`} onClick={() => handleUnpaidFilterClick('cash')}>
                         <div className="flex items-center gap-2"><Icon name="hand-coins" size={18} className={unpaidFilter === 'cash' ? 'text-white' : 'text-rose-500'}/><span className={`${unpaidFilter === 'cash' ? 'text-white' : 'text-slate-600 dark:text-slate-400'} font-bold text-sm`}>물품미수금</span></div><span className={`font-mono text-xl leading-none ${unpaidFilter !== 'cash' && stats.productUnpaid > 0 ? 'text-rose-600 font-bold' : ''}`}>{stats.productUnpaid.toLocaleString()}</span>
@@ -274,16 +245,7 @@
             </div>
         );
 
-        const ProductManagementTab = React.memo(({ 
-            recentProducts, 
-            productNumbers, 
-            setProductHistory, 
-            setProductNumbers, 
-            setProductCategories, 
-            setOrders, 
-            showToast,
-            handleDeleteProductHistory 
-        }) => {
+        const ProductManagementTab = React.memo(({ recentProducts, productNumbers, setProductHistory, setProductNumbers, setProductCategories, setOrders, showToast, handleDeleteProductHistory }) => {
             const [editingProductName, setEditingProductName] = useState(null);
             const [editForm, setEditForm] = useState({ name: '', price: '', code: '' });
             const [addName, setAddName] = useState('');
@@ -394,22 +356,22 @@
             const handleSave = () => { if (!selectedOrder) return; let phone = localAddr.phone; const phoneMatch = phone.match(/(01[016789])\D*(\d{3,4})\D*(\d{4})/); if (phoneMatch) phone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`; onSaveAddress(selectedOrder.id, { ...localAddr, phone }); };
             const handlePostcode = () => { try { new daum.Postcode({ oncomplete: function(data) { setLocalAddr(prev => ({ ...prev, zipCode: data.zonecode, addressText: data.address, addressDetail: '' })); } }).open(); } catch(e) { showToast("팝업이 차단되었습니다.", "error"); } };
             const handleParseRaw = () => { if (!rawText.trim()) return; let text = rawText; let name = '', phone = '', address = '', memo = ''; const phoneMatch = text.match(/(01[016789])\D*(\d{3,4})\D*(\d{4})/); if (phoneMatch) { phone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`; text = text.replace(phoneMatch[0], ''); } const zipMatch = text.match(/\d{5}/); if(zipMatch) text = text.replace(zipMatch[0], ''); const lines = text.split('\n').map(l => l.trim()).filter(Boolean); lines.forEach(line => { if (line.match(/^(이름|수령인|받는분):?/)) name = line.replace(/^(이름|수령인|받는분):?/, '').trim(); else if (line.match(/^(주소|배송지):?/)) address = line.replace(/^(주소|배송지):?/, '').trim(); else if (line.match(/^(메모|요청사항):?/)) memo = line.replace(/^(메모|요청사항):?/, '').trim(); }); if (!name && lines.length > 0) name = lines[0]; if (!address && lines.length > 1) address = lines.find(l => l !== name && l.match(/[시도구군길로]/)) || lines[1]; setLocalAddr(prev => ({ ...prev, recipientName: name || prev.recipientName, phone: phone || prev.phone, addressText: address || prev.addressText, shippingMemo: memo || prev.shippingMemo })); setTab('edit'); showToast("정보가 입력되었습니다."); };
-            if (!selectedOrder) { return (<div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col h-full shadow-soft items-center justify-center text-slate-400 text-xs"><Icon name="map-pin" size={24} className="mb-2 opacity-50"/><p>주문을 선택해주세요</p></div>); }
+            if (!selectedOrder) { return (<div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs"><Icon name="map-pin" size={48} className="mb-2 opacity-50"/><p>주문을 선택해주세요</p></div>); }
             return (
-                <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg flex flex-col h-full shadow-soft overflow-hidden">
+                <div className="flex flex-col h-full overflow-hidden">
                     <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20 shrink-0 p-1 gap-1"><button onClick={()=>setTab('input')} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${tab==='input' ? 'bg-white dark:bg-dark-card text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>붙여넣기</button><button onClick={()=>setTab('edit')} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${tab==='edit' ? 'bg-white dark:bg-dark-card text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>상세수정</button></div>
-                    <div className="flex-1 overflow-y-auto p-2">
+                    <div className="flex-1 overflow-y-auto p-4">
                         {tab === 'input' ? (
-                            <div className="h-full flex flex-col gap-2"><textarea className="flex-1 w-full p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs resize-none outline-none focus:border-brand-500 placeholder-slate-400" placeholder={`예시:\n홍길동\n010-1234-5678\n서울시 강남구...`} value={rawText} onChange={e => setRawText(e.target.value)}></textarea><button onClick={handleParseRaw} className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-bold transition-colors">자동 입력</button></div>
+                            <div className="h-full flex flex-col gap-2"><textarea className="flex-1 w-full p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs resize-none outline-none focus:border-brand-500 placeholder-slate-400 min-h-[200px]" placeholder={`예시:\n홍길동\n010-1234-5678\n서울시 강남구...`} value={rawText} onChange={e => setRawText(e.target.value)}></textarea><button onClick={handleParseRaw} className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-bold transition-colors">자동 입력</button></div>
                         ) : (
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">수령인</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.recipientName} onChange={e=>handleChange('recipientName', e.target.value)} /></div>
-                                <div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">연락처</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.phone} onChange={e=>handleChange('phone', e.target.value)} /></div>
-                                <div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">우편번호</label><div className="flex-1 flex gap-1"><input className="w-20 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 text-center" value={localAddr.zipCode} readOnly placeholder="00000" /><button onClick={handlePostcode} className="bg-brand-600 hover:bg-brand-700 text-white px-2 py-1 rounded text-xs font-bold flex-1 flex items-center justify-center gap-1"><Icon name="magnifying-glass" /> 주소검색</button></div></div>
-                                <div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">주소</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.addressText} onChange={e=>handleChange('addressText', e.target.value)} /></div>
-                                <div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">상세</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" placeholder="상세주소 (동/호수)" value={localAddr.addressDetail} onChange={e=>handleChange('addressDetail', e.target.value)} /></div>
-                                <div className="flex items-center gap-2"><label className="w-12 text-xs text-slate-500 text-right">배송메모</label><input className="flex-1 p-1 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.shippingMemo} onChange={e=>handleChange('shippingMemo', e.target.value)} /></div>
-                                <div className="pt-2 text-right"><button onClick={handleSave} className="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors shadow-sm">저장</button></div>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2"><label className="w-16 text-xs text-slate-500 text-right">수령인</label><input className="flex-1 p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.recipientName} onChange={e=>handleChange('recipientName', e.target.value)} /></div>
+                                <div className="flex items-center gap-2"><label className="w-16 text-xs text-slate-500 text-right">연락처</label><input className="flex-1 p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.phone} onChange={e=>handleChange('phone', e.target.value)} /></div>
+                                <div className="flex items-center gap-2"><label className="w-16 text-xs text-slate-500 text-right">우편번호</label><div className="flex-1 flex gap-1"><input className="w-24 p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500 text-center" value={localAddr.zipCode} readOnly placeholder="00000" /><button onClick={handlePostcode} className="bg-brand-600 hover:bg-brand-700 text-white px-2 py-1 rounded text-xs font-bold flex-1 flex items-center justify-center gap-1"><Icon name="magnifying-glass" /> 주소검색</button></div></div>
+                                <div className="flex items-center gap-2"><label className="w-16 text-xs text-slate-500 text-right">주소</label><input className="flex-1 p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.addressText} onChange={e=>handleChange('addressText', e.target.value)} /></div>
+                                <div className="flex items-center gap-2"><label className="w-16 text-xs text-slate-500 text-right">상세</label><input className="flex-1 p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" placeholder="상세주소 (동/호수)" value={localAddr.addressDetail} onChange={e=>handleChange('addressDetail', e.target.value)} /></div>
+                                <div className="flex items-center gap-2"><label className="w-16 text-xs text-slate-500 text-right">배송메모</label><input className="flex-1 p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded text-xs outline-none focus:border-brand-500" value={localAddr.shippingMemo} onChange={e=>handleChange('shippingMemo', e.target.value)} /></div>
+                                <div className="pt-4 text-right border-t border-slate-100 dark:border-slate-800 mt-2"><button onClick={handleSave} className="w-full bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded text-sm font-bold transition-colors shadow-sm">저장 및 닫기</button></div>
                             </div>
                         )}
                     </div>
@@ -520,6 +482,9 @@
             const [isProcessing, setIsProcessing] = useState(false);
             const [isSyncing, setIsSyncing] = useState(false);
             const [toast, setToast] = useState(null);
+            // [NEW] 마지막 자동 저장 시간 상태
+            const [lastSaved, setLastSaved] = useState(null);
+            
             const [editingAmountId, setEditingAmountId] = useState(null);
             const [editingShippingId, setEditingShippingId] = useState(null); 
             const [unpaidFilter, setUnpaidFilter] = useState(null); 
@@ -533,10 +498,27 @@
             const [quickCode, setQuickCode] = useState('');
             const [quickName, setQuickName] = useState('');
             const [quickPrice, setQuickPrice] = useState('');
+            // ADDED: Address Modal State
+            const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+            
+            // [NEW] 상단 미니 상품 등록 입력 상태
+            const [quickRegCode, setQuickRegCode] = useState('');
+            const [quickRegName, setQuickRegName] = useState('');
+            const [quickRegPrice, setQuickRegPrice] = useState('');
+
+            // [NEW] 최근 등록 상품 수정 상태
+            const [editingRecentProduct, setEditingRecentProduct] = useState(null);
+            const [editRecentForm, setEditRecentForm] = useState({ name: '', price: '', code: '' });
+
+            // [NEW] 상품명 자동완성 상태
+            const [suggestions, setSuggestions] = useState({ id: null, list: [], activeIndex: 0 });
 
             const fileInputRef = useRef(null);
             const customerFileRef = useRef(null);
             const excelMenuRef = useRef(null); 
+            
+            // [NEW] 자동 저장을 위한 최신 상태 Ref (setInterval 내에서 최신 값 접근용)
+            const autoSaveRef = useRef({ orders, productHistory, customerDB, archives, quickShipping, googleScriptUrl, isSyncing });
 
             const setOrders = (newOrders) => { setHistory(prev => [...prev, orders]); setFuture([]); if (typeof newOrders === 'function') { setOrdersState(prev => newOrders(prev)); } else { setOrdersState(newOrders); } };
             const handleUndo = useCallback(() => { if (history.length === 0) return; const previous = history[history.length - 1]; const newHistory = history.slice(0, history.length - 1); setFuture(prev => [orders, ...prev]); setOrdersState(previous); setHistory(newHistory); showToast("실행 취소됨"); }, [history, orders]);
@@ -553,6 +535,45 @@
             useEffect(() => { localStorage.setItem('quickShipping', quickShipping); }, [quickShipping]);
             useEffect(() => { const handleClickOutside = (event) => { if (excelMenuRef.current && !excelMenuRef.current.contains(event.target)) { setIsExcelMenuOpen(false); } }; document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
 
+            // [NEW] 상태가 변할 때마다 Ref 업데이트 (자동 저장용)
+            useEffect(() => {
+                autoSaveRef.current = { orders, productHistory, customerDB, archives, quickShipping, googleScriptUrl, isSyncing };
+            }, [orders, productHistory, customerDB, archives, quickShipping, googleScriptUrl, isSyncing]);
+
+            // [NEW] 1분 간격 자동 저장 인터벌
+            useEffect(() => {
+                const intervalId = setInterval(async () => {
+                    const current = autoSaveRef.current;
+                    
+                    // 스크립트 URL이 없거나, 이미 수동 저장 중이라면 패스
+                    if (!current.googleScriptUrl || current.isSyncing) return;
+
+                    try {
+                        const payload = { 
+                            orders: JSON.stringify(current.orders), 
+                            products: JSON.stringify(current.productHistory), 
+                            customers: JSON.stringify(current.customerDB), 
+                            archives: JSON.stringify(current.archives),
+                            settings: JSON.stringify({ quickShipping: current.quickShipping }) 
+                        }; 
+                        
+                        // 로딩 표시 없이(silent) 백그라운드 전송
+                        const res = await fetch(current.googleScriptUrl, { method: 'POST', body: JSON.stringify(payload) }); 
+                        const json = await res.json(); 
+                        
+                        if (json.result === 'success') { 
+                            setLastSaved(new Date()); // 성공 시 시간 업데이트
+                            console.log("Auto-save success:", new Date().toLocaleTimeString());
+                        }
+                    } catch (e) {
+                        console.error("Auto-save failed:", e);
+                        // 실패해도 사용자에게 방해되지 않게 조용히 넘어감 (콘솔에만 로그)
+                    }
+                }, 60000); // 60,000ms = 1분
+
+                return () => clearInterval(intervalId);
+            }, []);
+
             const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 2500); };
             const recentProducts = useMemo(() => { return Object.entries(productHistory).sort((a, b) => { const nameA = a[0]; const nameB = b[0]; const codeA = productNumbers[nameA]; const codeB = productNumbers[nameB]; const hasCodeA = codeA !== undefined && codeA !== '' && codeA !== null; const hasCodeB = codeB !== undefined && codeB !== '' && codeB !== null; if (hasCodeA && !hasCodeB) return -1; if (!hasCodeA && hasCodeB) return 1; if (hasCodeA && hasCodeB) { const numA = parseFloat(codeA); const numB = parseFloat(codeB); const isNumA = !isNaN(numA); const isNumB = !isNaN(numB); if (isNumA && isNumB) return numB - numA; if (isNumA && !isNumB) return -1; if (!isNumA && isNumB) return 1; return String(codeB).localeCompare(String(codeA)); } return nameA.localeCompare(nameB); }).slice(0, 300); }, [productHistory, productNumbers]);
             const focusedOrder = useMemo(() => { return orders.find(o => o.id === focusedOrderId); }, [orders, focusedOrderId]);
@@ -564,10 +585,150 @@
             const handleDeleteArchive = (archiveId) => { setConfirmModal({ open: true, message: "정말로 이 보관함을 삭제하시겠습니까?", onConfirm: () => { setArchives(prev => prev.filter(a => a.id !== archiveId)); setConfirmModal({ open: false, message: '', onConfirm: null }); showToast("보관함이 삭제되었습니다."); } }); };
             const toggleSelectAll = () => { if (selectedOrderIds.size === filteredOrders.length && filteredOrders.length > 0) { setSelectedOrderIds(new Set()); } else { setSelectedOrderIds(new Set(filteredOrders.map(o => o.id))); } };
             const toggleSelectOrder = (id) => { const newSet = new Set(selectedOrderIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedOrderIds(newSet); };
-            const handleSaveAddress = (orderId, addrData) => { const targetOrder = orders.find(o => o.id === orderId); const targetCustomer = targetOrder ? targetOrder.customer : ''; setOrders(prev => prev.map(o => { if (o.id === orderId || (targetCustomer && o.customer === targetCustomer)) { return sanitizeOrder({ ...o, ...addrData }); } return o; })); if (targetCustomer) { setCustomerDB(prev => ({ ...prev, [targetCustomer]: { ...prev[targetCustomer], ...addrData } })); showToast(`[${targetCustomer}] 님의 주문에 주소가 저장되었습니다.`); } else { showToast('주문서에 주소가 저장되었습니다.'); } };
+            const handleSaveAddress = (orderId, addrData) => { const targetOrder = orders.find(o => o.id === orderId); const targetCustomer = targetOrder ? targetOrder.customer : ''; setOrders(prev => prev.map(o => { if (o.id === orderId || (targetCustomer && o.customer === targetCustomer)) { return sanitizeOrder({ ...o, ...addrData }); } return o; })); if (targetCustomer) { setCustomerDB(prev => ({ ...prev, [targetCustomer]: { ...prev[targetCustomer], ...addrData } })); showToast(`[${targetCustomer}] 님의 주문에 주소가 저장되었습니다.`); } else { showToast('주문서에 주소가 저장되었습니다.'); } setIsAddressModalOpen(false); };
             const handleRecentProductClick = (name, price) => { if (activeTab === 'order' && focusedOrderId) { setOrders(prev => prev.map(o => { if (o.id === focusedOrderId) { const existingCode = productNumbers[name] || ''; return { ...o, product: name, price: o.quantity * price, code: existingCode || o.code }; } return o; })); showToast("선택된 주문의 상품이 업데이트되었습니다."); } else { if (converterTab === 'batch') { setBatchProduct(name); setBatchPrice(price); setBatchCode(productNumbers[name]||''); } else { setQuickName(name); setQuickPrice(price); setQuickCode(productNumbers[name]||''); } } };
             const handleDeleteProductHistory = (productName) => { setProductHistory(prev => { const newHistory = { ...prev }; delete newHistory[productName]; return newHistory; }); };
             const handleClearProductHistory = () => { setConfirmModal({ open: true, message: "최근 등록 상품 목록을 모두 삭제하시겠습니까?", onConfirm: () => { setProductHistory({}); setConfirmModal({ open: false, message: '', onConfirm: null }); showToast("상품 목록이 초기화되었습니다."); } }); };
+            
+            // [NEW] 상품 선택 적용 (자동완성)
+            const applySuggestion = (orderId, productName) => {
+                const price = productHistory[productName] || 0;
+                const code = productNumbers[productName] || '';
+                
+                setOrders(prev => prev.map(o => {
+                    if (o.id !== orderId) return o;
+                    // 수량이 있으면 가격 자동 계산
+                    const newPrice = price > 0 ? parseNum(o.quantity) * price : o.price;
+                    return sanitizeOrder({ ...o, product: productName, code: code, price: newPrice });
+                }));
+                setSuggestions({ id: null, list: [], activeIndex: 0 });
+            };
+
+            // [NEW] 상품명 입력 칸 키보드 이벤트 (화살표로 추천 목록 이동)
+            const handleProductKeyDown = (e, orderId, idx) => {
+                // 추천 목록이 열려있을 때
+                if (suggestions.id === orderId && suggestions.list.length > 0) {
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setSuggestions(prev => ({ ...prev, activeIndex: (prev.activeIndex + 1) % prev.list.length }));
+                        return;
+                    }
+                    if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setSuggestions(prev => ({ ...prev, activeIndex: (prev.activeIndex - 1 + prev.list.length) % prev.list.length }));
+                        return;
+                    }
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // 줄바꿈/이동 방지
+                        const selectedName = suggestions.list[suggestions.activeIndex];
+                        applySuggestion(orderId, selectedName);
+                        
+                        // 선택 후 다음 칸(수량)으로 포커스 이동 시도
+                        const nextId = `cell-quantity-${idx}`;
+                        setTimeout(() => {
+                            const nextEl = document.getElementById(nextId);
+                            if (nextEl) nextEl.focus();
+                        }, 50);
+                        return;
+                    }
+                    if (e.key === 'Escape') {
+                        setSuggestions({ id: null, list: [], activeIndex: 0 });
+                        return;
+                    }
+                }
+                
+                // 추천 목록 없을 때는 기존대로 그리드 이동
+                handleGridKeyDown(e, 'product', idx);
+            };
+
+            // [NEW] 상단 미니 상품 등록 핸들러
+            const handleQuickRegisterProduct = () => {
+                if (!quickRegName.trim()) { showToast("상품명을 입력해주세요.", "error"); return; }
+                const pName = quickRegName.trim();
+                const pPrice = parseNum(quickRegPrice);
+                const pCode = quickRegCode.trim();
+
+                // 1. 가격 저장 (상품명 키)
+                setProductHistory(prev => ({ ...prev, [pName]: pPrice }));
+                
+                // 2. 코드 저장 (코드가 있을 경우만 업데이트, 없으면 기존 유지)
+                if (pCode) {
+                    setProductNumbers(prev => ({ ...prev, [pName]: pCode }));
+                }
+
+                // 3. 입력창 초기화
+                setQuickRegName('');
+                setQuickRegPrice('');
+                setQuickRegCode('');
+                showToast("상품이 등록되었습니다.");
+            };
+
+            // [NEW] 최근 등록 상품 수정 핸들러
+            const handleStartEditRecent = (name, price, code) => {
+                setEditingRecentProduct(name);
+                setEditRecentForm({ name, price, code: code || '' });
+            };
+
+            const handleEditRecentChange = (field, value) => {
+                setEditRecentForm(prev => ({ ...prev, [field]: value }));
+            };
+
+            const handleSaveEditRecent = () => {
+                const oldName = editingRecentProduct;
+                const newName = editRecentForm.name.trim();
+                const newPrice = Number(editRecentForm.price);
+                const newCode = editRecentForm.code.trim();
+
+                if (!newName) return;
+
+                // 1. 상품 이력 업데이트
+                setProductHistory(prev => {
+                    const next = { ...prev };
+                    if (newName !== oldName) delete next[oldName];
+                    next[newName] = newPrice;
+                    return next;
+                });
+
+                // 2. 상품 코드 업데이트
+                setProductNumbers(prev => {
+                    const next = { ...prev };
+                    if (newName !== oldName) delete next[oldName];
+                    if (newCode) next[newName] = newCode;
+                    else delete next[newName];
+                    return next;
+                });
+
+                // 3. 카테고리 정보 이동 (있다면)
+                setProductCategories(prev => {
+                    const next = { ...prev };
+                    if (next[oldName]) {
+                        next[newName] = next[oldName];
+                        if (newName !== oldName) delete next[oldName];
+                    }
+                    return next;
+                });
+
+                // 4. 기존 주문 내역 일괄 업데이트
+                setOrders(prev => prev.map(o => {
+                    if (o.product === oldName) {
+                        return sanitizeOrder({
+                            ...o,
+                            product: newName,
+                            price: parseNum(o.quantity) * newPrice,
+                            code: newCode // 코드가 비어있으면 빈 값으로 업데이트
+                        });
+                    }
+                    return o;
+                }));
+
+                setEditingRecentProduct(null);
+                showToast("상품 정보가 수정되었습니다 (주문 내역 반영)");
+            };
+
+            const handleCancelEditRecent = () => {
+                setEditingRecentProduct(null);
+            };
+
             const handleResetCustomers = () => { setConfirmModal({ open: true, message: "정말로 모든 고객 정보를 삭제하시겠습니까? (복구 불가)", onConfirm: () => { setCustomerDB({}); showToast("고객 목록이 초기화되었습니다."); setConfirmModal({ open: false, message: '', onConfirm: null }); } }); };
 
             const handleQuickAddOrder = () => {
@@ -581,7 +742,6 @@
                       setProductNumbers(prev => ({...prev, [pName]: pCode}));
                       setCategoryOrder(prev => prev.includes(pSite) ? prev : [...prev, pSite]);
                 }
-                // [수정] 주문 추가 시 isShippingPaid: false 설정 (기본값)
                 setOrders(prev => [sanitizeOrder({ 
                     id: Date.now(), 
                     customer: '', 
@@ -592,6 +752,73 @@
                     isShippingPaid: false 
                 }), ...prev]);
                 showToast("주문이 추가되었습니다.");
+            };
+
+            const handleOpenAddressModal = (orderId) => {
+                setFocusedOrderId(orderId);
+                setIsAddressModalOpen(true);
+            };
+
+            // [NEW] 상품명 입력 완료(Blur) 시 실행: 코드 매칭 및 가격 조회, 학습
+            const handleProductBlur = (id, val) => {
+                const pName = val.trim();
+                if (!pName) return;
+
+                setOrders(prev => prev.map(o => {
+                    if (o.id !== id) return o;
+                    let updates = {};
+
+                    // 1. 저장된 코드가 있으면 불러오기
+                    if (productNumbers[pName]) {
+                        updates.code = productNumbers[pName];
+                    } 
+                    // 2. 저장된 코드는 없는데 현재 주문서에 코드가 있다면? (새로운 상품-코드 매칭 학습)
+                    else if (o.code) {
+                        setProductNumbers(prevNums => ({...prevNums, [pName]: o.code}));
+                    }
+
+                    // 3. 가격이 0원일 때 가격 불러오기
+                    if (o.price === 0) {
+                        const unitPrice = productHistory[pName] || 0;
+                        if (unitPrice > 0) updates.price = parseNum(o.quantity) * unitPrice;
+                    }
+
+                    return sanitizeOrder({ ...o, ...updates });
+                }));
+            };
+
+            // [NEW] 코드 입력 완료(Blur) 시 실행: 상품명 역추적 또는 학습
+            const handleCodeBlur = (id, val) => {
+                const code = val.trim();
+                if (!code) return;
+
+                setOrders(prev => prev.map(o => {
+                    if (o.id !== id) return o;
+                    
+                    let updates = {};
+
+                    // 1. 상품명이 비어있다면? 코드로 상품명 찾기 (역추적)
+                    if (!o.product || !o.product.trim()) {
+                        const foundName = Object.keys(productNumbers).find(key => productNumbers[key] == code);
+                        if (foundName) {
+                            updates.product = foundName;
+                            const unitPrice = productHistory[foundName] || 0;
+                            if (unitPrice > 0 && o.price === 0) {
+                                updates.price = parseNum(o.quantity) * unitPrice;
+                            }
+                        }
+                    } 
+                    // 2. 상품명이 이미 있다면? (학습 모드) -> 이 상품명에 이 코드를 매핑
+                    else {
+                        const pName = o.product.trim();
+                        // 기존에 저장된 코드와 다를 때만 업데이트 (불필요한 리렌더링 방지)
+                        if (productNumbers[pName] !== code) {
+                            setProductNumbers(prevNums => ({...prevNums, [pName]: code}));
+                        }
+                    }
+
+                    return sanitizeOrder({ ...o, ...updates });
+                }));
             };
 
             const handleUpdateOrder = (id, field, value) => { 
@@ -627,23 +854,32 @@
                         const unitPrice = productHistory[o.product] || productHistory[pName] || 0; 
                         if (unitPrice > 0) updates.price = numValue * unitPrice; 
                     }
+                    
                     if (field === 'codeInput') {
                         updates.code = value;
-                        if (o.product) setProductNumbers(prev => ({...prev, [o.product.trim()]: value}));
                         return { ...o, ...updates };
                     }
+                    
+                    // [수정] 상품명 입력 시 자동완성 목록 검색
                     if (field === 'product') { 
-                        const pName = value.trim();
-                        if (o.price === 0) {
-                            const unitPrice = productHistory[value] || productHistory[pName] || 0; 
-                            if (unitPrice > 0) updates.price = parseNum(o.quantity) * unitPrice; 
-                        }
-                        if (productNumbers[pName]) {
-                            updates.code = productNumbers[pName];
-                        } else if (o.code) {
-                            setProductNumbers(prev => ({...prev, [pName]: o.code}));
+                        const val = value.trim().toLowerCase();
+                        if (val) {
+                            // 최근 등록된 상품명 중에서 검색 (한글 포함)
+                            const matches = Object.keys(productHistory)
+                                .filter(p => p.toLowerCase().includes(val))
+                                .sort() // 가나다순
+                                .slice(0, 10); // 최대 10개까지만 표시
+                            
+                            if (matches.length > 0) {
+                                setSuggestions({ id: id, list: matches, activeIndex: 0 });
+                            } else {
+                                setSuggestions({ id: null, list: [], activeIndex: 0 });
+                            }
+                        } else {
+                            setSuggestions({ id: null, list: [], activeIndex: 0 });
                         }
                     }
+                    
                     if (field === 'price' && o.product) { 
                         const qty = parseNum(o.quantity); 
                         if (qty > 0) setProductHistory(h => ({...h, [o.product.trim()]: numValue/qty})); 
@@ -659,7 +895,6 @@
                     if (o.id !== id) return o;
                     const price = parseNum(o.price);
                     const currentDeposit = o.deposit;
-                    if (window.event && window.event.type === 'contextmenu') { window.event.preventDefault(); handleToggleAmountEdit(id); return o; }
                     const isFullCash = currentDeposit === price && o.cardAmount === 0;
                     const nextDeposit = isFullCash ? 0 : price;
                     return sanitizeOrder({ ...o, deposit: nextDeposit, cardAmount: isFullCash ? o.cardAmount : 0, isPaid: nextDeposit > 0 ? true : false });
@@ -670,7 +905,6 @@
                 setOrders(prev => prev.map(o => {
                     if (o.id !== id) return o;
                     const price = parseNum(o.price);
-                    if (window.event && window.event.type === 'contextmenu') { window.event.preventDefault(); handleToggleAmountEdit(id, 'card'); return o; }
                     const isFullCard = o.cardAmount === price && o.deposit === 0;
                     const nextCard = isFullCard ? 0 : price;
                     return sanitizeOrder({ ...o, cardAmount: nextCard, deposit: isFullCard ? o.deposit : 0, isCardPaid: nextCard > 0, isPaid: nextCard > 0 });
@@ -687,23 +921,42 @@
             const getXLSXData = (listData, mode) => { 
                 const list = [...listData].map(sanitizeOrder).sort((a, b) => (a.customer || '').localeCompare(b.customer || '')); 
                 if (mode === 'invoice') { 
+                    // [수정] 요청하신 A~M열 순서에 맞춰 헤더 및 데이터 구성 (고객 그룹 행 제거)
                     const header = ['', '', '', '', '상품명', '수령인', '연락처', '주소', '배송메모', '', '메모', '우편번호', '']; 
                     const rows = [header];
-                    let prevCustomer = null;
+                    
                     list.forEach(o => {
-                        if (o.customer !== prevCustomer) {
-                            prevCustomer = o.customer;
-                            const customerName = o.customer ? `[${o.customer}]` : `[미지정]`;
-                            rows.push(['', '', '', '', customerName, o.recipientName, o.phone, (o.addressText||'') + ' ' + (o.addressDetail||''), o.shippingMemo, '', o.memo, o.zipCode, '']);
-                        }
-                        let quantitySuffix = ''; const qtyNum = parseNum(o.quantity); if (qtyNum >= 2) { quantitySuffix = ` ★${qtyNum}`; } 
-                        const code = productNumbers[o.product] ? `${productNumbers[o.product]} - ` : ''; 
-                        const productName = `${code}${o.product}${quantitySuffix}`; 
-                        rows.push(['', '', '', '', productName, o.recipientName, o.phone, (o.addressText||'') + ' ' + (o.addressDetail||''), o.shippingMemo, '', o.memo, o.zipCode, '']);
+                        // 수량 표기 (2개 이상일 때만 ★수량)
+                        let quantitySuffix = ''; 
+                        const qtyNum = parseNum(o.quantity); 
+                        if (qtyNum >= 2) { quantitySuffix = ` ★${qtyNum}`; } 
+                        
+                        // [수정] 코드 제거: 상품명 ★수량 (코드 부분 삭제됨)
+                        const productName = `${o.product}${quantitySuffix}`; 
+                        
+                        // 주소 조합
+                        const fullAddress = (o.addressText || '') + ' ' + (o.addressDetail || '');
+
+                        rows.push([
+                            '',               // A: 공란
+                            '',               // B: 공란
+                            '',               // C: 공란
+                            '',               // D: 공란
+                            productName,      // E: 상품명 (상품명 ★수량)
+                            o.recipientName,  // F: 수령인
+                            o.phone,          // G: 연락처
+                            fullAddress.trim(), // H: 주소
+                            o.shippingMemo,   // I: 배송메모
+                            '',               // J: 공란
+                            o.memo,           // K: 메모
+                            o.zipCode,        // L: 우편번호
+                            ''                // M: 공란
+                        ]);
                     });
                     return rows; 
                 } else { 
-                    const header = ['닉네임', '입금명', '상품명', '수량', '금액', '입금액(현금)', '카드결제액', '배송비', '미수금', '수령인', '연락처', '우편번호', '주소', '배송메모', '메모']; 
+                    // [수정] 요청하신 순서대로 헤더 변경 (B열: 코드, C열: 상품명 등)
+                    const header = ['닉네임', '코드', '상품명', '수량', '금액', '입금액(현금)', '카드결제액', '배송비', '미수금', '수령인', '연락처', '우편번호', '주소', '배송메모', '메모']; 
                     const rows = [header];
                     const firstIds = {}; 
                     list.forEach(o => { if (o.customer) { if (!firstIds[o.customer] || o.id < firstIds[o.customer]) { firstIds[o.customer] = o.id; } } });
@@ -713,8 +966,27 @@
                         const shipCharge = isFirst ? ship : 0; 
                         const priceNum = parseNum(o.price); 
                         const unpaid = Math.max(0, (priceNum + shipCharge) - (o.deposit + o.cardAmount + (isFirst && o.isShippingPaid ? ship : 0))); 
-                        const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : ''; 
-                        rows.push([o.customer, o.phone, code + o.product, o.quantity, priceNum, o.deposit, o.cardAmount, shipCharge, unpaid, o.recipientName, o.phone, o.zipCode, (o.addressText||'') + ' ' + (o.addressDetail||''), o.shippingMemo, o.memo]); 
+                        
+                        // [수정] 코드와 상품명을 분리하여 저장
+                        const codeVal = productNumbers[o.product] || o.code || '';
+                        
+                        rows.push([
+                            o.customer,           // A: 닉네임
+                            codeVal,              // B: 코드
+                            o.product,            // C: 상품명
+                            o.quantity,           // D: 수량
+                            priceNum,             // E: 금액
+                            o.deposit,            // F: 입금액(현금)
+                            o.cardAmount,         // G: 카드결제액
+                            shipCharge,           // H: 배송비
+                            unpaid,               // I: 미수금
+                            o.recipientName,      // J: 수령인
+                            o.phone,              // K: 연락처
+                            o.zipCode,            // L: 우편번호
+                            (o.addressText||'') + ' ' + (o.addressDetail||''), // M: 주소
+                            o.shippingMemo,       // N: 배송메모
+                            o.memo                // O: 메모
+                        ]); 
                     });
                     return rows; 
                 } 
@@ -731,13 +1003,51 @@
 
             const handleDownloadProductXLSX = () => { 
                 const summary = {}; 
+                
+                // 1. 상품명 기준으로 수량 집계 및 코드 파악
                 orders.forEach(o => { 
-                    const code = productNumbers[o.product] ? `[${productNumbers[o.product]}] ` : ''; 
-                    const key = (code + o.product) || '미지정'; 
-                    summary[key] = (summary[key] || 0) + parseNum(o.quantity); 
+                    const name = o.product || '미지정';
+                    if (!summary[name]) {
+                        // 초기화: 수량 0, 코드는 전역 관리 코드(productNumbers) 우선, 없으면 주문서의 코드(o.code)
+                        summary[name] = { 
+                            qty: 0, 
+                            code: productNumbers[name] || o.code || '' 
+                        };
+                    }
+                    summary[name].qty += parseNum(o.quantity);
+                    
+                    // 전역 코드 정보가 있다면 확실하게 업데이트
+                    if (productNumbers[name]) {
+                        summary[name].code = productNumbers[name];
+                    }
                 }); 
-                const rows = [['상품명', '수량']];
-                Object.entries(summary).forEach(([k, v]) => rows.push([k, v]));
+                
+                // 2. 엑셀 헤더 설정
+                const rows = [['코드', '상품명', '수량']];
+                
+                // 3. 정렬 (코드 유무 -> 코드 순서 -> 상품명 순서)
+                const sortedNames = Object.keys(summary).sort((a, b) => {
+                     const itemA = summary[a];
+                     const itemB = summary[b];
+                     
+                     // 코드가 있는 것을 위로
+                     if (itemA.code && !itemB.code) return -1;
+                     if (!itemA.code && itemB.code) return 1;
+                     
+                     // 둘 다 코드가 있으면 코드 기준 정렬 (숫자/문자 자연스럽게)
+                     if (itemA.code && itemB.code) {
+                         return String(itemA.code).localeCompare(String(itemB.code), undefined, { numeric: true });
+                     }
+                     
+                     // 둘 다 코드가 없으면 상품명 기준 정렬
+                     return a.localeCompare(b);
+                });
+
+                // 4. 데이터 행 추가
+                sortedNames.forEach(name => {
+                    rows.push([summary[name].code, name, summary[name].qty]);
+                });
+
                 const ws = XLSX.utils.aoa_to_sheet(rows);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "발주리스트");
@@ -864,7 +1174,10 @@
                     }; 
                     const res = await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(payload) }); 
                     const json = await res.json(); 
-                    if (json.result === 'success') { showToast("저장 완료 (고객주소, 주문내역, 설정)"); } else { throw new Error(json.error || json.message || "Unknown Error"); }
+                    if (json.result === 'success') { 
+                        showToast("저장 완료 (고객주소, 주문내역, 설정)"); 
+                        setLastSaved(new Date()); // 수동 저장 시에도 시간 업데이트
+                    } else { throw new Error(json.error || json.message || "Unknown Error"); }
                 } catch (e) { showToast("저장 실패 (설정에서 코드를 업데이트했는지 확인하세요)", "error"); console.error(e); } finally { setIsSyncing(false); } 
             };
 
@@ -954,7 +1267,6 @@
                 });
                 
                 const totalRev = totalProduct + totalShipping;
-                // 통장입금 = 현금 입금액 + 입금 확인된 배송비
                 const currentCashRevenue = totalDeposit + paidShippingTotal;
 
                 return { totalRev, currentCashRevenue, totalCash: totalDeposit, totalCard, totalShipping, qty: totalQty, shippingCount: shippingCustomers.size, productUnpaid, shipUnpaid, paidShippingTotal };
@@ -969,8 +1281,9 @@
                       const formattedPhone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`;
                       const foundNick = findCustomerByPhone(formattedPhone);
                       if (foundNick) {
-                          const product = quickName || '';
-                          const unitPrice = Number(quickPrice) || productHistory[product] || 0;
+                          // [수정] 스피드 입력 시 전화번호만 입력하면 상품 자동완성 안 함 (빈 값)
+                          const product = '';
+                          const unitPrice = 0;
                           const crmData = customerDB[foundNick];
                           return sanitizeOrder({ 
                               id: Date.now() + Math.random(), 
@@ -987,7 +1300,7 @@
                               shippingMemo: crmData?.shippingMemo || '', 
                               isCRM: true,
                               isAddressFilled: !!(crmData?.recipientName && crmData?.phone && crmData?.addressText),
-                              isShippingPaid: false // [수정] 기본값 false
+                              isShippingPaid: false 
                           });
                       }
                 }
@@ -1000,7 +1313,8 @@
                     const dbKey = findCustomerKey(customer);
                     if (dbKey) customer = dbKey;
 
-                    const product = batchProduct || '기본 상품'; 
+                    // [수정] 일괄 입력 시 상품명이 없으면 '기본 상품' 대신 빈 값('')으로 등록
+                    const product = batchProduct || ''; 
                     const unitPrice = Number(batchPrice) || productHistory[product] || productHistory[product.trim()] || 0;
                     const quantity = 1; 
                     const price = quantity * unitPrice;
@@ -1023,7 +1337,7 @@
                         shippingMemo: crmData?.shippingMemo || '', 
                         isCRM: !!crmData,
                         isAddressFilled: !!(crmData?.recipientName && crmData?.phone && crmData?.addressText),
-                        isShippingPaid: false // [수정] 기본값 false
+                        isShippingPaid: false 
                     });
                 }
                 
@@ -1041,7 +1355,9 @@
                 let product = ''; let quantity = 1; let productStartIndex = 1;
                 if (!code && parts.length > 1 && parts[1].startsWith('#')) { code = parts[1].substring(1); productStartIndex = 2; }
                 const productRaw = parts.slice(productStartIndex).join(' ');
-                if (productRaw) { const qtyMatch = productRaw.match(/(\d+)\s*(?:개|set|ea|box)?$/i); if (qtyMatch) { quantity = parseInt(qtyMatch[1], 10); product = productRaw.replace(qtyMatch[0], '').trim() || productRaw.replace(/(\s*(?:개|set|ea|box)?)$/i, '').trim(); } else { product = productRaw.trim(); } } else { if (code) { const foundName = Object.keys(productNumbers).find(key => productNumbers[key] == code); if (foundName) { product = foundName; } } if (!product) { product = quickName || ''; } }
+                if (productRaw) { const qtyMatch = productRaw.match(/(\d+)\s*(?:개|set|ea|box)?$/i); if (qtyMatch) { quantity = parseInt(qtyMatch[1], 10); product = productRaw.replace(qtyMatch[0], '').trim() || productRaw.replace(/(\s*(?:개|set|ea|box)?)$/i, '').trim(); } else { product = productRaw.trim(); } } else { if (code) { const foundName = Object.keys(productNumbers).find(key => productNumbers[key] == code); if (foundName) { product = foundName; } } 
+                // [수정] 닉네임만 입력 시 이전에 선택한 상품(quickName)을 자동으로 채우는 로직 제거 (빈 상품으로 등록)
+                }
                 const pName = product.trim();
                 const unitPrice = productHistory[product] || productHistory[pName] || 0;
                 const price = quantity * unitPrice;
@@ -1066,7 +1382,7 @@
                     shippingMemo: crmData?.shippingMemo || '', 
                     isCRM: !!crmData,
                     isAddressFilled: !!(crmData?.recipientName && crmData?.phone && crmData?.addressText),
-                    isShippingPaid: false // [수정] 기본값 false
+                    isShippingPaid: false 
                 });
             };
             
@@ -1079,7 +1395,6 @@
                     lines.forEach((line) => { 
                         const order = processTextLine(line); 
                         if (order) { 
-                            // [수정] 일괄 등록 시 배송비 상태 무조건 false로 시작
                             newOrders.push(sanitizeOrder({ ...order, isShippingPaid: false, customShippingFee: Number(quickShipping) })); 
                         } 
                     }); 
@@ -1098,7 +1413,6 @@
                     lines.forEach((line) => { 
                         const order = processTextLine(line); 
                         if (order) { 
-                            // [수정] 스피드 입력 시 배송비 상태 무조건 false로 시작
                             newOrders.push(sanitizeOrder({ ...order, isShippingPaid: false, customShippingFee: Number(quickShipping) })); 
                         } 
                     }); 
@@ -1111,7 +1425,6 @@
             };
             const handleSpeedInput = (e) => { if (e.key === 'Enter' && !e.shiftKey) { handleSpeedInputSubmit(e); } };
 
-            // [수정] 필터링 로직 수정 (미수금 조회 버그 해결)
             const filteredOrders = useMemo(() => {
                 let result = orders;
                 if (filterText) { const lower = filterText.toLowerCase(); result = result.filter(o => (o.customer && o.customer.toLowerCase().includes(lower)) || (o.product && o.product.toLowerCase().includes(lower))); }
@@ -1120,7 +1433,6 @@
                     const customersWithUnpaid = new Set();
                     const customersWithShipUnpaid = new Set();
                     
-                    // 고객별로 그룹화하여 미수금 계산
                     const customerStats = {};
                     orders.forEach(o => {
                         const c = o.customer || '미지정';
@@ -1129,7 +1441,6 @@
                     });
 
                     Object.entries(customerStats).forEach(([c, data]) => {
-                        // 대표 주문 찾기 (배송비 정보 등)
                         const mainOrder = data.orders.reduce((old, cur) => (cur.id < old.id ? cur : old), data.orders[0]);
                         const shipFee = (mainOrder.customShippingFee !== null && mainOrder.customShippingFee !== undefined) ? mainOrder.customShippingFee : Number(quickShipping);
                         const isShippingPaid = mainOrder.isShippingPaid;
@@ -1142,15 +1453,10 @@
                             groupPaid += (o.deposit + o.cardAmount);
                         });
 
-                        // 배송비 미지급 조건: 배송비가 0보다 크고, 아직 지불 안됨(toggle off)
                         if (!isShippingPaid && shipFee > 0) {
                             customersWithShipUnpaid.add(c);
                         }
 
-                        // 물품 미수금 조건: 총 필요금액(상품+배송) - 총 낸돈 > 0
-                        // (배송비가 미지급이면, 그만큼은 물품 미수금에서 제외하고 순수 물품 미수금만 볼 것인가? -> 보통 합쳐서 봄)
-                        // 하지만 '물품미수금' 버튼을 누르면 배송비 제외하고 물건값 안 낸 사람만 보고 싶을 수도 있음.
-                        // 여기서는 전체 미수금 중 배송비 미수금을 뺀 나머지가 있는지 확인
                         const totalReq = groupProductPrice + shipFee;
                         const totalPaid = groupPaid + (isShippingPaid ? shipFee : 0);
                         const totalUnpaid = Math.max(0, totalReq - totalPaid);
@@ -1238,7 +1544,14 @@
                         <div className="flex items-center gap-2">
                             <button onClick={handleUndo} className="p-1 hover:bg-slate-100 rounded text-slate-500" title="실행 취소 (Ctrl+Z)"><Icon name="arrow-u-up-left" size={16}/></button>
                             <div className="h-3 w-px bg-slate-300 mx-1"></div>
-                            <div className="flex items-center bg-slate-100 dark:bg-dark-input rounded-sm p-0.5"><ActionButton onClick={handleSaveToGoogle} color="ghost" icon="cloud-arrow-up" text="저장" loading={isSyncing}/><div className="w-px h-3 bg-slate-300 dark:bg-slate-600 mx-0.5"></div><ActionButton onClick={handleLoadFromGoogle} color="ghost" icon="cloud-arrow-down" text="불러오기" loading={isSyncing}/></div>
+                            <div className="flex items-center bg-slate-100 dark:bg-dark-input rounded-sm p-0.5">
+                                <ActionButton onClick={handleSaveToGoogle} color="ghost" icon="cloud-arrow-up" text="저장" loading={isSyncing}/>
+                                <div className="w-px h-3 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
+                                <ActionButton onClick={handleLoadFromGoogle} color="ghost" icon="cloud-arrow-down" text="불러오기" loading={isSyncing}/>
+                            </div>
+                            {/* [NEW] 자동 저장 시간 표시 */}
+                            {lastSaved && <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1"><Icon name="clock-counter-clockwise" size={10}/>자동저장 {lastSaved.toLocaleTimeString()}</span>}
+                            
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
                             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-500"><Icon name={isDarkMode ? "sun" : "moon"} size={14}/></button>
                             <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
@@ -1265,8 +1578,8 @@
                         {activeTab === 'order' && (
                             <>
                                 <div className="shrink-0"><SummarySection stats={stats} handleUnpaidFilterClick={handleUnpaidFilterClick} unpaidFilter={unpaidFilter}/></div>
-                                <div className="shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.2fr_0.8fr_1.2fr_0.8fr] gap-2 h-64">
-                                    <div className="lg:col-span-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg flex flex-col shadow-soft overflow-hidden">
+                                <div className="shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-2 h-64">
+                                    <div className="lg:col-span-3 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg flex flex-col shadow-soft overflow-hidden">
                                         <div className="flex items-center justify-between px-2 pt-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20">
                                             <div className="flex gap-1"><button onClick={()=>setConverterTab('general')} className={`px-3 py-1.5 text-xs font-bold rounded-t-lg transition-all ${converterTab==='general' ? 'bg-white dark:bg-dark-card text-brand-600 dark:text-brand-400 border-x border-t border-slate-200 dark:border-slate-700 border-b-white dark:border-b-dark-card -mb-px z-10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>스피드입력</button><button onClick={()=>setConverterTab('batch')} className={`px-3 py-1.5 text-xs font-bold rounded-t-lg transition-all ${converterTab==='batch' ? 'bg-white dark:bg-dark-card text-accent-rose border-x border-t border-slate-200 dark:border-slate-700 border-b-white dark:border-b-dark-card -mb-px z-10' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>일괄입력</button></div>
                                             <div className="pb-1 pr-1 text-slate-400"><Icon name="clipboard-text"/></div>
@@ -1276,47 +1589,85 @@
                                                 <div className="relative flex-1 flex flex-col"><textarea className="flex-1 w-full p-2 pl-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md text-xs outline-none focus:ring-2 focus:ring-blue-500 font-bold placeholder-blue-300 dark:placeholder-blue-700 transition-all resize-none min-h-[120px]" placeholder={`스피드 입력 (예: 깔로 검정티 1)\nEnter 키로 등록`} value={speedInput} onChange={e => setSpeedInput(e.target.value)} onKeyDown={handleSpeedInput} rows={6}></textarea><div className="absolute top-3 left-3 text-blue-400"><Icon name="lightning" weight="fill" size={14}/></div></div>
                                             ) : (
                                                 <>
-                                                    <div className="flex gap-1 animate-fade-in"><input className="w-10 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded px-2 py-1.5 text-xs text-center font-mono outline-none focus:border-rose-400" placeholder="코드" value={batchCode} onChange={e=>setBatchCode(e.target.value)} /><input className="flex-1 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded px-2 py-1.5 text-xs font-bold outline-none focus:border-rose-400" placeholder="일괄 상품명 (예: 사과즙)" value={batchProduct} onChange={e=>setBatchProduct(e.target.value)} /><input className="w-20 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded px-2 py-1.5 text-xs text-right font-bold outline-none focus:border-rose-400" placeholder="가격" type="number" value={batchPrice} onChange={e=>setBatchPrice(e.target.value)} /></div>
+                                                    <div className="flex gap-1 animate-fade-in"><input className="w-10 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded px-2 py-1.5 text-xs text-center font-mono outline-none focus:border-rose-400" placeholder="코드" value={batchCode} onChange={e=>setBatchCode(e.target.value)} /><input className="flex-1 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded px-2 py-1.5 text-xs font-bold outline-none focus:border-rose-400" placeholder="일괄 상품명" value={batchProduct} onChange={e=>setBatchProduct(e.target.value)} /><input className="w-14 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded px-2 py-1.5 text-xs text-right font-bold outline-none focus:border-rose-400" placeholder="가격" type="number" value={batchPrice} onChange={e=>setBatchPrice(e.target.value)} /></div>
                                                     <textarea className="flex-1 w-full p-2 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-md resize-none text-xs font-mono focus:border-rose-400 outline-none transition-all text-slate-700 dark:text-gray-200 placeholder-slate-400" placeholder={`닉네임만 입력 (잡담 무시됨)\n@홍길동\n@김철수\n@박영희`} value={rawInput} onChange={e => setRawInput(e.target.value)}></textarea>
                                                     <button onClick={handleParseOrders} disabled={isProcessing} className="w-full py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-md text-xs font-bold transition-colors flex justify-center items-center gap-1 shadow-sm h-8">{isProcessing ? '처리 중...' : '일괄 등록하기'}</button>
                                                 </>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="lg:col-span-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col shadow-soft h-full overflow-hidden">
-                                        <div className="flex justify-between items-center mb-1 px-1">
-                                            <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
-                                                <Icon name="tag" className="text-brand-500"/> 최근 등록 상품 (클릭시 자동입력)
+                                    <div className="lg:col-span-6 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-1 flex flex-col shadow-soft h-full overflow-hidden">
+                                        {/* [수정] 배경색(bg-slate-50) 및 하단 테두리(border-b) 제거 -> bg-white로 변경하여 깔끔하게 */}
+                                        <div className="flex justify-between items-center mb-1 gap-1 px-1 pt-1 bg-white dark:bg-dark-input/20 rounded-t pb-1.5">
+                                            <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1 shrink-0 pl-1 hidden xl:flex">
+                                                <Icon name="tag" className="text-brand-500"/> 최근 상품
                                             </h3>
-                                            <button onClick={handleClearProductHistory} className="text-slate-400 hover:text-rose-500" title="전체 삭제">
-                                                <Icon name="trash" size={14}/>
-                                            </button>
+                                            <div className="flex-1 flex items-center justify-end gap-1 min-w-0">
+                                                <input className="w-12 p-1.5 border rounded text-xs font-mono outline-none focus:border-brand-500 text-center bg-white dark:bg-dark-input dark:border-slate-700 shadow-sm" placeholder="코드" value={quickRegCode} onChange={e => setQuickRegCode(e.target.value)} />
+                                                <input className="flex-1 min-w-[80px] p-1.5 border rounded text-xs font-bold outline-none focus:border-brand-500 bg-white dark:bg-dark-input dark:border-slate-700 shadow-sm" placeholder="상품명" value={quickRegName} onChange={e => setQuickRegName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleQuickRegisterProduct()} />
+                                                <input className="w-16 p-1.5 border rounded text-xs text-right outline-none focus:border-brand-500 bg-white dark:bg-dark-input dark:border-slate-700 shadow-sm" type="number" placeholder="단가" value={quickRegPrice} onChange={e => setQuickRegPrice(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleQuickRegisterProduct()} />
+                                                <button onClick={handleQuickRegisterProduct} className="bg-brand-600 text-white px-3 py-1.5 rounded text-xs hover:bg-brand-700 shrink-0 font-bold shadow-sm">등록</button>
+                                                <div className="w-px h-4 bg-slate-300 mx-1"></div>
+                                                <button onClick={handleClearProductHistory} className="text-slate-400 hover:text-rose-500 shrink-0 p-1" title="전체 삭제">
+                                                    <Icon name="trash" size={15}/>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-1 space-y-1 min-h-0">
-                                            {recentProducts.length > 0 ? recentProducts.map(([name, price], i) => (
-                                                <div key={name} onClick={() => handleRecentProductClick(name, price)} className="flex justify-between items-center text-xs p-1.5 bg-slate-50 dark:bg-dark-input rounded border border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-brand-50 dark:hover:bg-slate-700 transition-colors group">
-                                                    <div className="flex-1 flex items-center min-w-0 gap-1"> 
-                                                        {productNumbers[name] && <span className="text-[9px] text-slate-400 font-mono shrink-0">[{productNumbers[name]}]</span>}
-                                                        <span className="font-bold truncate text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400" title={name}>{name}</span>
+                                        <div className="flex-1 overflow-y-auto p-1 min-h-0 grid grid-cols-2 gap-1 content-start">
+                                            {recentProducts.length > 0 ? recentProducts.map(([name, price], i) => {
+                                                const isEditing = editingRecentProduct === name;
+                                                return (
+                                                    <div 
+                                                        key={name} 
+                                                        onClick={() => !isEditing && handleRecentProductClick(name, price)} 
+                                                        onDoubleClick={() => !isEditing && handleStartEditRecent(name, price, productNumbers[name])}
+                                                        className={`flex justify-between items-center text-xs p-1.5 rounded border transition-colors group ${isEditing ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200' : 'bg-slate-50 dark:bg-dark-input border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-brand-50 dark:hover:bg-slate-700'}`}
+                                                    >
+                                                        {isEditing ? (
+                                                            <div className="flex gap-1 w-full items-center" onClick={e => e.stopPropagation()}>
+                                                                <input className="w-10 p-1 border rounded text-[10px] font-mono outline-none focus:border-blue-500" placeholder="코드" value={editRecentForm.code} onChange={e => handleEditRecentChange('code', e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveEditRecent()} />
+                                                                <input className="flex-1 p-1 border rounded text-[11px] font-bold outline-none focus:border-blue-500" placeholder="상품명" value={editRecentForm.name} onChange={e => handleEditRecentChange('name', e.target.value)} autoFocus onKeyDown={e => e.key === 'Enter' && handleSaveEditRecent()} />
+                                                                <input className="w-12 p-1 border rounded text-[11px] text-right outline-none focus:border-blue-500" type="number" placeholder="단가" value={editRecentForm.price} onChange={e => handleEditRecentChange('price', e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveEditRecent()} />
+                                                                <button onClick={handleSaveEditRecent} className="text-blue-600 hover:text-blue-800 p-0.5"><Icon name="check" weight="bold"/></button>
+                                                                <button onClick={handleCancelEditRecent} className="text-slate-400 hover:text-slate-600 p-0.5"><Icon name="x" weight="bold"/></button>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex-1 flex items-center min-w-0 gap-1.5"> 
+                                                                    {productNumbers[name] && <span className="text-[11px] text-blue-600 dark:text-blue-300 font-bold font-mono bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded shrink-0 border border-blue-100 dark:border-blue-800">{productNumbers[name]}</span>}
+                                                                    <span className="font-bold truncate text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400 text-[13px]" title={name}>{name}</span>
+                                                                </div>
+                                                                <span className="font-mono text-slate-500 text-[11px] mr-2 shrink-0">{price.toLocaleString()}원</span>
+                                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteProductHistory(name); }} className="text-slate-300 hover:text-rose-500 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                                    <Icon name="x" size={10} weight="bold"/>
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                    <span className="font-mono text-slate-500 text-[10px] mr-2 shrink-0">{price.toLocaleString()}원</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteProductHistory(name); }} className="text-slate-300 hover:text-rose-500 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                                        <Icon name="x" size={10} weight="bold"/>
-                                                    </button>
-                                                </div>
-                                            )) : <div className="h-full flex items-center justify-center text-slate-400 text-xs">최근 등록된 상품이 없습니다.</div>}
+                                                );
+                                            }) : <div className="col-span-2 h-full flex items-center justify-center text-slate-400 text-xs">최근 등록된 상품이 없습니다.</div>}
                                         </div>
                                     </div>
-                                    <div className="lg:col-span-1 h-full overflow-hidden"><AddressAdminPanel selectedOrder={focusedOrder} onSaveAddress={handleSaveAddress} showToast={showToast} /></div>
-                                    <div className="lg:col-span-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col shadow-soft h-full overflow-hidden">
+                                    <div className="lg:col-span-3 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg p-2 flex flex-col shadow-soft h-full overflow-hidden">
                                         <div className="flex justify-between items-center mb-1 px-1"><h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1"><Icon name="chat-text" className="text-accent-amber"/> 카카오톡 주문서</h3><button onClick={() => { handleCopy(manualMessage); }} className="text-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 flex items-center gap-1"><Icon name="copy"/> 복사하기</button></div>
                                         <textarea className="flex-1 w-full p-2 bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/20 rounded-md resize-none text-xs outline-none font-mono" value={manualMessage} onChange={e => setManualMessage(e.target.value)}></textarea>
                                     </div>
                                 </div>
                                 <div className="flex-1 flex gap-2 min-h-0">
                                     <div className="w-40 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg shadow-sm flex flex-col overflow-hidden">
-                                        <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20 flex flex-col gap-1"><div className="relative"><input className="w-full pl-6 pr-2 py-1 bg-white dark:bg-dark-input border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-brand-500" placeholder="주문자 검색..." value={folderSearch} onChange={e => setFolderSearch(e.target.value)} /><div className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="magnifying-glass" size={10}/></div></div></div>
-                                        <div className="flex-1 overflow-y-auto p-1 space-y-0.5"><button onClick={() => { setSelectedCustomerFolder('all'); setFolderSearch(''); }} className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors flex items-center justify-between ${selectedCustomerFolder === 'all' ? 'bg-blue-50 text-blue-600 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}><span>전체 보기</span></button>{customerFolders.map(c => (<button key={c.name} onClick={() => handleSidebarClick(c.name)} className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors flex items-center justify-between group ${selectedCustomerFolder === c.name ? 'bg-blue-50 text-blue-600 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}><span className="truncate flex-1">{c.name}</span><div className="flex items-center gap-1">{c.unpaid && <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>}<span className="text-[10px] text-slate-400">{c.count}</span></div></button>))}</div>
+                                        <div className="p-1.5 border-b border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-dark-input/20 flex flex-col gap-1">
+                                            <div className="relative">
+                                                <input className="w-full pl-6 pr-2 h-7 bg-white dark:bg-dark-input border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-brand-500" placeholder="주문자 검색..." value={folderSearch} onChange={e => setFolderSearch(e.target.value)} />
+                                                <div className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="magnifying-glass" size={10}/></div>
+                                            </div>
+                                        </div>
+                                        <div className="border-b border-slate-200 dark:border-slate-700 shrink-0 bg-slate-100 dark:bg-dark-card">
+                                            <button onClick={() => { setSelectedCustomerFolder('all'); setFolderSearch(''); }} className={`w-full text-left px-3 py-1 text-[10px] transition-colors flex items-center justify-between font-bold text-slate-500 h-[24px] ${selectedCustomerFolder === 'all' ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                                                <span>전체 보기</span>
+                                                <Icon name="list" size={12}/>
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-1 space-y-0.5">{customerFolders.map(c => (<button key={c.name} onClick={() => handleSidebarClick(c.name)} className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors flex items-center justify-between group ${selectedCustomerFolder === c.name ? 'bg-blue-50 text-blue-600 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}><span className="truncate flex-1">{c.name}</span><div className="flex items-center gap-1">{c.unpaid && <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>}<span className="text-[10px] text-slate-400">{c.count}</span></div></button>))}</div>
                                     </div>
                                     <div className="flex-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-dark-border rounded-lg flex flex-col overflow-hidden shadow-soft min-h-0">
                                         <div className="p-1.5 border-b border-slate-100 dark:border-dark-border flex items-center justify-between gap-2">
@@ -1336,7 +1687,7 @@
                                             </div>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-0 relative">
-                                            <div className="grid grid-rows-compact gap-2 px-3 py-1 bg-slate-100 dark:bg-dark-card border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 text-center sticky top-0 z-10 shadow-sm">
+                                            <div className="grid grid-rows-compact gap-2 px-3 py-1 bg-slate-100 dark:bg-dark-card border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 text-center sticky top-0 z-10 shadow-sm h-[24px] items-center">
                                                 <div className="flex items-center justify-center"><input type="checkbox" onChange={toggleSelectAll} checked={filteredOrders.length > 0 && selectedOrderIds.size === filteredOrders.length} className="cursor-pointer"/></div>
                                                 <div>날짜</div><div>상태</div><div className="text-left">닉네임</div><div className="text-left">코드</div><div className="text-left">상품명</div><div>수량</div><div className="text-right">금액</div><div>주소</div><div className="text-left">메모</div><div></div>
                                             </div>
@@ -1355,11 +1706,45 @@
                                                             <button onClick={(e) => { e.stopPropagation(); handleAutoCardFull(order.id); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleAmountEdit(order.id, 'card'); }} className={`w-full h-4 rounded-[3px] text-[9px] font-bold border transition-all flex items-center justify-center ${cardButtonClass}`} title={`카드 결제 ${order.cardAmount > 0 ? `(${order.cardAmount.toLocaleString()}원)` : '(클릭: 전액, 우클릭: 복합/입력)'}`}>카드</button>
                                                         </div>
                                                         <div className="relative"><input id={`cell-customer-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.customer} onChange={e => handleUpdateOrder(order.id, 'customer', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'customer', idx)} /></div>
-                                                        <div className="relative"><input id={`cell-code-${idx}`} className="w-full bg-transparent font-mono outline-none text-slate-500" value={order.code || productNumbers[order.product] || ''} onChange={e => handleUpdateOrder(order.id, 'codeInput', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'code', idx)} /></div>
-                                                        <div className="relative"><input id={`cell-product-${idx}`} className="w-full bg-transparent font-bold outline-none" value={order.product} onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'product', idx)} /></div>
+                                                        {/* [수정] value에서 || productNumbers[...] 제거하여 지워지지 않는 문제 해결 */}
+                                                        <div className="relative"><input id={`cell-code-${idx}`} className="w-full bg-transparent font-mono outline-none text-slate-500" value={order.code || ''} onChange={e => handleUpdateOrder(order.id, 'codeInput', e.target.value)} onBlur={e => handleCodeBlur(order.id, e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'code', idx)} /></div>
+                                                        
+                                                        <div className="relative">
+                                                            <input 
+                                                                id={`cell-product-${idx}`} 
+                                                                className="w-full bg-transparent font-bold outline-none relative z-10" 
+                                                                value={order.product} 
+                                                                onChange={e => handleUpdateOrder(order.id, 'product', e.target.value)} 
+                                                                onBlur={e => {
+                                                                    // 추천 목록 클릭을 위해 blur 처리 지연
+                                                                    setTimeout(() => {
+                                                                        handleProductBlur(order.id, e.target.value);
+                                                                        setSuggestions(prev => prev.id === order.id ? { ...prev, id: null } : prev);
+                                                                    }, 200);
+                                                                }}
+                                                                onKeyDown={e => handleProductKeyDown(e, order.id, idx)} 
+                                                                autoComplete="off"
+                                                            />
+                                                            {/* [NEW] 자동완성 드롭다운 */}
+                                                            {suggestions.id === order.id && suggestions.list.length > 0 && (
+                                                                <div className="absolute top-full left-0 w-full min-w-[200px] bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 shadow-xl rounded-md z-50 max-h-48 overflow-y-auto py-1">
+                                                                    {suggestions.list.map((sug, i) => (
+                                                                        <div 
+                                                                            key={sug}
+                                                                            onMouseDown={() => applySuggestion(order.id, sug)}
+                                                                            className={`px-3 py-1.5 text-xs cursor-pointer flex justify-between items-center ${i === suggestions.activeIndex ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-gray-300'}`}
+                                                                        >
+                                                                            <span>{sug}</span>
+                                                                            {productHistory[sug] > 0 && <span className="text-[10px] text-slate-400 font-mono ml-2">{productHistory[sug].toLocaleString()}원</span>}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        
                                                         <div className="flex justify-center"><input id={`cell-quantity-${idx}`} type="number" className="w-full text-center bg-transparent font-bold outline-none" value={order.quantity} onChange={e => handleUpdateOrder(order.id, 'quantity', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'quantity', idx)} /></div>
                                                         <div className="text-right"><input id={`cell-price-${idx}`} className="w-full text-right bg-transparent font-mono outline-none focus:border-b focus:border-blue-500 cursor-text" value={order.price.toLocaleString()} onChange={e => handleUpdateOrder(order.id, 'price', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'price', idx)} /></div>
-                                                        <div className="flex justify-center"><div className={`w-5 h-5 rounded-sm flex items-center justify-center cursor-default ${order.isAddressFilled ? 'bg-brand-600 text-white' : 'text-slate-300 bg-slate-100 dark:bg-slate-800'}`}><Icon name="map-pin" size={12} weight={order.isAddressFilled ? "fill" : "regular"}/></div></div>
+                                                        <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); handleOpenAddressModal(order.id); }} className={`w-5 h-5 rounded-sm flex items-center justify-center hover:scale-110 transition-transform ${order.isAddressFilled ? 'bg-brand-600 text-white' : 'text-slate-300 bg-slate-100 dark:bg-slate-800'}`} title="주소 관리 (클릭 시 팝업)"><Icon name="map-pin" size={12} weight={order.isAddressFilled ? "fill" : "regular"}/></button></div>
                                                         <div><input id={`cell-memo-${idx}`} className="w-full bg-transparent text-slate-500 outline-none" value={order.memo} onChange={e => handleUpdateOrder(order.id, 'memo', e.target.value)} onKeyDown={e => handleGridKeyDown(e, 'memo', idx)} /></div>
                                                         <div className="flex justify-end"><button onClick={(e) => { e.stopPropagation(); handleDelete(order.id); }} className="text-slate-300 hover:text-rose-500"><Icon name="x" size={10}/></button></div>
                                                         
@@ -1409,6 +1794,25 @@
                                 <div className="flex justify-end gap-2">
                                     <button onClick={() => setPromptModal({ ...promptModal, open: false })} className="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-100">취소</button>
                                     <button onClick={() => promptModal.onConfirm(promptModal.value)} className="px-3 py-1 text-xs rounded bg-brand-600 text-white hover:bg-brand-700">확인</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isAddressModalOpen && (
+                        <div className="modal-overlay" onClick={() => setIsAddressModalOpen(false)}>
+                            <div className="modal-content !w-[600px] !h-[80vh] flex flex-col p-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+                                <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-dark-input/20 flex justify-between items-center">
+                                    <span className="font-bold text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                                        <Icon name="map-pin" className="text-brand-500" weight="fill"/> 
+                                        {focusedOrder?.customer ? `${focusedOrder.customer} 님의 주소 관리` : '주소 관리'}
+                                    </span>
+                                    <button onClick={() => setIsAddressModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                        <Icon name="x" size={18} weight="bold"/>
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-hidden relative">
+                                    <AddressAdminPanel selectedOrder={focusedOrder} onSaveAddress={handleSaveAddress} showToast={showToast} />
                                 </div>
                             </div>
                         </div>
