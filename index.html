@@ -358,14 +358,76 @@
             const [localAddr, setLocalAddr] = useState({ recipientName: '', phone: '', zipCode: '', addressText: '', addressDetail: '', shippingMemo: '' });
             const [tab, setTab] = useState('input');
             const [rawText, setRawText] = useState('');
-            useEffect(() => { if (selectedOrder) { setLocalAddr({ recipientName: selectedOrder.recipientName || '', phone: selectedOrder.phone || '', zipCode: selectedOrder.zipCode || '', addressText: selectedOrder.addressText || '', addressDetail: selectedOrder.addressDetail || '', shippingMemo: selectedOrder.shippingMemo || '' }); setRawText(''); } else { setLocalAddr({ recipientName: '', phone: '', zipCode: '', addressText: '', addressDetail: '', shippingMemo: '' }); } }, [selectedOrder]);
+            // [NEW] 레이어 방식 주소찾기 상태
+            const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
+            const postcodeRef = useRef(null);
+
+            useEffect(() => { 
+                if (selectedOrder) { 
+                    setLocalAddr({ 
+                        recipientName: selectedOrder.recipientName || '', 
+                        phone: selectedOrder.phone || '', 
+                        zipCode: selectedOrder.zipCode || '', 
+                        addressText: selectedOrder.addressText || '', 
+                        addressDetail: selectedOrder.addressDetail || '', 
+                        shippingMemo: selectedOrder.shippingMemo || '' 
+                    }); 
+                    setRawText(''); 
+                } else { 
+                    setLocalAddr({ recipientName: '', phone: '', zipCode: '', addressText: '', addressDetail: '', shippingMemo: '' }); 
+                } 
+                setIsPostcodeOpen(false);
+            }, [selectedOrder?.id]);
+
             const handleChange = (field, val) => setLocalAddr(prev => ({...prev, [field]: val}));
             const handleSave = () => { if (!selectedOrder) return; let phone = localAddr.phone; const phoneMatch = phone.match(/(01[016789])\D*(\d{3,4})\D*(\d{4})/); if (phoneMatch) phone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`; onSaveAddress(selectedOrder.id, { ...localAddr, phone }); };
-            const handlePostcode = () => { try { new daum.Postcode({ oncomplete: function(data) { setLocalAddr(prev => ({ ...prev, zipCode: data.zonecode, addressText: data.address, addressDetail: '' })); } }).open(); } catch(e) { showToast("팝업이 차단되었습니다.", "error"); } };
+            
+            // [수정] 팝업 방식(open) -> 레이어 임베드 방식(embed)으로 변경하여 오류 해결
+            const handlePostcode = () => { 
+                if (isPostcodeOpen) { setIsPostcodeOpen(false); return; }
+                setIsPostcodeOpen(true);
+                
+                setTimeout(() => {
+                    if (window.daum && window.daum.Postcode && postcodeRef.current) {
+                        new window.daum.Postcode({
+                            oncomplete: function(data) {
+                                let fullAddress = data.address;
+                                let extraAddress = '';
+                                if (data.addressType === 'R') {
+                                    if (data.bname !== '') extraAddress += data.bname;
+                                    if (data.buildingName !== '') extraAddress += (extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName);
+                                    fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
+                                }
+                                setLocalAddr(prev => ({ ...prev, zipCode: data.zonecode, addressText: fullAddress, addressDetail: '' }));
+                                setIsPostcodeOpen(false);
+                            },
+                            width: '100%',
+                            height: '100%'
+                        }).embed(postcodeRef.current);
+                    } else {
+                        showToast("주소 검색 스크립트를 불러오지 못했습니다.", "error");
+                        setIsPostcodeOpen(false);
+                    }
+                }, 100);
+            };
+
             const handleParseRaw = () => { if (!rawText.trim()) return; let text = rawText; let name = '', phone = '', address = '', memo = ''; const phoneMatch = text.match(/(01[016789])\D*(\d{3,4})\D*(\d{4})/); if (phoneMatch) { phone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`; text = text.replace(phoneMatch[0], ''); } const zipMatch = text.match(/\d{5}/); if(zipMatch) text = text.replace(zipMatch[0], ''); const lines = text.split('\n').map(l => l.trim()).filter(Boolean); lines.forEach(line => { if (line.match(/^(이름|수령인|받는분):?/)) name = line.replace(/^(이름|수령인|받는분):?/, '').trim(); else if (line.match(/^(주소|배송지):?/)) address = line.replace(/^(주소|배송지):?/, '').trim(); else if (line.match(/^(메모|요청사항):?/)) memo = line.replace(/^(메모|요청사항):?/, '').trim(); }); if (!name && lines.length > 0) name = lines[0]; if (!address && lines.length > 1) address = lines.find(l => l !== name && l.match(/[시도구군길로]/)) || lines[1]; setLocalAddr(prev => ({ ...prev, recipientName: name || prev.recipientName, phone: phone || prev.phone, addressText: address || prev.addressText, shippingMemo: memo || prev.shippingMemo })); setTab('edit'); showToast("정보가 입력되었습니다."); };
+            
             if (!selectedOrder) { return (<div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs"><Icon name="map-pin" size={48} className="mb-2 opacity-50"/><p>주문을 선택해주세요</p></div>); }
+            
             return (
-                <div className="flex flex-col h-full overflow-hidden">
+                <div className="flex flex-col h-full overflow-hidden relative">
+                    {/* [NEW] 우편번호 찾기 레이어 */}
+                    {isPostcodeOpen && (
+                        <div className="absolute inset-0 z-50 bg-white dark:bg-dark-card flex flex-col animate-fade-in">
+                            <div className="flex justify-between items-center p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-dark-input">
+                                <span className="font-bold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-1"><Icon name="magnifying-glass"/> 우편번호 검색</span>
+                                <button onClick={() => setIsPostcodeOpen(false)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-500"><Icon name="x" size={18}/></button>
+                            </div>
+                            <div ref={postcodeRef} className="flex-1 w-full h-full bg-white"></div>
+                        </div>
+                    )}
+
                     <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-dark-input/20 shrink-0 p-1 gap-1"><button onClick={()=>setTab('input')} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${tab==='input' ? 'bg-white dark:bg-dark-card text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>붙여넣기</button><button onClick={()=>setTab('edit')} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${tab==='edit' ? 'bg-white dark:bg-dark-card text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>상세수정</button></div>
                     <div className="flex-1 overflow-y-auto p-4">
                         {tab === 'input' ? (
@@ -818,19 +880,23 @@
             const handleUpdateOrder = (id, field, value) => { 
                 setOrders(prev => prev.map(o => { 
                     if (o.id !== id) return o; 
-                    let updates = { [field]: value };
+                    let updates = { [field]: value }; // Raw value used for display to prevent IME issues
                     
                     if (field === 'customer') {
-                        let newCustomer = value.trim();
-                        const phoneMatch = newCustomer.match(/(01[016789])[- .]?(\d{3,4})[- .]?(\d{4})/);
+                        let checkValue = value.trim();
+                        const phoneMatch = checkValue.match(/(01[016789])[- .]?(\d{3,4})[- .]?(\d{4})/);
                         if (phoneMatch) {
                             const formattedPhone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`;
                             const foundNick = findCustomerByPhone(formattedPhone);
-                            if (foundNick) newCustomer = foundNick;
+                            if (foundNick) {
+                                updates.customer = foundNick; // Auto-replace only on phone match
+                                checkValue = foundNick;
+                            }
                         }
-                        const dbKey = findCustomerKey(newCustomer);
+                        
+                        const dbKey = findCustomerKey(checkValue);
                         if (dbKey) {
-                            newCustomer = dbKey; 
+                            if (phoneMatch) updates.customer = dbKey; // Replace if it came from phone lookup
                             const info = customerDB[dbKey];
                             updates.recipientName = info.recipientName || '';
                             updates.phone = info.phone || '';
@@ -840,7 +906,6 @@
                             updates.shippingMemo = info.shippingMemo || '';
                             updates.isAddressFilled = !!(info.recipientName && info.phone && info.addressText);
                         }
-                        updates.customer = newCustomer;
                     }
                     const numValue = parseNum(value);
                     if (field === 'quantity') { 
@@ -1857,7 +1922,9 @@
                     )}
 
                     {isAddressModalOpen && (
-                        <div className="modal-overlay" onClick={() => setIsAddressModalOpen(false)}>
+                        // [수정] 모달 배경 클릭 시 닫기 로직 강화: e.target === e.currentTarget 확인
+                        // 자식 요소(내부 컨텐츠) 클릭 이벤트가 버블링되어 닫히는 현상 방지
+                        <div className="modal-overlay" onClick={(e) => { if(e.target === e.currentTarget) setIsAddressModalOpen(false); }}>
                             <div className="modal-content !w-[600px] !h-[80vh] flex flex-col p-0 overflow-hidden" onClick={e => e.stopPropagation()}>
                                 <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-dark-input/20 flex justify-between items-center">
                                     <span className="font-bold text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
