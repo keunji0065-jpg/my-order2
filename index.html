@@ -818,6 +818,22 @@
                 showToast("주문이 추가되었습니다.");
             };
 
+            // [NEW] 아무것도 없는 빈 주문서 추가 함수
+            const handleAddEmptyOrder = () => {
+                setOrders(prev => [sanitizeOrder({ 
+                    id: Date.now(), 
+                    customer: '', 
+                    product: '', 
+                    quantity: 1, 
+                    price: 0, 
+                    deposit: 0,
+                    cardAmount: 0,
+                    customShippingFee: Number(quickShipping),
+                    isShippingPaid: false 
+                }), ...prev]);
+                showToast("빈 주문서가 추가되었습니다.");
+            };
+
             const handleOpenAddressModal = (orderId) => {
                 setFocusedOrderId(orderId);
                 setIsAddressModalOpen(true);
@@ -1784,6 +1800,10 @@
                                                     <div className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"><Icon name="magnifying-glass" size={12}/></div>
                                                     <input className="w-full pl-7 pr-2 h-7 bg-slate-50 dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-sm text-xs outline-none" placeholder="검색..." value={filterText} onChange={e => setFilterText(e.target.value)}/>
                                                 </div>
+                                                {/* [NEW] 빈 주문 추가 버튼 */}
+                                                <button onClick={handleAddEmptyOrder} className="h-7 w-7 flex items-center justify-center bg-white dark:bg-dark-input border border-slate-200 dark:border-dark-border rounded-sm text-brand-600 hover:bg-brand-50 hover:border-brand-200 transition-colors shadow-sm" title="빈 주문서 추가">
+                                                    <Icon name="plus" size={14} weight="bold"/>
+                                                </button>
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <button onClick={handleArchiveSelected} className="bg-brand-600 text-white px-3 py-1 rounded-sm text-xs font-bold hover:bg-brand-700 flex items-center gap-1"><Icon name="archive-box"/> 선택 보관</button>
