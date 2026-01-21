@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (연결 진단 모드)</title>
+    <title>깔로 주문서 PRO (취소/수정 기능탑재)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -31,6 +31,8 @@
         .selected-chat { background-color: #ebf8ff; border-left: 4px solid #3182ce; opacity: 0.7; }
         .badge-pulse { animation: pulse-orange 2s infinite; }
         @keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); } 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); } }
+        /* 취소선 스타일 */
+        .cancelled-item { text-decoration: line-through; color: #9ca3af; background-color: #f3f4f6; }
     </style>
 </head>
 <body>
@@ -38,10 +40,8 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // 🚨🚨🚨 [여기를 확인하세요!] 🚨🚨🚨
-        // 아까 구글 앱스 스크립트 배포 후 받은 주소(URL)를 이 따옴표 안에 넣으셨나요?
-        // 예: "https://script.google.com/macros/s/AKfycbx.../exec"
-        const GOOGLE_API_URL = "여기에_주소를_붙여넣으세요"; 
+        // ✅ 사장님이 주신 URL로 고정 완료!
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbzEyrsKZPDtOqXHfjWhnINxtLPIj3q0CdLsNyIxViBP-bEVnxs5dN1ZFrR7zPFVFYA6FA/exec";
 
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
 
@@ -62,34 +62,36 @@
             const [manualProduct, setManualProduct] = useState('');
             const [searchTerm, setSearchTerm] = useState('');
             const [filterStatus, setFilterStatus] = useState('all');
-            
-            // [진단용 상태]
-            const [connectionStatus, setConnectionStatus] = useState('loading'); // loading, success, error_url, error_fetch, error_empty
+            const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
 
             const fetchData = async () => {
-                // 1. 주소 미입력 체크
                 if (!googleScriptUrl || googleScriptUrl.includes("여기에")) {
-                    setConnectionStatus('error_url');
+                    setConnectionStatus({ code: 'error_url', msg: '주소 미입력' });
                     return;
                 }
 
                 try {
                     const res = await fetch(googleScriptUrl);
-                    const data = await res.json();
+                    if (!res.ok) throw new Error(`HTTP 에러: ${res.status}`);
+                    const text = await res.text();
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error("응답 데이터 오류 (권한 확인 필요)");
+                    }
                     
-                    // 2. 데이터 수신 성공
                     if (data.chats) {
                         setChats(data.chats);
-                        setConnectionStatus(data.chats.length === 0 ? 'warning_empty' : 'success');
+                        if (data.chats.length === 0) setConnectionStatus({ code: 'warning_empty', msg: '데이터 0건' });
+                        else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
                     if (data.deposits) setDeposits(data.deposits);
-                    
-                    // 3. 구글 시트 내부 에러 체크
                     if (data.error_yt) console.error("유튜브 시트 에러:", data.error_yt);
 
                 } catch (e) {
                     console.error("연결 실패:", e);
-                    setConnectionStatus('error_fetch');
+                    setConnectionStatus({ code: 'error_fetch', msg: e.message });
                 }
             };
 
@@ -103,7 +105,8 @@
                 const initialProduct = content || '';
                 const initialPrice = productHistory[initialProduct] || 0;
                 setOrders(prev => {
-                    const existIdx = prev.findIndex(o => o.customer === nickname && o.product === initialProduct);
+                    // 취소되지 않은 동일 상품이 있는지 확인
+                    const existIdx = prev.findIndex(o => o.customer === nickname && o.product === initialProduct && !o.isCancelled);
                     setSelectedNick(nickname);
                     setSearchTerm(''); 
                     if (existIdx >= 0) {
@@ -111,12 +114,13 @@
                         next[existIdx] = { ...next[existIdx], quantity: next[existIdx].quantity + 1, price: (next[existIdx].quantity + 1) * initialPrice };
                         return next;
                     }
-                    return [{ id: Date.now(), customer: nickname, product: initialProduct, quantity: 1, price: initialPrice, deposit: 0, originalText: content }, ...prev];
+                    return [{ id: Date.now(), customer: nickname, product: initialProduct, quantity: 1, price: initialPrice, deposit: 0, originalText: content, isCancelled: false }, ...prev];
                 });
             };
 
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct); setManualProduct(''); };
+            
             const handleDepositClick = (deposit, index) => {
                 if (matchedDeposits.has(index)) return;
                 if (!selectedNick) return alert("오른쪽에서 닉네임을 먼저 선택해주세요!");
@@ -130,6 +134,7 @@
                 });
                 setMatchedDeposits(prev => new Set(prev).add(index));
             };
+
             const handleProductChange = (id, field, value) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id === id) {
@@ -141,8 +146,37 @@
                 }));
             };
             const handleShippingChange = (nick, val) => { setShippingOverrides(prev => ({ ...prev, [nick]: Number(val) })); };
+            
+            // [NEW] 닉네임 수정 기능
+            const handleNicknameEdit = (oldNick) => {
+                const newNick = prompt(`'${oldNick}'님의 닉네임을 무엇으로 변경할까요?`, oldNick);
+                if (newNick && newNick !== oldNick) {
+                    setOrders(prev => prev.map(o => o.customer === oldNick ? { ...o, customer: newNick } : o));
+                    if (shippingOverrides[oldNick]) {
+                        const newOverrides = { ...shippingOverrides, [newNick]: shippingOverrides[oldNick] };
+                        delete newOverrides[oldNick];
+                        setShippingOverrides(newOverrides);
+                    }
+                    if (selectedNick === oldNick) setSelectedNick(newNick);
+                }
+            };
+
+            // [NEW] 주문 취소 토글 기능
+            const handleOrderCancel = (id) => {
+                setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o));
+            };
+
+            // [NEW] 주문 삭제 기능
+            const handleOrderDelete = (id) => {
+                if(confirm("이 주문을 완전히 삭제하시겠습니까?")) {
+                    setOrders(prev => prev.filter(o => o.id !== id));
+                }
+            };
+
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance) => {
-                const itemListText = items.map(i => `- ${i.product} ${i.quantity}개`).join('\n');
+                // 취소되지 않은 항목만 복사
+                const activeItems = items.filter(i => !i.isCancelled);
+                const itemListText = activeItems.map(i => `- ${i.product} ${i.quantity}개`).join('\n');
                 const isPaid = balance >= 0;
                 let msg = `[주문서] ${nick}님\n\n📦 주문 내역\n${itemListText}\n\n`;
                 msg += `💰 총 금액: ${grandTotal.toLocaleString()}원\n`;
@@ -157,11 +191,20 @@
                 orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
                 return Object.entries(groups).filter(([nick, items]) => {
                     if (searchTerm && !nick.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+                    
                     const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
-                    const productTotal = items.reduce((sum, i) => sum + Number(i.price), 0);
+                    
+                    // 취소된 주문은 계산에서 제외
+                    const activeItems = items.filter(i => !i.isCancelled);
+                    const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
+                    
+                    // 모든 주문이 취소되었으면 배송비도 0원 처리
+                    const finalShipping = activeItems.length > 0 ? currentShipping : 0;
+                    
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
-                    const grandTotal = productTotal + currentShipping;
+                    const grandTotal = productTotal + finalShipping;
                     const balance = depositTotal - grandTotal;
+                    
                     const isPaid = balance >= 0 && depositTotal > 0;
                     if (filterStatus === 'unpaid' && isPaid) return false;
                     if (filterStatus === 'paid' && !isPaid) return false;
@@ -169,26 +212,10 @@
                 });
             }, [orders, searchTerm, filterStatus, shippingOverrides, quickShipping]);
 
-            // [에러 메시지 표시 컴포넌트]
             const StatusMessage = () => {
-                if (connectionStatus === 'error_url') return (
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 m-2" role="alert">
-                        <p className="font-bold">🚨 연결 주소가 없습니다!</p>
-                        <p>코드의 <code>const GOOGLE_API_URL = ...</code> 부분에 구글 앱스 스크립트 주소를 넣어주세요.</p>
-                    </div>
-                );
-                if (connectionStatus === 'error_fetch') return (
-                    <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 m-2" role="alert">
-                        <p className="font-bold">⚠️ 구글 시트 연결 실패!</p>
-                        <p>1. 인터넷 연결 확인<br/>2. 구글 앱스 스크립트 배포 시 <b>'모든 사용자(Anyone)'</b> 권한으로 했는지 확인해주세요.</p>
-                    </div>
-                );
-                if (connectionStatus === 'warning_empty') return (
-                    <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 m-2" role="alert">
-                        <p className="font-bold">ℹ️ 연결은 성공했으나 데이터가 없습니다.</p>
-                        <p>1. 구글 시트의 <b>탭 이름</b>이 <code>Sheet1</code>인지 확인하세요.<br/>2. A열/B열에 데이터가 있는지 확인하세요.</p>
-                    </div>
-                );
+                const { code, msg } = connectionStatus;
+                if (code === 'error_fetch') return <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-2 m-2 text-xs">⚠️ 연결 실패: {msg}</div>;
+                if (code === 'warning_empty') return <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-2 m-2 text-xs">ℹ️ 데이터 0건 (시트 이름 Sheet1 확인 필요)</div>;
                 return null;
             };
 
@@ -206,15 +233,13 @@
                                     <span>| 계좌: <input type="text" value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="w-32 border rounded px-1" placeholder="계좌 입력" /></span>
                                 </div>
                             </div>
-                            
                             <StatusMessage />
-
                             <div className="flex-1 overflow-y-auto p-2 space-y-1">
                                 {chats.map(chat => (
                                     <div key={chat.id} onClick={() => handleChatClick(chat)} className={`p-2 border rounded cursor-pointer hover:bg-gray-50 transition-all ${clickedChats.has(chat.id) ? 'selected-chat' : 'bg-white'}`}>
                                         <div className="flex justify-between text-xs mb-1">
                                             <span className="font-bold text-gray-700">{chat.nickname}</span>
-                                            <span className="text-gray-400">{chat.time.split('T')[1]?.substring(0,5)}</span>
+                                            <span className="text-gray-400">{chat.time ? new Date(chat.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
                                         </div>
                                         <div className="text-sm text-gray-800">{chat.content}</div>
                                     </div>
@@ -272,10 +297,17 @@
                             {filteredGroupedOrders.map(([nick, items]) => {
                                 const isSelected = selectedNick === nick;
                                 const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
-                                const productTotal = items.reduce((sum, i) => sum + Number(i.price), 0);
+                                
+                                // 활성 아이템만 계산
+                                const activeItems = items.filter(i => !i.isCancelled);
+                                const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
                                 const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
-                                const grandTotal = productTotal + currentShipping;
+                                
+                                // 다 취소했으면 배송비도 0원
+                                const finalShipping = activeItems.length > 0 ? currentShipping : 0;
+                                const grandTotal = productTotal + finalShipping;
                                 const balance = depositTotal - grandTotal;
+                                
                                 let statusBadge;
                                 if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-bold">미입금</span>;
                                 else if (balance >= 0) statusBadge = <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">✅ 완납</span>;
@@ -284,17 +316,37 @@
                                 return (
                                     <div key={nick} onClick={() => setSelectedNick(prev => prev === nick ? null : nick)} className={`bg-white rounded-xl border shadow-sm transition-all overflow-hidden cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 shadow-md' : 'hover:border-indigo-300'}`}>
                                         <div className={`p-3 flex justify-between items-center ${isSelected ? 'bg-indigo-50' : 'bg-gray-50'} border-b`}>
-                                            <div className="flex items-center gap-2"><span className="font-bold text-lg text-gray-800">{nick}</span><span className="text-xs bg-white border px-1.5 rounded text-gray-500">{items.length}건</span></div>
+                                            <div className="flex items-center gap-2 group">
+                                                <span className="font-bold text-lg text-gray-800">{nick}</span>
+                                                {/* ✏️ 닉네임 수정 버튼 */}
+                                                <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pencil-simple" weight="bold"/></button>
+                                                <span className="text-xs bg-white border px-1.5 rounded text-gray-500">{items.length}건</span>
+                                            </div>
                                             <div className="text-right flex items-center gap-3">
-                                                <div className="text-xs text-gray-500 text-right"><div>상품 {productTotal.toLocaleString()} + 배송 {currentShipping.toLocaleString()}</div><div className="font-bold text-lg font-mono text-gray-800">{grandTotal.toLocaleString()}원</div></div>
+                                                <div className="text-xs text-gray-500 text-right"><div>상품 {productTotal.toLocaleString()} + 배송 {finalShipping.toLocaleString()}</div><div className="font-bold text-lg font-mono text-gray-800">{grandTotal.toLocaleString()}원</div></div>
                                                 <div className="flex flex-col gap-1 items-end">{statusBadge}<button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance); }} className="bg-yellow-300 hover:bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm"><Icon name="chat-circle-dots" weight="fill"/> 카톡복사</button></div>
                                             </div>
                                         </div>
                                         <div className="p-2 space-y-1">
                                             {items.map((item, idx) => (
-                                                <div key={idx} className="flex justify-between items-center text-sm p-1.5 hover:bg-gray-50 rounded group">
-                                                    <div className="flex-1 flex gap-2 items-center"><input type="text" list="product-list" value={item.product} onChange={(e) => handleProductChange(item.id, 'product', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-full border-b border-dashed border-gray-300 bg-transparent focus:border-indigo-500 focus:bg-white outline-none px-1 py-0.5" placeholder="상품명" /></div>
-                                                    <div className="flex items-center gap-2 pl-2"><span className="font-bold text-indigo-600 bg-indigo-50 px-2 rounded text-xs shrink-0">{item.quantity}개</span><input type="number" value={item.price} onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-20 text-right font-mono text-gray-500 border-b border-transparent hover:border-gray-300 focus:border-indigo-500 bg-transparent outline-none" /></div>
+                                                <div key={idx} className={`flex justify-between items-center text-sm p-1.5 hover:bg-gray-50 rounded group ${item.isCancelled ? 'cancelled-item' : ''}`}>
+                                                    <div className="flex-1 flex gap-2 items-center">
+                                                        <input type="text" list="product-list" value={item.product} onChange={(e) => handleProductChange(item.id, 'product', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-full border-b border-dashed border-gray-300 bg-transparent focus:border-indigo-500 focus:bg-white outline-none px-1 py-0.5" placeholder="상품명" disabled={item.isCancelled} />
+                                                    </div>
+                                                    <div className="flex items-center gap-2 pl-2">
+                                                        <span className="font-bold text-indigo-600 bg-indigo-50 px-2 rounded text-xs shrink-0">{item.quantity}개</span>
+                                                        <input type="number" value={item.price} onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-20 text-right font-mono text-gray-500 border-b border-transparent hover:border-gray-300 focus:border-indigo-500 bg-transparent outline-none" disabled={item.isCancelled} />
+                                                        
+                                                        {/* 🚫 취소 / 🗑️ 삭제 버튼 */}
+                                                        <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id);}} className={`p-1 rounded ${item.isCancelled ? 'bg-gray-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-red-100 hover:text-red-600'}`} title={item.isCancelled ? "취소 복구" : "주문 취소"}>
+                                                                <Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/>
+                                                            </button>
+                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id);}} className="p-1 rounded bg-gray-200 text-gray-600 hover:bg-red-500 hover:text-white" title="완전 삭제">
+                                                                <Icon name="trash" weight="bold"/>
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))}
                                             <div className="flex justify-end items-center gap-2 px-2 py-1 text-xs text-gray-400">배송비 수정: <input type="number" value={currentShipping} onClick={(e)=>e.stopPropagation()} onChange={(e)=>handleShippingChange(nick, e.target.value)} className="w-12 text-right border rounded bg-white px-1 focus:ring-1 focus:ring-indigo-500" /></div>
@@ -311,7 +363,10 @@
 
         const OrderManagementTab = ({ orders, shippingOverrides, quickShipping }) => {
             const handleExportProducts = () => {
-                const summary = {}; orders.forEach(o => { const name = o.product || '(상품명 없음)'; if (!summary[name]) summary[name] = 0; summary[name] += Number(o.quantity); });
+                const summary = {}; orders.forEach(o => { 
+                    if(o.isCancelled) return; // 취소된 건 제외
+                    const name = o.product || '(상품명 없음)'; if (!summary[name]) summary[name] = 0; summary[name] += Number(o.quantity); 
+                });
                 const data = Object.entries(summary).map(([product, qty]) => ({ '상품명': product, '총필요수량': qty }));
                 downloadExcel(data, '상품별_발주리스트');
             };
@@ -319,13 +374,17 @@
                 const groups = {}; orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
                 const data = Object.entries(groups).map(([nick, items]) => {
                     const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
-                    const productTotal = items.reduce((sum, i) => sum + Number(i.price), 0);
+                    
+                    const activeItems = items.filter(i => !i.isCancelled);
+                    if(activeItems.length === 0) return null; // 취소된 주문만 있으면 엑셀에서 뺌
+
+                    const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + currentShipping;
                     const balance = depositTotal - grandTotal;
-                    const itemSummary = items.map(i => `${i.product}(${i.quantity})`).join(', ');
+                    const itemSummary = activeItems.map(i => `${i.product}(${i.quantity})`).join(', ');
                     return { '닉네임': nick, '주문내역': itemSummary, '상품합계': productTotal, '배송비': currentShipping, '총주문금액': grandTotal, '입금확인액': depositTotal, '잔액(미수금)': -balance, '상태': balance >= 0 ? '완납' : '미납' };
-                });
+                }).filter(d => d !== null);
                 downloadExcel(data, '고객별_정산리스트');
             };
             return (
