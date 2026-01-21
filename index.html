@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (취소/수정 기능탑재)</title>
+    <title>깔로 주문서 PRO (최종완성)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -40,8 +40,8 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // ✅ 사장님이 주신 URL로 고정 완료!
-        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbzEyrsKZPDtOqXHfjWhnINxtLPIj3q0CdLsNyIxViBP-bEVnxs5dN1ZFrR7zPFVFYA6FA/exec";
+        // ✅ 사장님이 새로 주신 URL로 업데이트 완료!
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbx-vBZvKr4C0eWjpaPplaD-AEPaQ0FPG7Tzz5gm-yXQYQUkX686TpA-ZXBnebFpq0G_/exec";
 
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
 
@@ -105,7 +105,6 @@
                 const initialProduct = content || '';
                 const initialPrice = productHistory[initialProduct] || 0;
                 setOrders(prev => {
-                    // 취소되지 않은 동일 상품이 있는지 확인
                     const existIdx = prev.findIndex(o => o.customer === nickname && o.product === initialProduct && !o.isCancelled);
                     setSelectedNick(nickname);
                     setSearchTerm(''); 
@@ -120,7 +119,6 @@
 
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct); setManualProduct(''); };
-            
             const handleDepositClick = (deposit, index) => {
                 if (matchedDeposits.has(index)) return;
                 if (!selectedNick) return alert("오른쪽에서 닉네임을 먼저 선택해주세요!");
@@ -134,7 +132,6 @@
                 });
                 setMatchedDeposits(prev => new Set(prev).add(index));
             };
-
             const handleProductChange = (id, field, value) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id === id) {
@@ -147,7 +144,7 @@
             };
             const handleShippingChange = (nick, val) => { setShippingOverrides(prev => ({ ...prev, [nick]: Number(val) })); };
             
-            // [NEW] 닉네임 수정 기능
+            // 닉네임 수정 기능
             const handleNicknameEdit = (oldNick) => {
                 const newNick = prompt(`'${oldNick}'님의 닉네임을 무엇으로 변경할까요?`, oldNick);
                 if (newNick && newNick !== oldNick) {
@@ -161,12 +158,12 @@
                 }
             };
 
-            // [NEW] 주문 취소 토글 기능
+            // 주문 취소 토글 기능
             const handleOrderCancel = (id) => {
                 setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o));
             };
 
-            // [NEW] 주문 삭제 기능
+            // 주문 삭제 기능
             const handleOrderDelete = (id) => {
                 if(confirm("이 주문을 완전히 삭제하시겠습니까?")) {
                     setOrders(prev => prev.filter(o => o.id !== id));
@@ -174,7 +171,6 @@
             };
 
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance) => {
-                // 취소되지 않은 항목만 복사
                 const activeItems = items.filter(i => !i.isCancelled);
                 const itemListText = activeItems.map(i => `- ${i.product} ${i.quantity}개`).join('\n');
                 const isPaid = balance >= 0;
@@ -191,16 +187,11 @@
                 orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
                 return Object.entries(groups).filter(([nick, items]) => {
                     if (searchTerm && !nick.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-                    
                     const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
                     
-                    // 취소된 주문은 계산에서 제외
                     const activeItems = items.filter(i => !i.isCancelled);
                     const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
-                    
-                    // 모든 주문이 취소되었으면 배송비도 0원 처리
                     const finalShipping = activeItems.length > 0 ? currentShipping : 0;
-                    
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + finalShipping;
                     const balance = depositTotal - grandTotal;
@@ -214,6 +205,7 @@
 
             const StatusMessage = () => {
                 const { code, msg } = connectionStatus;
+                if (code === 'error_url') return <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 m-2 text-xs">🚨 주소 없음</div>;
                 if (code === 'error_fetch') return <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-2 m-2 text-xs">⚠️ 연결 실패: {msg}</div>;
                 if (code === 'warning_empty') return <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-2 m-2 text-xs">ℹ️ 데이터 0건 (시트 이름 Sheet1 확인 필요)</div>;
                 return null;
@@ -233,7 +225,9 @@
                                     <span>| 계좌: <input type="text" value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="w-32 border rounded px-1" placeholder="계좌 입력" /></span>
                                 </div>
                             </div>
+                            
                             <StatusMessage />
+
                             <div className="flex-1 overflow-y-auto p-2 space-y-1">
                                 {chats.map(chat => (
                                     <div key={chat.id} onClick={() => handleChatClick(chat)} className={`p-2 border rounded cursor-pointer hover:bg-gray-50 transition-all ${clickedChats.has(chat.id) ? 'selected-chat' : 'bg-white'}`}>
@@ -298,16 +292,12 @@
                                 const isSelected = selectedNick === nick;
                                 const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
                                 
-                                // 활성 아이템만 계산
                                 const activeItems = items.filter(i => !i.isCancelled);
                                 const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
                                 const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
-                                
-                                // 다 취소했으면 배송비도 0원
                                 const finalShipping = activeItems.length > 0 ? currentShipping : 0;
                                 const grandTotal = productTotal + finalShipping;
                                 const balance = depositTotal - grandTotal;
-                                
                                 let statusBadge;
                                 if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-bold">미입금</span>;
                                 else if (balance >= 0) statusBadge = <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">✅ 완납</span>;
@@ -318,7 +308,6 @@
                                         <div className={`p-3 flex justify-between items-center ${isSelected ? 'bg-indigo-50' : 'bg-gray-50'} border-b`}>
                                             <div className="flex items-center gap-2 group">
                                                 <span className="font-bold text-lg text-gray-800">{nick}</span>
-                                                {/* ✏️ 닉네임 수정 버튼 */}
                                                 <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pencil-simple" weight="bold"/></button>
                                                 <span className="text-xs bg-white border px-1.5 rounded text-gray-500">{items.length}건</span>
                                             </div>
@@ -336,15 +325,9 @@
                                                     <div className="flex items-center gap-2 pl-2">
                                                         <span className="font-bold text-indigo-600 bg-indigo-50 px-2 rounded text-xs shrink-0">{item.quantity}개</span>
                                                         <input type="number" value={item.price} onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-20 text-right font-mono text-gray-500 border-b border-transparent hover:border-gray-300 focus:border-indigo-500 bg-transparent outline-none" disabled={item.isCancelled} />
-                                                        
-                                                        {/* 🚫 취소 / 🗑️ 삭제 버튼 */}
                                                         <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id);}} className={`p-1 rounded ${item.isCancelled ? 'bg-gray-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-red-100 hover:text-red-600'}`} title={item.isCancelled ? "취소 복구" : "주문 취소"}>
-                                                                <Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/>
-                                                            </button>
-                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id);}} className="p-1 rounded bg-gray-200 text-gray-600 hover:bg-red-500 hover:text-white" title="완전 삭제">
-                                                                <Icon name="trash" weight="bold"/>
-                                                            </button>
+                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id);}} className={`p-1 rounded ${item.isCancelled ? 'bg-gray-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-red-100 hover:text-red-600'}`} title={item.isCancelled ? "취소 복구" : "주문 취소"}><Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/></button>
+                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id);}} className="p-1 rounded bg-gray-200 text-gray-600 hover:bg-red-500 hover:text-white" title="완전 삭제"><Icon name="trash" weight="bold"/></button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -364,7 +347,7 @@
         const OrderManagementTab = ({ orders, shippingOverrides, quickShipping }) => {
             const handleExportProducts = () => {
                 const summary = {}; orders.forEach(o => { 
-                    if(o.isCancelled) return; // 취소된 건 제외
+                    if(o.isCancelled) return; 
                     const name = o.product || '(상품명 없음)'; if (!summary[name]) summary[name] = 0; summary[name] += Number(o.quantity); 
                 });
                 const data = Object.entries(summary).map(([product, qty]) => ({ '상품명': product, '총필요수량': qty }));
@@ -374,10 +357,8 @@
                 const groups = {}; orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
                 const data = Object.entries(groups).map(([nick, items]) => {
                     const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
-                    
                     const activeItems = items.filter(i => !i.isCancelled);
-                    if(activeItems.length === 0) return null; // 취소된 주문만 있으면 엑셀에서 뺌
-
+                    if(activeItems.length === 0) return null; 
                     const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + currentShipping;
