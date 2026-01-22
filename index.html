@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (매칭밀림해결)</title>
+    <title>깔로 주문서 PRO (완전구동)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -84,7 +84,7 @@
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
-            // matchedDeposits는 상위에서 전달받음
+            
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -115,12 +115,12 @@
                         if (data.chats.length === 0) setConnectionStatus({ code: 'warning_empty', msg: '데이터 0건' });
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
-                    // ✅ [데이터 로딩 수정] 입금 내역에 ID가 제대로 있는지 확인하고 정리
+                    // ✅ 입금 내역 ID 보정 (밀림 방지 핵심)
                     if (data.deposits) {
                         const stableDeposits = data.deposits.map((d, i) => ({
                             ...d,
-                            // 서버에서 uid를 보내주면 쓰고, 없으면 이름+금액으로 임시 ID 생성
-                            id: d.uid || d.id || `${d.name}_${d.amount}_${i}`
+                            // 서버에서 uid를 보내주면 쓰고, 없으면 이름+금액+인덱스로 고유 ID 생성 (안전장치)
+                            id: d.uid || `dep_${d.name}_${d.amount}_${i}`
                         }));
                         setDeposits(stableDeposits);
                     }
@@ -173,16 +173,14 @@
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content, 1); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct, 1); setManualProduct(''); };
             
-            // ✅ [입금 클릭 로직 - 최종 수정]
+            // ✅ 입금 클릭 로직 (안전장치 추가)
             const handleDepositClick = (deposit) => {
-                // deposit.id는 이제 fetchData에서 무조건 보장됨
-                const depositId = deposit.id; 
+                const depositId = deposit.id;
+                // 안전장치: matchedDeposits가 없으면 빈 Set 사용
                 const currentMatched = matchedDeposits || new Set();
 
-                // 1. 이미 체크된 항목이면 -> 취소 모드
                 if (currentMatched.has(depositId)) {
                     if (!confirm("⚠️ 이 입금 확인을 취소하시겠습니까?")) return;
-                    // 선택된 닉네임이 있으면 그 사람 돈에서 뺌
                     if (selectedNick) {
                         const depositAmount = Number(deposit.amount);
                         setOrders(prev => {
@@ -190,25 +188,17 @@
                             const otherOrders = prev.filter(o => o.customer !== selectedNick);
                             if (targetOrders.length === 0) return prev;
                             const updatedTargets = targetOrders.map((o, i) => {
-                                // 0원 밑으로는 안 내려가게
                                 if (i === 0) return { ...o, deposit: Math.max(0, (o.deposit || 0) - depositAmount) };
                                 return o;
                             });
                             return [...updatedTargets, ...otherOrders];
                         });
                     }
-                    // 체크 해제
-                    setMatchedDeposits(prev => { 
-                        const next = new Set(prev); 
-                        next.delete(depositId); 
-                        return next; 
-                    });
+                    setMatchedDeposits(prev => { const next = new Set(prev); next.delete(depositId); return next; });
                     return;
                 }
 
-                // 2. 체크 안 된 항목이면 -> 입금 처리
                 if (!selectedNick) return alert("오른쪽에서 닉네임을 먼저 선택해주세요!");
-
                 const depositAmount = Number(deposit.amount);
                 setOrders(prev => {
                     const targetOrders = prev.filter(o => o.customer === selectedNick);
@@ -220,8 +210,6 @@
                     });
                     return [...updatedTargets, ...otherOrders];
                 });
-                
-                // 체크 등록
                 setMatchedDeposits(prev => new Set(prev).add(depositId));
             };
 
@@ -447,12 +435,13 @@
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
                             {filteredDeposits.map((d, i) => {
-                                // ID 사용, 없으면 index (안전장치)
+                                // 안전장치: id가 없으면 i(인덱스)라도 사용
                                 const depositId = d.id !== undefined ? d.id : i;
-                                const isUsed = matchedDeposits.has(depositId);
-                                const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
+                                // 안전장치: matchedDeposits가 없을 경우 대비
+                                const isUsed = (matchedDeposits || new Set()).has(depositId);
+                                
                                 return (
-                                    <div key={depositId} onClick={() => handleDepositClick(d, i)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}`}>
+                                    <div key={depositId} onClick={() => handleDepositClick(d, i)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} bg-white hover:bg-yellow-100`}>
                                         <span className="text-gray-700 text-sm">{d.name}</span><span className="font-mono text-blue-600 font-bold text-sm">+{Number(d.amount).toLocaleString()}</span>
                                     </div>
                                 );
@@ -482,7 +471,6 @@
                                     <div className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isSaving ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700'}`}>
                                         {isSaving ? <Icon name="spinner" className="animate-spin" /> : <Icon name="cloud-check" weight="fill" />} {isSaving ? "저장중" : "자동저장"}
                                     </div>
-                                    {/* ✅ [설정] 톱니바퀴 (기본 배송비 수정용) */}
                                     <button onClick={() => { const newFee = prompt("기본 배송비를 얼마로 설정할까요?", quickShipping); if(newFee) setQuickShipping(Number(newFee)); }} className="p-1.5 rounded text-gray-500 hover:bg-gray-100"><Icon name="gear" weight="fill"/></button>
                                 </div>
                             </div>
@@ -552,7 +540,7 @@
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-bold text-sm text-gray-800">{nick}</span>
                                                     <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-300 hover:text-indigo-600"><Icon name="pencil-simple" weight="bold" size={12}/></button>
-                                                    <span className="text-[10px] bg-white border px-1 rounded text-gray-400">{items.length}건</span>
+                                                    <span className="text-[10px] bg-white border px-1 rounded text-gray-400">{items.length}</span>
                                                     
                                                     <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} className={`ml-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isCard ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold' : 'bg-white text-gray-400 hover:bg-gray-100'}`}>카드</button>
                                                     <div onClick={(e) => { e.stopPropagation(); const newFee = prompt(`'${nick}'님의 배송비를 입력하세요`, currentShipping); if(newFee !== null) handleShippingChange(nick, Number(newFee)); }} className="cursor-pointer flex items-center gap-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded border hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
@@ -650,7 +638,10 @@
             const handleEdit = (customer) => { setEditMode(customer.nickname); setInputData(customer); };
             const handleDelete = (nickname) => { if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) { setAddresses(prev => prev.filter(a => a.nickname !== nickname)); } };
 
+            // ✅ [추가] 다음 주소 검색 API 연동
             const handleAddressSearch = () => {
+                // 다음 주소창 띄우기
+                // 주의: 팝업 방식은 일부 환경에서 차단될 수 있으나 표준 방식 사용
                 try {
                     new window.daum.Postcode({
                         oncomplete: function(data) {
