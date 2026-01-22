@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (화면개선)</title>
+    <title>깔로 주문서 PRO (자동저장)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -39,6 +39,10 @@
         .keyword-badge { background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 0.7rem; font-weight: bold; }
         .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 2px; }
+        
+        /* 복사 완료 애니메이션 */
+        @keyframes copySuccess { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .copy-anim { animation: copySuccess 0.3s ease-in-out; }
     </style>
 </head>
 <body>
@@ -47,7 +51,10 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // ✅ URL 고정
-        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbx-vBZvKr4C0eWjpaPplaD-AEPaQ0FPG7Tzz5gm-yXQYQUkX686TpA-ZXBnebFpq0G_/exec";
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbw2kxALNMEKEKZJOqi19hlZc5vU7ebCuUP0rQQpEEdxirZTDSCBPY0pjSr_kql5NtHVDw/exec";
+        
+        // ✅ 계좌번호 고정
+        const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
 
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
 
@@ -58,7 +65,16 @@
             XLSX.writeFile(wb, `${fileName}_${new Date().toLocaleDateString()}.xlsx`);
         };
 
-        const LiveTab = ({ orders, setOrders, productHistory, setProductHistory, quickShipping, setQuickShipping, shippingOverrides, setShippingOverrides, bankAccount, setBankAccount, googleScriptUrl, addresses }) => {
+        const LiveTab = ({ 
+            orders, setOrders, 
+            productHistory, setProductHistory, 
+            quickShipping, setQuickShipping, 
+            shippingOverrides, setShippingOverrides, 
+            googleScriptUrl, 
+            addresses, setAddresses, 
+            cardPayments, setCardPayments, 
+            resetAllStatus 
+        }) => {
             const [chats, setChats] = useState([]);
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
@@ -67,22 +83,21 @@
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
-            // 검색 필터
             const [chatSearch, setChatSearch] = useState('');
             const [depositSearch, setDepositSearch] = useState('');
             const [orderSearch, setOrderSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('all');
             
-            // 키워드 필터 상태
             const [keywords, setKeywords] = useState(new Set()); 
             const [keywordInput, setKeywordInput] = useState('');
             const [showKeywordOnly, setShowKeywordOnly] = useState(false);
 
-            // 카드 결제 상태
-            const [cardPayments, setCardPayments] = useState({});
-
             const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
             const [copyStatus, setCopyStatus] = useState({});
+
+            // [NEW] 자동 저장 관련 상태
+            const [isSaving, setIsSaving] = useState(false);
+            const [lastSavedTime, setLastSavedTime] = useState(null);
 
             // 데이터 로딩
             const fetchData = async () => {
@@ -103,7 +118,7 @@
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
                     if (data.deposits) setDeposits(data.deposits);
-                    // 주소는 로컬 파일/수정본 사용 (충돌 방지)
+                    
                     if (data.error_yt) console.error("유튜브 시트 에러:", data.error_yt);
 
                 } catch (e) {
@@ -122,7 +137,6 @@
                 return addresses.find(a => a.nickname.trim() === nick.trim());
             };
 
-            // 키워드 관리
             const handleAddKeyword = (e) => {
                 e.preventDefault();
                 if(!keywordInput.trim()) return;
@@ -142,16 +156,21 @@
                 setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] }));
             };
 
-            const saveToGoogleSheet = async () => {
-                if (Object.keys(orders).length === 0) return alert("저장할 주문이 없습니다.");
-                if (!confirm("현재 주문서를 구글 시트 '최종주문서'에 저장하시겠습니까?")) return;
+            // ✅ [수정] 자동 저장 함수 (알림창 없음, 상태 표시만)
+            const autoSaveToGoogleSheet = async () => {
+                if (Object.keys(orders).length === 0) return; // 저장할 거 없으면 패스
 
+                setIsSaving(true);
                 let saveList = [];
                 orders.forEach(o => {
                     if (o.isCancelled) return;
                     const addr = findAddress(o.customer) || {};
                     const currentShipping = shippingOverrides[o.customer] !== undefined ? shippingOverrides[o.customer] : Number(quickShipping);
                     
+                    // 총합계 계산 (주문자별 합계 아님, 단순히 저장용 데이터 구성)
+                    // 정확한 정산은 엑셀 다운로드나 화면에서 처리하므로 여기서는 각 항목 저장에 집중
+                    const grandTotal = 0; // 시트에서 계산하거나 필요시 로직 추가
+
                     saveList.push({
                         nickname: o.customer,
                         product: o.product,
@@ -159,12 +178,12 @@
                         price: o.price,
                         deposit: o.deposit,
                         shipping: currentShipping, 
-                        grandTotal: 0, 
+                        grandTotal: grandTotal, 
                         address: addr.address || '',
-                        zipcode: addr.zipcode || '', // 우편번호 추가
+                        zipcode: addr.zipcode || '', 
                         phone: addr.phone || '',
                         realname: addr.realname || '',
-                        memo: addr.memo || '' // 배송메모 추가
+                        memo: addr.memo || '' 
                     });
                 });
 
@@ -174,12 +193,24 @@
                         body: JSON.stringify(saveList)
                     });
                     const json = await res.json();
-                    if(json.result === 'success') alert("✅ 저장 완료!");
-                    else alert("저장 실패: " + json.msg);
+                    if(json.result === 'success') {
+                        setLastSavedTime(new Date().toLocaleTimeString());
+                    }
                 } catch(e) {
-                    alert("전송 오류: " + e.message);
+                    console.error("자동 저장 실패:", e);
+                } finally {
+                    setIsSaving(false);
                 }
             };
+
+            // ✅ [수정] 1분마다 자동 저장 실행
+            useEffect(() => {
+                const saveInterval = setInterval(() => {
+                    autoSaveToGoogleSheet();
+                }, 60000); // 60초
+                return () => clearInterval(saveInterval);
+            }, [orders, shippingOverrides, quickShipping]); 
+
 
             const addOrderLogic = (nickname, content, qty = 1) => {
                 const initialProduct = content || '';
@@ -242,7 +273,7 @@
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
             const handleOrderDelete = (id) => { if(confirm("이 주문을 완전히 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // ✅ [카톡 복사] 사장님 맞춤 양식 (카드결제 포함, 알림창 제거)
+            // [카톡 복사]
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance, isCard) => {
                 const activeItems = items.filter(i => !i.isCancelled);
                 
@@ -257,10 +288,9 @@
                 msg += `------------------\n`;
 
                 if (isCard) {
-                    // 카드 결제 양식
-                    const cardBaseAmount = Math.abs(balance); // 결제할 원금 (미수금)
-                    const cardFee = cardBaseAmount * 0.1;     // 수수료 10%
-                    const cardTotal = cardBaseAmount + cardFee; // 총 결제액
+                    const cardBaseAmount = Math.abs(balance); 
+                    const cardFee = cardBaseAmount * 0.1;     
+                    const cardTotal = cardBaseAmount + cardFee; 
 
                     if (depositTotal > 0) {
                         msg += `[입금확인]\n`;
@@ -274,7 +304,6 @@
                     msg += `------------------\n\n`;
 
                 } else {
-                    // 현금 결제 양식 (기존 유지)
                     const isPaid = balance >= 0;
 
                     if (depositTotal > 0) {
@@ -290,7 +319,7 @@
                         msg += `[미입금]\n`;
                         msg += `총 입금하실 금액\n`;
                         msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
-                        msg += `${bankAccount}\n`;
+                        msg += `${FIXED_BANK_ACCOUNT}\n`; // 고정된 계좌번호 사용
                         msg += `입금 부탁드립니다 🙏\n\n`;
                         msg += `------------------\n\n`;
                     }
@@ -348,7 +377,7 @@
                     const finalShipping = activeItems.length > 0 ? currentShipping : 0;
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + finalShipping;
-                    const balance = depositTotal - grandTotal;
+                    const balance = grandTotal - depositTotal;
                     const isPaid = balance >= 0 && depositTotal > 0;
                     if (filterStatus === 'unpaid' && isPaid) return false;
                     if (filterStatus === 'paid' && !isPaid) return false;
@@ -401,7 +430,7 @@
             };
 
             return (
-                <div className="flex h-full gap-2 p-2 overflow-hidden bg-gray-50">
+                <div className="flex h-full gap-2 p-2 overflow-hidden bg-gray-50 text-slate-800">
                     <datalist id="product-list">{Object.keys(productHistory).map(name => <option key={name} value={name} />)}</datalist>
                     
                     {/* [1. 댓글 영역 (30%)] */}
@@ -424,7 +453,7 @@
                                     />
                                     <button type="submit" className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-600">추가</button>
                                 </form>
-                                {/* ✅ 키워드 리스트 (스크롤 적용) */}
+                                {/* 키워드 리스트 */}
                                 {keywords.size > 0 && (
                                     <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto scrollbar-thin mt-1 p-1 bg-white border rounded">
                                         {[...keywords].map(k => (
@@ -471,460 +500,9 @@
                                             <span className="text-gray-400">{chat.time ? new Date(chat.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
                                         </div>
                                         <div className="text-sm">{chat.content}</div>
-                                        
-                                        {/* 키워드 감지 뱃지 */}
                                         {isKeywordMatch && !isClicked && (
                                              <div className="flex justify-between items-center mt-1">
                                                 <span className="keyword-badge flex items-center gap-1"><Icon name="target" weight="fill"/> 키워드됨</span>
                                             </div>
                                         )}
                                     </div>
-                                );
-                            })}
-                            {filteredChats.length === 0 && <div className="text-center text-gray-400 py-10 text-sm">표시할 댓글이 없습니다.</div>}
-                        </div>
-                    </div>
-
-                    {/* [2. 입금 영역 (20%)] */}
-                    <div className="w-[20%] flex flex-col bg-white border rounded-lg shadow-sm overflow-hidden">
-                        <div className="p-2 bg-yellow-50 border-b flex flex-col gap-2">
-                            <div className="font-bold text-yellow-700 flex items-center justify-between">
-                                <span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span>
-                                <span className="text-xs text-gray-500">{filteredDeposits.length}건</span>
-                            </div>
-                            <div className="relative">
-                                <Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"/>
-                                <input type="text" placeholder="입금자/금액 검색" value={depositSearch} onChange={e => setDepositSearch(e.target.value)} 
-                                    className="w-full text-xs pl-7 pr-2 py-1.5 border rounded focus:ring-1 focus:ring-yellow-500 outline-none" />
-                                {depositSearch && <button onClick={()=>setDepositSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={12}/></button>}
-                            </div>
-                            {selectedNick && <div className="text-[11px] text-blue-600 bg-blue-50 p-1 rounded text-center animate-pulse">👇 '{selectedNick}'님 입금 매칭 중</div>}
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
-                            {filteredDeposits.map((d, i) => {
-                                const isUsed = matchedDeposits.has(i);
-                                const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
-                                return (
-                                    <div key={i} onClick={() => handleDepositClick(d, i)} 
-                                         className={`flex justify-between p-2 border rounded cursor-pointer transition-all 
-                                            ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} 
-                                            ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}
-                                         `}>
-                                        <span className="text-gray-700 text-sm">{d.name}</span>
-                                        <span className="font-mono text-blue-600 font-bold text-sm">+{Number(d.amount).toLocaleString()}</span>
-                                    </div>
-                                );
-                            })}
-                            {filteredDeposits.length === 0 && <div className="text-center text-gray-400 py-10 text-sm">내역이 없습니다.</div>}
-                        </div>
-                    </div>
-
-                    {/* [3. 주문서 영역 (50%)] */}
-                    <div className="w-[50%] bg-gray-100 border rounded-lg flex flex-col overflow-hidden">
-                        
-                        {/* [NEW] 상단 대시보드 */}
-                        <div className="grid grid-cols-4 gap-2 p-2 bg-indigo-50 border-b border-indigo-100 text-center text-xs">
-                            <div className="bg-white p-1 rounded shadow-sm">
-                                <div className="text-gray-400">총 매출</div>
-                                <div className="font-bold text-indigo-700 text-sm">{dashboardStats.totalSales.toLocaleString()}원</div>
-                            </div>
-                            <div className="bg-white p-1 rounded shadow-sm">
-                                <div className="text-gray-400">입금액</div>
-                                <div className="font-bold text-green-600 text-sm">{dashboardStats.totalDeposit.toLocaleString()}원</div>
-                            </div>
-                            <div className="bg-white p-1 rounded shadow-sm">
-                                <div className="text-gray-400">미수금</div>
-                                <div className="font-bold text-red-500 text-sm">{dashboardStats.totalUnpaid.toLocaleString()}원</div>
-                            </div>
-                            <div className="bg-white p-1 rounded shadow-sm ring-1 ring-purple-100">
-                                <div className="text-gray-400">카드예정(10%)</div>
-                                <div className="font-bold text-purple-600 text-sm">{dashboardStats.totalCardExpected.toLocaleString()}원</div>
-                            </div>
-                        </div>
-
-                        <div className="p-2 bg-white border-b font-bold text-indigo-700 shadow-sm flex flex-col gap-2">
-                            <div className="flex justify-between items-center">
-                                <span>📦 주문서 ({filteredGroupedOrders.length}명)</span>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={saveToGoogleSheet} className="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-green-700 flex items-center gap-1">
-                                        <Icon name="floppy-disk" weight="fill"/> 구글시트 저장
-                                    </button>
-                                    <div className="flex bg-gray-100 rounded p-0.5 gap-0.5 text-xs">
-                                        <button onClick={()=>setFilterStatus('all')} className={`px-2 py-1 rounded ${filterStatus==='all' ? 'bg-white shadow text-indigo-600 font-bold':'text-gray-500'}`}>전체</button>
-                                        <button onClick={()=>setFilterStatus('unpaid')} className={`px-2 py-1 rounded ${filterStatus==='unpaid' ? 'bg-white shadow text-red-600 font-bold':'text-gray-500'}`}>🔺미입금</button>
-                                        <button onClick={()=>setFilterStatus('paid')} className={`px-2 py-1 rounded ${filterStatus==='paid' ? 'bg-white shadow text-green-600 font-bold':'text-gray-500'}`}>✅완납</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <div className="flex-1 flex gap-2 items-center bg-indigo-50 p-2 rounded border border-indigo-100">
-                                    <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">🖐️ 추가:</span>
-                                    <form onSubmit={handleManualSubmit} className="flex gap-1 w-full">
-                                        <input type="text" placeholder="닉네임" value={manualNick} onChange={e => setManualNick(e.target.value)} className="w-24 border rounded px-2 py-1 text-sm outline-none" />
-                                        <input type="text" list="product-list" placeholder="상품명" value={manualProduct} onChange={e => setManualProduct(e.target.value)} className="flex-1 border rounded px-2 py-1 text-sm outline-none" />
-                                        <button type="submit" className="bg-indigo-600 text-white px-2 py-1 rounded text-sm font-bold hover:bg-indigo-700">＋</button>
-                                    </form>
-                                </div>
-                                <div className="w-1/3 relative">
-                                    <Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"/>
-                                    <input type="text" placeholder="주문자 검색..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} className="w-full h-full pl-8 pr-2 border rounded text-sm outline-none" />
-                                    {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill"/></button>}
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 items-center bg-white p-1 rounded border border-gray-100">
-                                <span>기본배송: <input type="number" value={quickShipping} onChange={(e)=>setQuickShipping(Number(e.target.value))} className="w-10 border rounded px-1 text-right bg-gray-50" />원</span>
-                                <span className="flex-1 flex items-center gap-1">계좌: <textarea value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="flex-1 border rounded px-1 bg-gray-50 resize-none h-8 text-[10px] leading-tight" placeholder="계좌 입력"></textarea></span>
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                            {filteredGroupedOrders.map(([nick, items]) => {
-                                const isSelected = selectedNick === nick;
-                                const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
-                                
-                                const activeItems = items.filter(i => !i.isCancelled);
-                                const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
-                                const finalShipping = activeItems.length > 0 ? currentShipping : 0;
-                                const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
-                                const grandTotal = productTotal + finalShipping;
-                                const balance = depositTotal - grandTotal;
-                                const isCard = cardPayments[nick]; // 카드 결제 여부
-
-                                let statusBadge;
-                                if (isCard) {
-                                    statusBadge = <span className="bg-purple-100 text-purple-600 px-2 py-0.5 rounded text-xs font-bold border border-purple-200">💳 카드</span>;
-                                } else if (depositTotal === 0) {
-                                    statusBadge = <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-bold">미입금</span>;
-                                } else if (balance >= 0) {
-                                    statusBadge = <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">✅ 완납</span>;
-                                } else {
-                                    statusBadge = <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded text-xs font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원 부족</span>;
-                                }
-
-                                const addr = findAddress(nick);
-                                const isCopied = copyStatus[nick]; // 복사 상태 확인
-
-                                return (
-                                    <div key={nick} onClick={() => setSelectedNick(prev => prev === nick ? null : nick)} className={`bg-white rounded-xl border shadow-sm transition-all overflow-hidden cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 shadow-md' : 'hover:border-indigo-300'}`}>
-                                        <div className={`p-3 flex justify-between items-center ${isSelected ? 'bg-indigo-50' : 'bg-gray-50'} border-b`}>
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2 group">
-                                                    <span className="font-bold text-lg text-gray-800">{nick}</span>
-                                                    <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pencil-simple" weight="bold"/></button>
-                                                    <span className="text-xs bg-white border px-1.5 rounded text-gray-500">{items.length}건</span>
-                                                    
-                                                    {/* [NEW] 카드 결제 토글 버튼 */}
-                                                    <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} 
-                                                        className={`ml-2 text-xs px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${isCard ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
-                                                        <Icon name="credit-card" weight={isCard ? "fill" : "regular"}/> 카드
-                                                    </button>
-                                                </div>
-                                                {/* ✅ [개선] 주소가 길면 다음 줄로 넘김 */}
-                                                <div className="flex items-start gap-1 text-xs mt-1">
-                                                    {addr ? (
-                                                        <div className="text-green-600 font-bold flex flex-col gap-0.5">
-                                                             <span className="flex items-center gap-1"><Icon name="house-line" weight="fill"/> {addr.realname} ({addr.phone})</span>
-                                                             {/* 💡 [핵심] 주소가 길어도 다 보이게 스타일 수정 */}
-                                                             <span className="text-[11px] text-slate-500 font-normal break-all whitespace-normal leading-tight">{addr.address}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-red-400 flex items-center gap-1"><Icon name="warning-circle" weight="fill"/> 주소없음</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="text-right flex items-center gap-3">
-                                                <div className="text-xs text-gray-500 text-right"><div>상품 {productTotal.toLocaleString()} + 배송 {finalShipping.toLocaleString()}</div><div className="font-bold text-lg font-mono text-gray-800">{grandTotal.toLocaleString()}원</div></div>
-                                                <div className="flex flex-col gap-1 items-end">
-                                                    {statusBadge}
-                                                    <div className="flex gap-1">
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance, isCard); }} 
-                                                            className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm transition-all ${isCopied ? 'bg-green-500 text-white copy-anim' : 'bg-yellow-300 hover:bg-yellow-400 text-black'}`}>
-                                                            {isCopied ? <><Icon name="check" weight="bold"/> 복사됨!</> : <><Icon name="chat-circle-dots" weight="fill"/> 카톡복사</>}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="p-2 space-y-1">
-                                            {items.map((item, idx) => (
-                                                <div key={idx} className={`flex justify-between items-center text-sm p-1.5 hover:bg-gray-50 rounded group ${item.isCancelled ? 'cancelled-item' : ''}`}>
-                                                    <div className="flex-1 flex gap-2 items-center">
-                                                        <input type="text" list="product-list" value={item.product} onChange={(e) => handleProductChange(item.id, 'product', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-full border-b border-dashed border-gray-300 bg-transparent focus:border-indigo-500 focus:bg-white outline-none px-1 py-0.5" placeholder="상품명" disabled={item.isCancelled} />
-                                                    </div>
-                                                    <div className="flex items-center gap-2 pl-2">
-                                                        <span className="font-bold text-indigo-600 bg-indigo-50 px-2 rounded text-xs shrink-0">{item.quantity}개</span>
-                                                        <input type="number" value={item.price} onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-20 text-right font-mono text-gray-500 border-b border-transparent hover:border-gray-300 focus:border-indigo-500 bg-transparent outline-none" disabled={item.isCancelled} />
-                                                        <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id);}} className={`p-1 rounded ${item.isCancelled ? 'bg-gray-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-red-100 hover:text-red-600'}`} title={item.isCancelled ? "취소 복구" : "주문 취소"}><Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/></button>
-                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id);}} className="p-1 rounded bg-gray-200 text-gray-600 hover:bg-red-500 hover:text-white" title="완전 삭제"><Icon name="trash" weight="bold"/></button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {/* ✅ [수정] 배송비 입력칸 여백 및 스타일 개선 */}
-                                            <div className="flex justify-end items-center gap-2 px-2 py-2 text-xs text-gray-400 border-t border-dashed border-gray-100 mt-1">
-                                                <span>배송비:</span>
-                                                <input 
-                                                    type="number" 
-                                                    value={currentShipping} 
-                                                    onClick={(e)=>e.stopPropagation()} 
-                                                    onChange={(e)=>handleShippingChange(nick, e.target.value)} 
-                                                    className="w-24 text-right border rounded bg-white px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-600 font-bold" 
-                                                />
-                                            </div>
-                                            
-                                            {depositTotal > 0 && (<div className="mt-2 pt-2 border-t border-dashed flex justify-between text-sm text-green-600 font-bold px-2"><span>└ 입금확인액</span><span>{depositTotal.toLocaleString()}원</span></div>)}
-                                            
-                                            {/* 카드 결제 상세 내역 (화면 표시용) */}
-                                            {isCard && balance < 0 && (
-                                                <div className="mt-1 pt-2 border-t border-dashed bg-purple-50 p-2 rounded text-xs text-right text-gray-600">
-                                                    <div>미수금 {Math.abs(balance).toLocaleString()}원</div>
-                                                    <div>+ 카드수수료 10% {(Math.abs(balance)*0.1).toLocaleString()}원</div>
-                                                    <div className="font-bold text-purple-700 mt-1">💳 카드 결제예정: {(Math.abs(balance) * 1.1).toLocaleString()}원</div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // [NEW] 고객관리 탭 컴포넌트
-        const CustomerTab = ({ addresses, setAddresses }) => {
-            const [searchTerm, setSearchTerm] = useState('');
-            const fileInputRef = useRef(null);
-
-            // 주소 추가/수정 상태
-            const [editMode, setEditMode] = useState(null); // null or nickname
-            const [inputData, setInputData] = useState({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });
-
-            // 검색 필터
-            const filteredAddresses = useMemo(() => {
-                if (!searchTerm) return addresses;
-                return addresses.filter(a => 
-                    a.nickname.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                    a.realname.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-            }, [addresses, searchTerm]);
-
-            // 추가/수정 핸들러
-            const handleSave = () => {
-                if (!inputData.nickname) return alert("닉네임은 필수입니다.");
-                
-                // 기존에 있는 닉네임인지 확인 (수정 모드가 아닐 때)
-                if (!editMode && addresses.some(a => a.nickname === inputData.nickname)) {
-                    if (!confirm("이미 존재하는 닉네임입니다. 덮어씌우시겠습니까?")) return;
-                }
-
-                setAddresses(prev => {
-                    // 기존 거 제거하고 새로 추가 (덮어쓰기 효과)
-                    const next = prev.filter(a => a.nickname !== inputData.nickname);
-                    return [...next, inputData];
-                });
-                
-                setEditMode(null);
-                setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });
-                alert("저장되었습니다.");
-            };
-
-            const handleEdit = (customer) => {
-                setEditMode(customer.nickname);
-                setInputData(customer);
-            };
-
-            const handleDelete = (nickname) => {
-                if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) {
-                    setAddresses(prev => prev.filter(a => a.nickname !== nickname));
-                }
-            };
-
-            // 엑셀 업로드 핸들러 (스마트 파싱 적용 - 사용자 요청 컬럼 반영)
-            const handleExcelUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    try {
-                        const bstr = evt.target.result;
-                        const wb = XLSX.read(bstr, { type: 'binary' });
-                        const wsname = wb.SheetNames[0];
-                        const ws = wb.Sheets[wsname];
-                        // 헤더가 있는 JSON으로 변환 (raw:false로 하면 포맷된 문자열로 가져옴 - 0 유지 유리)
-                        // header: "A" 옵션 사용
-                        const data = XLSX.utils.sheet_to_json(ws, { raw: false, header: "A" });
-                        
-                        // 데이터 정제 및 병합
-                        const newAddresses = data.map(row => {
-                            // D열: 닉네임, F열: 이름, G열: 전화번호, H열: 주소, I열: 배송메모
-                            const nickname = row['D'] ? String(row['D']).trim() : '';
-                            if (!nickname || nickname === '닉네임') return null; // 헤더나 빈 값 제외
-
-                            const realname = row['F'] ? String(row['F']).trim() : '';
-                            let phone = row['G'] ? String(row['G']).trim() : '';
-                            let fullAddr = row['H'] ? String(row['H']).trim() : '';
-                            const memo = row['I'] ? String(row['I']).trim() : '';
-                            
-                            // 1. 전화번호 0 채우기
-                            phone = String(phone).replace(/[^0-9]/g, '');
-                            if (phone.length === 10 && phone.startsWith('10')) phone = '0' + phone;
-                            if (phone.length === 11) phone = phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
-
-                            // 2. 주소에서 우편번호 분리
-                            let zipcode = '';
-                            let address = fullAddr;
-                            
-                            const zipMatch = fullAddr.match(/[\(\[](\d{5})[\)\]]/);
-                            if (zipMatch) {
-                                zipcode = zipMatch[1]; // 괄호 안의 숫자만 추출
-                                address = fullAddr.replace(zipMatch[0], '').trim(); // 우편번호 부분 제거하고 나머지 주소만
-                            }
-
-                            return { nickname, realname, phone, zipcode, address, memo };
-                        }).filter(a => a); // null 제외
-
-                        if (newAddresses.length > 0) {
-                            // 기존 데이터와 병합 (닉네임 기준 덮어쓰기)
-                            setAddresses(prev => {
-                                const map = new Map(prev.map(item => [item.nickname, item]));
-                                newAddresses.forEach(item => map.set(item.nickname, item));
-                                return Array.from(map.values());
-                            });
-                            alert(`✅ ${newAddresses.length}명 로드 완료! (중복은 최신 정보로 업데이트됨)`);
-                        } else {
-                            alert("데이터를 찾을 수 없습니다. 엑셀 D열에 '닉네임'이 있는지 확인하세요.");
-                        }
-                    } catch (err) {
-                        alert("엑셀 읽기 실패: " + err);
-                    }
-                };
-                reader.readAsBinaryString(file);
-                e.target.value = ''; 
-            };
-
-            return (
-                <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border p-4 overflow-hidden">
-                    <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                        <h2 className="text-xl font-bold flex items-center gap-2"><Icon name="address-book" weight="fill" className="text-indigo-600"/> 고객 주소록 관리 <span className="text-sm font-normal text-gray-500">({addresses.length}명)</span></h2>
-                        <div className="flex gap-2">
-                            <input type="file" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" accept=".xlsx, .xls" />
-                            <button onClick={() => fileInputRef.current.click()} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 shadow-sm">
-                                <Icon name="file-xls" weight="fill"/> 엑셀 일괄등록
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* 입력 폼 */}
-                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4 flex gap-2 items-end">
-                        <div className="flex-1 grid grid-cols-6 gap-2">
-                            <div><label className="text-xs font-bold text-gray-500">닉네임(필수)</label><input type="text" value={inputData.nickname} onChange={e=>setInputData({...inputData, nickname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="예: 깔로" /></div>
-                            <div><label className="text-xs font-bold text-gray-500">이름(실명)</label><input type="text" value={inputData.realname} onChange={e=>setInputData({...inputData, realname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="홍길동" /></div>
-                            <div><label className="text-xs font-bold text-gray-500">전화번호</label><input type="text" value={inputData.phone} onChange={e=>setInputData({...inputData, phone:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="010-0000-0000" /></div>
-                            <div className="col-span-2 flex gap-1">
-                                <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
-                                <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="서울시 강남구..." /></div>
-                            </div>
-                            <div><label className="text-xs font-bold text-gray-500">배송메모</label><input type="text" value={inputData.memo} onChange={e=>setInputData({...inputData, memo:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="문앞" /></div>
-                        </div>
-                        <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold h-10 shadow-sm">{editMode ? '수정완료' : '추가'}</button>
-                        {editMode && <button onClick={()=>{setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });}} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded font-bold h-10">취소</button>}
-                    </div>
-
-                    {/* 검색창 */}
-                    <div className="relative mb-2">
-                        <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
-                        <input type="text" placeholder="닉네임 또는 이름 검색..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="w-full pl-10 border rounded py-2 text-sm outline-none focus:border-indigo-500" />
-                    </div>
-
-                    {/* 리스트 */}
-                    <div className="flex-1 overflow-y-auto border rounded bg-white">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-100 text-gray-600 sticky top-0">
-                                <tr>
-                                    <th className="p-2 border-b">닉네임</th>
-                                    <th className="p-2 border-b">이름</th>
-                                    <th className="p-2 border-b">전화번호</th>
-                                    <th className="p-2 border-b w-16">우편번호</th>
-                                    <th className="p-2 border-b">주소</th>
-                                    <th className="p-2 border-b">배송메모</th>
-                                    <th className="p-2 border-b w-20 text-center">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {filteredAddresses.map((addr, i) => (
-                                    <tr key={i} className="hover:bg-gray-50 group">
-                                        <td className="p-2 font-bold text-indigo-700">{addr.nickname}</td>
-                                        <td className="p-2">{addr.realname}</td>
-                                        <td className="p-2">{addr.phone}</td>
-                                        <td className="p-2 font-mono text-gray-500">{addr.zipcode}</td>
-                                        <td className="p-2 text-gray-600">{addr.address}</td>
-                                        <td className="p-2 text-gray-500 text-xs">{addr.memo}</td>
-                                        <td className="p-2 text-center">
-                                            <button onClick={()=>handleEdit(addr)} className="text-blue-500 hover:text-blue-700 mx-1"><Icon name="pencil-simple" weight="fill"/></button>
-                                            <button onClick={()=>handleDelete(addr.nickname)} className="text-red-400 hover:text-red-600 mx-1"><Icon name="trash" weight="fill"/></button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {filteredAddresses.length === 0 && <div className="text-center py-10 text-gray-400">등록된 고객이 없습니다.</div>}
-                    </div>
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
-            const [activeTab, setActiveTab] = useState('live');
-            const [quickShipping, setQuickShipping] = useState(4000); 
-            // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 김선정 줄바꿈 적용)
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 김선정\n7942 18 01611");
-            const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
-            const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
-            // ✅ 주소록 (로컬 스토리지에 저장)
-            const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem('verifiedAddresses')) || []);
-            const [cardPayments, setCardPayments] = useState(() => JSON.parse(localStorage.getItem('cardPayments')) || {});
-
-            useEffect(() => { localStorage.setItem('youtubeOrders', JSON.stringify(orders)); }, [orders]);
-            useEffect(() => { localStorage.setItem('productHistory', JSON.stringify(productHistory)); }, [productHistory]);
-            useEffect(() => { localStorage.setItem('bankAccount', bankAccount); }, [bankAccount]);
-            useEffect(() => { localStorage.setItem('shippingOverrides', JSON.stringify(shippingOverrides)); }, [shippingOverrides]);
-            useEffect(() => { localStorage.setItem('verifiedAddresses', JSON.stringify(addresses)); }, [addresses]);
-            useEffect(() => { localStorage.setItem('cardPayments', JSON.stringify(cardPayments)); }, [cardPayments]);
-
-
-            const tabs = [
-                { id: 'live', label: '🎥 라이브관제', icon: 'monitor-play' }, 
-                { id: 'customer', label: '👥 고객관리', icon: 'address-book' }, // 🆕 탭 추가
-                { id: 'manage', label: '📊 주문관리(엑셀)', icon: 'file-xls' }
-            ];
-
-            return (
-                <div className="flex flex-col h-screen overflow-hidden text-slate-700">
-                    <header className="h-12 bg-indigo-900 text-white flex items-center justify-between px-4 shrink-0 shadow-md">
-                        <div className="font-bold text-lg flex items-center gap-2"><Icon name="lightning" className="text-yellow-400" weight="fill"/> 깔로 주문서 PRO</div>
-                        <div className="flex items-center gap-2">
-                            <div className="flex bg-indigo-800 rounded p-1 gap-1">
-                                {tabs.map(tab => (
-                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name={tab.icon} weight="bold"/> {tab.label}</button>
-                                ))}
-                            </div>
-                        </div>
-                    </header>
-                    <main className="flex-1 overflow-hidden bg-gray-100 p-2">
-                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} addresses={addresses} cardPayments={cardPayments} setCardPayments={setCardPayments} />)}
-                        {activeTab === 'customer' && (<CustomerTab addresses={addresses} setAddresses={setAddresses} />)}
-                        {activeTab === 'manage' && (<OrderManagementTab orders={orders} shippingOverrides={shippingOverrides} quickShipping={quickShipping} addresses={addresses} />)}
-                    </main>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
