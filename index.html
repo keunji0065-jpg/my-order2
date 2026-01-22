@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (최종완성)</title>
+    <title>깔로 주문서 PRO (최종 수정판)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -28,10 +28,24 @@
         @import url("https://cdn.jsdelivr.net/gh/moonspam/NanumSquareNeo/nanumsquareneo.css");
         body { font-family: 'NanumSquareNeo', sans-serif; background-color: #f1f5f9; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .selected-chat { background-color: #ebf8ff; border-left: 4px solid #3182ce; opacity: 0.7; }
+        
+        /* ✅ 클릭한 댓글 스타일 (취소선 + 회색) */
+        .processed-chat { 
+            text-decoration: line-through; 
+            background-color: #f3f4f6 !important; 
+            color: #9ca3af !important; 
+            border-color: #e5e7eb !important;
+            opacity: 0.6;
+        }
+        
+        .selected-chat-active { 
+            border-left: 4px solid #3182ce; 
+            background-color: #ebf8ff; 
+        }
+
         .badge-pulse { animation: pulse-orange 2s infinite; }
         @keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); } 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); } }
-        /* 취소선 스타일 */
+        /* 주문 취소선 스타일 */
         .cancelled-item { text-decoration: line-through; color: #9ca3af; background-color: #f3f4f6; }
     </style>
 </head>
@@ -40,7 +54,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // ✅ 사장님이 새로 주신 URL로 업데이트 완료!
+        // ✅ URL 고정
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbx-vBZvKr4C0eWjpaPplaD-AEPaQ0FPG7Tzz5gm-yXQYQUkX686TpA-ZXBnebFpq0G_/exec";
 
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
@@ -144,7 +158,6 @@
             };
             const handleShippingChange = (nick, val) => { setShippingOverrides(prev => ({ ...prev, [nick]: Number(val) })); };
             
-            // 닉네임 수정 기능
             const handleNicknameEdit = (oldNick) => {
                 const newNick = prompt(`'${oldNick}'님의 닉네임을 무엇으로 변경할까요?`, oldNick);
                 if (newNick && newNick !== oldNick) {
@@ -158,18 +171,17 @@
                 }
             };
 
-            // 주문 취소 토글 기능
             const handleOrderCancel = (id) => {
                 setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o));
             };
 
-            // 주문 삭제 기능
             const handleOrderDelete = (id) => {
                 if(confirm("이 주문을 완전히 삭제하시겠습니까?")) {
                     setOrders(prev => prev.filter(o => o.id !== id));
                 }
             };
 
+            // ⭐ [수정] 카톡 복사 기능: document.execCommand 방식 사용 (호환성 개선)
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance) => {
                 const activeItems = items.filter(i => !i.isCancelled);
                 const itemListText = activeItems.map(i => `- ${i.product} ${i.quantity}개`).join('\n');
@@ -179,7 +191,19 @@
                 if (depositTotal > 0) msg += `💸 입금 확인: ${depositTotal.toLocaleString()}원\n`;
                 if (isPaid) { msg += `✅ 완납되었습니다! 감사합니다.`; if (balance > 0) msg += ` (잔액 ${balance.toLocaleString()}원은 적립)`; } 
                 else { msg += `------------------\n🔺 미입금액: ${Math.abs(balance).toLocaleString()}원\n------------------\n🏦 계좌: ${bankAccount}\n입금 부탁드립니다! 😊`; }
-                navigator.clipboard.writeText(msg).then(() => alert(`${nick}님 주문서 복사 완료!`));
+                
+                // 텍스트 복사 (호환성 높은 방식)
+                const textArea = document.createElement("textarea");
+                textArea.value = msg;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert(`${nick}님 주문서 복사 완료!`);
+                } catch (err) {
+                    alert('복사 실패: ' + err);
+                }
+                document.body.removeChild(textArea);
             };
 
             const filteredGroupedOrders = useMemo(() => {
@@ -229,15 +253,20 @@
                             <StatusMessage />
 
                             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                                {chats.map(chat => (
-                                    <div key={chat.id} onClick={() => handleChatClick(chat)} className={`p-2 border rounded cursor-pointer hover:bg-gray-50 transition-all ${clickedChats.has(chat.id) ? 'selected-chat' : 'bg-white'}`}>
-                                        <div className="flex justify-between text-xs mb-1">
-                                            <span className="font-bold text-gray-700">{chat.nickname}</span>
-                                            <span className="text-gray-400">{chat.time ? new Date(chat.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                                {chats.map(chat => {
+                                    // ✅ 클릭 여부에 따른 스타일 적용
+                                    const isClicked = clickedChats.has(chat.id);
+                                    return (
+                                        <div key={chat.id} onClick={() => handleChatClick(chat)} 
+                                             className={`p-2 border rounded cursor-pointer transition-all ${isClicked ? 'processed-chat' : 'bg-white hover:bg-gray-50'}`}>
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span className={`font-bold ${isClicked ? 'text-gray-500' : 'text-gray-700'}`}>{chat.nickname}</span>
+                                                <span className="text-gray-400">{chat.time ? new Date(chat.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                                            </div>
+                                            <div className="text-sm">{chat.content}</div>
                                         </div>
-                                        <div className="text-sm text-gray-800">{chat.content}</div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                         <div className="h-1/3 bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden">
