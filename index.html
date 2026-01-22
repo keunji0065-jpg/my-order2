@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (최종연동)</title>
+    <title>깔로 주문서 PRO (안정화버전)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -54,8 +54,8 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-        // ✅ URL 업데이트 완료
-        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbxKsmHZVjhAjxmxTOeYFm82_kiu15bIqLbN8Szt7Ect5zF3hX25KCIQjiPZrz7jkvMMEA/exec";
+        // ✅ URL 고정
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbwWpf_CrUfuzgKuyxxtd5EXQLg9KBj8VCLWnEKRJKwOhx9_BF8QhzoAqodZdt8rwxIbSA/exec";
         
         const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
 
@@ -73,12 +73,12 @@
             productHistory, setProductHistory, 
             quickShipping, setQuickShipping, 
             shippingOverrides, setShippingOverrides, 
-            bankAccount, setBankAccount, 
+            bankAccount, 
             googleScriptUrl, 
-            addresses, setAddresses, 
+            addresses, 
             cardPayments, setCardPayments, 
             resetAllStatus,
-            matchedDeposits, setMatchedDeposits
+            matchedDeposits = new Set(), setMatchedDeposits // ✅ 기본값 추가로 오류 방지
         }) => {
             const [chats, setChats] = useState([]);
             const [deposits, setDeposits] = useState([]);
@@ -124,6 +124,8 @@
                     }
                     if (data.deposits) setDeposits(data.deposits);
                     
+                    if (data.error_yt) console.error("유튜브 에러:", data.error_yt);
+
                 } catch (e) {
                     console.error("연결 실패:", e);
                     setConnectionStatus({ code: 'error_fetch', msg: e.message });
@@ -227,7 +229,13 @@
             
             // 입금 확인 및 취소 로직
             const handleDepositClick = (deposit, index) => {
-                if (matchedDeposits.has(index)) {
+                // ✅ [안전장치] matchedDeposits가 없으면 빈 Set으로 처리 (오류 방지)
+                const currentMatched = matchedDeposits || new Set();
+
+                // ✅ [수정] id가 있으면 id 사용, 없으면 index 사용
+                const depositId = deposit.id !== undefined ? deposit.id : index;
+
+                if (currentMatched.has(depositId)) {
                     if (!confirm("⚠️ 이 입금 확인을 취소하시겠습니까?")) return;
                     if (selectedNick) {
                         const depositAmount = Number(deposit.amount);
@@ -244,7 +252,7 @@
                     }
                     setMatchedDeposits(prev => {
                         const next = new Set(prev);
-                        next.delete(index);
+                        next.delete(depositId);
                         return next;
                     });
                     return;
@@ -263,7 +271,7 @@
                     });
                     return [...updatedTargets, ...otherOrders];
                 });
-                setMatchedDeposits(prev => new Set(prev).add(index));
+                setMatchedDeposits(prev => new Set(prev).add(depositId));
             };
 
             // 입금액 강제 초기화 함수
@@ -392,9 +400,7 @@
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + finalShipping;
                     const balance = grandTotal - depositTotal;
-                    
                     const isPaid = (balance >= 0) && (grandTotal > 0);
-                    
                     if (filterStatus === 'unpaid' && isPaid) return false;
                     if (filterStatus === 'paid' && !isPaid) return false;
                     return true;
@@ -486,10 +492,12 @@
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
                             {filteredDeposits.map((d, i) => {
-                                const isUsed = matchedDeposits.has(i);
+                                // ✅ [수정] ID가 없으면 Index를 고유키로 사용 (Set 오류 방지)
+                                const depositId = d.id !== undefined ? d.id : i;
+                                const isUsed = matchedDeposits.has(depositId);
                                 const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
                                 return (
-                                    <div key={i} onClick={() => handleDepositClick(d, i)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}`}>
+                                    <div key={depositId} onClick={() => handleDepositClick(d, depositId)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}`}>
                                         <span className="text-gray-700 text-sm">{d.name}</span><span className="font-mono text-blue-600 font-bold text-sm">+{Number(d.amount).toLocaleString()}</span>
                                     </div>
                                 );
@@ -569,7 +577,6 @@
                                 let statusBadge;
                                 if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
                                 else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
-                                // ✅ [수정] 0원 주문(가격 미입력)은 미납으로 간주 (완납 조건: 잔액>=0 AND 총액>0)
                                 else if (balance >= 0 && grandTotal > 0) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
 
@@ -859,6 +866,13 @@
             const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem('verifiedAddresses')) || []);
             const [cardPayments, setCardPayments] = useState(() => JSON.parse(localStorage.getItem('cardPayments')) || {});
             const [isSettingsOpen, setIsSettingsOpen] = useState(false); // ✅ 설정 모달 상태 추가
+            
+            // [NEW] matchedDeposits 상태 상위로 이동 (저장용)
+            const [matchedDeposits, setMatchedDeposits] = useState(() => {
+                // 저장된 Set 복원
+                const saved = localStorage.getItem('matchedDeposits');
+                return saved ? new Set(JSON.parse(saved)) : new Set();
+            });
 
             useEffect(() => { localStorage.setItem('youtubeOrders', JSON.stringify(orders)); }, [orders]);
             useEffect(() => { localStorage.setItem('productHistory', JSON.stringify(productHistory)); }, [productHistory]);
@@ -866,6 +880,11 @@
             useEffect(() => { localStorage.setItem('shippingOverrides', JSON.stringify(shippingOverrides)); }, [shippingOverrides]);
             useEffect(() => { localStorage.setItem('verifiedAddresses', JSON.stringify(addresses)); }, [addresses]);
             useEffect(() => { localStorage.setItem('cardPayments', JSON.stringify(cardPayments)); }, [cardPayments]);
+            
+            // [NEW] matchedDeposits 저장
+            useEffect(() => { 
+                localStorage.setItem('matchedDeposits', JSON.stringify([...matchedDeposits])); 
+            }, [matchedDeposits]);
 
             // ✅ 탭 이름 깔끔하게 정리 (이모지 제거)
             const tabs = [
@@ -877,8 +896,9 @@
             // 전체 초기화
             const resetAllStatus = () => {
                 if(confirm("모든 주문, 입금, 클릭 기록을 초기화하시겠습니까?\n(주소록과 상품 가격은 유지됩니다.)")) {
-                    setOrders([]); setCardPayments({}); setShippingOverrides({});
-                    localStorage.removeItem('youtubeOrders'); localStorage.removeItem('cardPayments'); localStorage.removeItem('shippingOverrides');
+                    setOrders([]); setCardPayments({}); setShippingOverrides({}); setMatchedDeposits(new Set());
+                    localStorage.removeItem('youtubeOrders'); localStorage.removeItem('cardPayments'); 
+                    localStorage.removeItem('shippingOverrides'); localStorage.removeItem('matchedDeposits');
                     alert("초기화 완료!"); window.location.reload(); 
                 }
             };
@@ -915,7 +935,7 @@
                     )}
 
                     <main className="flex-1 overflow-hidden bg-gray-100 p-2 relative">
-                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} addresses={addresses} setAddresses={setAddresses} cardPayments={cardPayments} setCardPayments={setCardPayments} resetAllStatus={resetAllStatus} />)}
+                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} addresses={addresses} setAddresses={setAddresses} cardPayments={cardPayments} setCardPayments={setCardPayments} resetAllStatus={resetAllStatus} matchedDeposits={matchedDeposits} setMatchedDeposits={setMatchedDeposits} />)}
                         {activeTab === 'customer' && (<CustomerTab addresses={addresses} setAddresses={setAddresses} />)}
                         {activeTab === 'manage' && (<OrderManagementTab orders={orders} shippingOverrides={shippingOverrides} quickShipping={quickShipping} addresses={addresses} />)}
                     </main>
