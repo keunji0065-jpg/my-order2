@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (AI 자동스캔)</title>
+    <title>깔로 주문서 PRO (고객관리/주소분리)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -35,21 +35,16 @@
         @keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); } 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); } }
         .cancelled-item { text-decoration: line-through; color: #9ca3af; background-color: #f3f4f6; }
         
-        /* AI 버튼 효과 */
-        .ai-btn { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: white; border: none; }
-        .ai-btn:hover { opacity: 0.9; transform: scale(1.05); }
-        .ai-loading { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        /* AI 감지된 주문 스타일 */
-        .ai-detected { border: 2px solid #34d399; background-color: #ecfdf5; }
-        .ai-badge { background-color: #34d399; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 0.7rem; font-weight: bold; }
+        .keyword-detected { border: 2px solid #3b82f6; background-color: #eff6ff; }
+        .keyword-badge { background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 0.7rem; font-weight: bold; }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 2px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
 
         // ✅ URL 고정
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbx-vBZvKr4C0eWjpaPplaD-AEPaQ0FPG7Tzz5gm-yXQYQUkX686TpA-ZXBnebFpq0G_/exec";
@@ -63,28 +58,27 @@
             XLSX.writeFile(wb, `${fileName}_${new Date().toLocaleDateString()}.xlsx`);
         };
 
-        const LiveTab = ({ orders, setOrders, productHistory, setProductHistory, quickShipping, setQuickShipping, shippingOverrides, setShippingOverrides, bankAccount, setBankAccount, googleScriptUrl, geminiKey, setGeminiKey }) => {
+        const LiveTab = ({ orders, setOrders, productHistory, setProductHistory, quickShipping, setQuickShipping, shippingOverrides, setShippingOverrides, bankAccount, setBankAccount, googleScriptUrl, addresses }) => {
             const [chats, setChats] = useState([]);
             const [deposits, setDeposits] = useState([]);
-            const [addresses, setAddresses] = useState([]); 
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
             const [matchedDeposits, setMatchedDeposits] = useState(new Set());
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
-            // 검색 필터 (각각 분리)
+            // 검색 필터
             const [chatSearch, setChatSearch] = useState('');
             const [depositSearch, setDepositSearch] = useState('');
             const [orderSearch, setOrderSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('all');
             
-            const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
-            const [isAiLoading, setIsAiLoading] = useState(false);
+            // 키워드 필터 상태
+            const [keywords, setKeywords] = useState(new Set()); 
+            const [keywordInput, setKeywordInput] = useState('');
+            const [showKeywordOnly, setShowKeywordOnly] = useState(false);
 
-            // 🤖 AI 분석 결과 저장소 (Chat ID -> {product, qty})
-            const [aiDetectedData, setAiDetectedData] = useState({});
-            const [showAiOnly, setShowAiOnly] = useState(false); // AI 감지된 것만 보기 필터
+            const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
 
             // 데이터 로딩
             const fetchData = async () => {
@@ -105,7 +99,7 @@
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
                     if (data.deposits) setDeposits(data.deposits);
-                    if (data.addresses) setAddresses(data.addresses);
+                    // 주소는 로컬 파일/수정본 사용 (충돌 방지)
                     if (data.error_yt) console.error("유튜브 시트 에러:", data.error_yt);
 
                 } catch (e) {
@@ -122,6 +116,22 @@
 
             const findAddress = (nick) => {
                 return addresses.find(a => a.nickname.trim() === nick.trim());
+            };
+
+            // 키워드 관리
+            const handleAddKeyword = (e) => {
+                e.preventDefault();
+                if(!keywordInput.trim()) return;
+                setKeywords(prev => new Set(prev).add(keywordInput.trim()));
+                setKeywordInput('');
+            };
+
+            const handleRemoveKeyword = (keyword) => {
+                setKeywords(prev => {
+                    const next = new Set(prev);
+                    next.delete(keyword);
+                    return next;
+                });
             };
 
             const saveToGoogleSheet = async () => {
@@ -143,6 +153,7 @@
                         shipping: currentShipping, 
                         grandTotal: 0, 
                         address: addr.address || '',
+                        zipcode: addr.zipcode || '', // 우편번호 추가
                         phone: addr.phone || '',
                         realname: addr.realname || ''
                     });
@@ -177,117 +188,9 @@
                 });
             };
 
-            // 🤖 AI 일괄 스캔 (Batch Scan)
-            const scanChatsWithGemini = async () => {
-                if (!geminiKey) return alert("우측 상단 톱니바퀴(⚙️)에서 Gemini API 키를 먼저 입력해주세요!");
-                
-                // 아직 분석 안 된 최신 채팅 20개만 가져오기 (비용/속도 고려)
-                const unanalyzedChats = chats.filter(c => !aiDetectedData[c.id]).slice(0, 30);
-                
-                if (unanalyzedChats.length === 0) return alert("새로 분석할 댓글이 없습니다.");
-
-                setIsAiLoading(true);
-                
-                // 프롬프트 구성
-                const chatTextList = unanalyzedChats.map(c => `ID:${c.id}, 내용:${c.content}`).join('\n');
-                const prompt = `
-                    다음은 라이브 커머스 채팅 내역이다. 잡담은 무시하고, '주문'으로 보이는 메시지만 골라내라.
-                    상품명과 수량을 정확히 추출해라. 수량이 없으면 1로 간주해라.
-                    
-                    채팅 리스트:
-                    ${chatTextList}
-
-                    결과를 아래와 같은 JSON 배열 형식으로만 출력해라. 설명은 필요 없다.
-                    [{"id": "채팅ID", "product": "상품명", "qty": 수량}, ...]
-                    주문이 아닌 것은 결과에 포함시키지 마라.
-                `;
-
-                try {
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiKey}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                    });
-                    const data = await response.json();
-                    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    
-                    // JSON 추출
-                    const jsonMatch = resultText.match(/\[.*\]/s);
-                    if (jsonMatch) {
-                        const results = JSON.parse(jsonMatch[0]);
-                        const newDetection = {};
-                        let count = 0;
-                        results.forEach(r => {
-                            newDetection[r.id] = { product: r.product, qty: r.qty };
-                            count++;
-                        });
-                        setAiDetectedData(prev => ({ ...prev, ...newDetection }));
-                        if(count > 0) {
-                            alert(`🤖 ${count}건의 주문을 찾았습니다!\n초록색으로 표시된 댓글을 클릭하면 바로 등록됩니다.`);
-                            setShowAiOnly(true); // 편의상 AI 필터 켜주기
-                        } else {
-                            alert("주문으로 보이는 댓글이 없습니다.");
-                        }
-                    } else {
-                        alert("AI 응답 분석 실패");
-                    }
-                } catch (error) {
-                    console.error("Gemini Scan Error:", error);
-                    alert("AI 스캔 중 오류가 발생했습니다.");
-                } finally {
-                    setIsAiLoading(false);
-                }
-            };
-
-            // ✨ Gemini API 호출 함수 (메시지 작성)
-            const callGeminiMessage = async (nick, items, total, deposit, balance) => {
-                if (!geminiKey) return alert("우측 상단 톱니바퀴(⚙️)에서 Gemini API 키를 먼저 입력해주세요!");
-                setIsAiLoading(true);
-                try {
-                    const itemListText = items.map(i => `${i.product} ${i.quantity}개`).join(', ');
-                    const status = balance >= 0 ? "완납 (감사인사)" : `미입금 (입금요청, 잔액 ${Math.abs(balance)}원)`;
-                    
-                    const prompt = `
-                        고객님께 보낼 정중하고 친절한 카카오톡 주문 확인 메시지를 작성해줘. 이모티콘을 적절히 사용해.
-                        고객명: ${nick}
-                        주문내역: ${itemListText}
-                        총금액: ${total}원
-                        입금확인액: ${deposit}원
-                        상태: ${status}
-                        계좌: ${bankAccount}
-                        
-                        ${balance < 0 ? '추가 입금이 필요한 상황이야.' : '입금이 확인되어 배송 준비중이라는 내용이야.'}
-                        너무 길지 않게 작성해줘.
-                    `;
-
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiKey}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                    });
-                    const data = await response.json();
-                    const msg = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    
-                    if (msg) {
-                        navigator.clipboard.writeText(msg).then(() => alert(`🤖 AI 메시지가 복사되었습니다!\n\n${msg}`));
-                    }
-                } catch (error) {
-                    console.error("Gemini Error:", error);
-                    alert("AI 메시지 생성 실패");
-                } finally {
-                    setIsAiLoading(false);
-                }
-            };
-
-            // 댓글 클릭 시: AI 분석 데이터가 있으면 그걸 쓰고, 없으면 그냥 내용 씀
             const handleChatClick = (chat) => { 
                 setClickedChats(prev => new Set(prev).add(chat.id));
-                const aiData = aiDetectedData[chat.id];
-                if (aiData) {
-                    addOrderLogic(chat.nickname, aiData.product, aiData.qty);
-                } else {
-                    addOrderLogic(chat.nickname, chat.content, 1); 
-                }
+                addOrderLogic(chat.nickname, chat.content, 1); 
             };
 
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct, 1); setManualProduct(''); };
@@ -330,7 +233,6 @@
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
             const handleOrderDelete = (id) => { if(confirm("이 주문을 완전히 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // 기존 카톡 복사 (단순형)
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance) => {
                 const activeItems = items.filter(i => !i.isCancelled);
                 const itemListText = activeItems.map(i => `- ${i.product} ${i.quantity}개`).join('\n');
@@ -349,19 +251,19 @@
                 document.body.removeChild(textArea);
             };
 
-            // [NEW] 필터링 (각 섹션별)
             const filteredChats = useMemo(() => {
                 let result = chats;
-                // AI 필터
-                if (showAiOnly) {
-                    result = result.filter(c => aiDetectedData[c.id]);
+                if (showKeywordOnly) {
+                    result = result.filter(c => {
+                        const content = c.content.toLowerCase();
+                        return [...keywords].some(k => content.includes(k.toLowerCase()));
+                    });
                 }
-                // 검색 필터
                 if (chatSearch) {
                     result = result.filter(c => c.nickname.toLowerCase().includes(chatSearch.toLowerCase()) || c.content.toLowerCase().includes(chatSearch.toLowerCase()));
                 }
                 return result;
-            }, [chats, chatSearch, showAiOnly, aiDetectedData]);
+            }, [chats, chatSearch, showKeywordOnly, keywords]);
 
             const filteredDeposits = useMemo(() => {
                 if (!depositSearch) return deposits;
@@ -407,15 +309,36 @@
                                 <span className="text-xs text-gray-500">{filteredChats.length}건</span>
                             </div>
                             
-                            {/* AI 스캔 버튼 & 필터 */}
+                            {/* 키워드 등록창 */}
+                            <div className="flex flex-col gap-2 bg-gray-50 p-2 rounded border border-gray-100">
+                                <form onSubmit={handleAddKeyword} className="flex gap-1">
+                                    <input 
+                                        type="text" 
+                                        value={keywordInput}
+                                        onChange={(e) => setKeywordInput(e.target.value)}
+                                        placeholder="키워드 추가 (예: 240, 주문)" 
+                                        className="flex-1 text-xs border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500" 
+                                    />
+                                    <button type="submit" className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-600">추가</button>
+                                </form>
+                                {/* ✅ 키워드 리스트 (스크롤 적용) */}
+                                {keywords.size > 0 && (
+                                    <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto scrollbar-thin mt-1 p-1 bg-white border rounded">
+                                        {[...keywords].map(k => (
+                                            <span key={k} onClick={() => handleRemoveKeyword(k)} 
+                                                className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] cursor-pointer hover:bg-red-100 hover:text-red-600 flex items-center gap-1 shrink-0">
+                                                {k} <Icon name="x" weight="bold"/>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 필터 버튼 */}
                             <div className="flex gap-2">
-                                <button onClick={scanChatsWithGemini} disabled={isAiLoading} 
-                                    className={`flex-1 text-xs ai-btn px-2 py-1.5 rounded font-bold flex justify-center items-center gap-1 shadow-sm ${isAiLoading ? 'opacity-70 cursor-wait' : ''}`}>
-                                    {isAiLoading ? <Icon name="spinner" className="ai-loading"/> : <Icon name="sparkle" weight="fill"/>} {isAiLoading ? "분석중..." : "AI 주문 스캔"}
-                                </button>
-                                <button onClick={()=>setShowAiOnly(!showAiOnly)} 
-                                    className={`px-2 py-1.5 text-xs rounded border flex items-center gap-1 ${showAiOnly ? 'bg-green-100 text-green-700 border-green-300 font-bold' : 'bg-gray-50 text-gray-500'}`}>
-                                    <Icon name={showAiOnly ? "check-square" : "square"} /> 주문만 보기
+                                <button onClick={()=>setShowKeywordOnly(!showKeywordOnly)} 
+                                    className={`flex-1 px-2 py-1.5 text-xs rounded border flex justify-center items-center gap-1 ${showKeywordOnly ? 'bg-blue-100 text-blue-700 border-blue-300 font-bold' : 'bg-gray-50 text-gray-500'}`}>
+                                    <Icon name={showKeywordOnly ? "check-square" : "square"} /> 🎯 키워드만 보기
                                 </button>
                             </div>
 
@@ -425,10 +348,6 @@
                                     className="w-full text-xs pl-7 pr-2 py-1.5 border rounded focus:ring-1 focus:ring-red-500 outline-none" />
                                 {chatSearch && <button onClick={()=>setChatSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={12}/></button>}
                             </div>
-                            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 items-center bg-white p-1 rounded border border-gray-100">
-                                <span>기본배송: <input type="number" value={quickShipping} onChange={(e)=>setQuickShipping(Number(e.target.value))} className="w-10 border rounded px-1 text-right bg-gray-50" />원</span>
-                                <span className="flex-1 flex items-center gap-1">계좌: <input type="text" value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="flex-1 border rounded px-1 bg-gray-50" placeholder="계좌 입력" /></span>
-                            </div>
                         </div>
                         
                         <StatusMessage />
@@ -436,13 +355,13 @@
                         <div className="flex-1 overflow-y-auto p-2 space-y-1">
                             {filteredChats.map(chat => {
                                 const isClicked = clickedChats.has(chat.id);
-                                const aiResult = aiDetectedData[chat.id]; // AI 분석 결과
+                                const isKeywordMatch = [...keywords].some(k => chat.content.includes(k));
 
                                 return (
                                     <div key={chat.id} onClick={() => handleChatClick(chat)} 
                                          className={`p-2 border rounded cursor-pointer transition-all flex flex-col gap-1 
                                             ${isClicked ? 'processed-chat' : 'bg-white hover:bg-red-50 hover:border-red-200'}
-                                            ${aiResult && !isClicked ? 'ai-detected' : ''} 
+                                            ${isKeywordMatch && !isClicked ? 'keyword-detected' : ''} 
                                          `}>
                                         <div className="flex justify-between text-xs mb-1">
                                             <span className={`font-bold ${isClicked ? 'text-gray-500' : 'text-gray-700'}`}>{chat.nickname}</span>
@@ -450,13 +369,10 @@
                                         </div>
                                         <div className="text-sm">{chat.content}</div>
                                         
-                                        {/* AI가 찾은 상품 표시 */}
-                                        {aiResult && !isClicked && (
-                                            <div className="flex justify-between items-center mt-1">
-                                                <span className="ai-badge flex items-center gap-1"><Icon name="robot" weight="fill"/> AI감지</span>
-                                                <span className="text-xs font-bold text-green-600">
-                                                    {aiResult.product} <span className="bg-green-100 px-1 rounded text-[10px]">{aiResult.qty}개</span>
-                                                </span>
+                                        {/* 키워드 감지 뱃지 */}
+                                        {isKeywordMatch && !isClicked && (
+                                             <div className="flex justify-between items-center mt-1">
+                                                <span className="keyword-badge flex items-center gap-1"><Icon name="target" weight="fill"/> 키워드됨</span>
                                             </div>
                                         )}
                                     </div>
@@ -531,6 +447,10 @@
                                     {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill"/></button>}
                                 </div>
                             </div>
+                            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 items-center bg-white p-1 rounded border border-gray-100">
+                                <span>기본배송: <input type="number" value={quickShipping} onChange={(e)=>setQuickShipping(Number(e.target.value))} className="w-10 border rounded px-1 text-right bg-gray-50" />원</span>
+                                <span className="flex-1 flex items-center gap-1">계좌: <input type="text" value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="flex-1 border rounded px-1 bg-gray-50" placeholder="계좌 입력" /></span>
+                            </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-3 space-y-3">
                             {filteredGroupedOrders.map(([nick, items]) => {
@@ -569,10 +489,6 @@
                                                     {statusBadge}
                                                     <div className="flex gap-1">
                                                         <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance); }} className="bg-yellow-300 hover:bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm"><Icon name="chat-circle-dots" weight="fill"/> 카톡복사</button>
-                                                        {/* ✨ AI 메시지 버튼 */}
-                                                        <button onClick={(e) => { e.stopPropagation(); callGeminiMessage(nick, activeItems, grandTotal, depositTotal, balance); }} className="ai-btn px-2 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm">
-                                                            {isAiLoading ? <Icon name="spinner" className="ai-loading"/> : <Icon name="sparkle" weight="fill"/>} AI메시지
-                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -628,7 +544,7 @@
                     
                     const addrInfo = addresses.find(a => a.nickname.trim() === nick.trim()) || {};
 
-                    return { '닉네임': nick, '실명': addrInfo.realname || '', '전화번호': addrInfo.phone || '', '주소': addrInfo.address || '', '주문내역': itemSummary, '상품합계': productTotal, '배송비': currentShipping, '총주문금액': grandTotal, '입금확인액': depositTotal, '잔액(미수금)': -balance, '상태': balance >= 0 ? '완납' : '미납' };
+                    return { '닉네임': nick, '실명': addrInfo.realname || '', '전화번호': addrInfo.phone || '', '우편번호': addrInfo.zipcode || '', '주소': addrInfo.address || '', '주문내역': itemSummary, '상품합계': productTotal, '배송비': currentShipping, '총주문금액': grandTotal, '입금확인액': depositTotal, '잔액(미수금)': -balance, '상태': balance >= 0 ? '완납' : '미납' };
                 }).filter(d => d !== null);
                 downloadExcel(data, '고객별_정산_배송리스트');
             };
@@ -646,6 +562,183 @@
             );
         };
 
+        // [NEW] 고객관리 탭 컴포넌트
+        const CustomerTab = ({ addresses, setAddresses }) => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const fileInputRef = useRef(null);
+
+            // 주소 추가/수정 상태
+            const [editMode, setEditMode] = useState(null); // null or nickname
+            const [inputData, setInputData] = useState({ nickname: '', realname: '', phone: '', zipcode: '', address: '' });
+
+            // 검색 필터
+            const filteredAddresses = useMemo(() => {
+                if (!searchTerm) return addresses;
+                return addresses.filter(a => 
+                    a.nickname.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    a.realname.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            }, [addresses, searchTerm]);
+
+            // 추가/수정 핸들러
+            const handleSave = () => {
+                if (!inputData.nickname) return alert("닉네임은 필수입니다.");
+                
+                // 기존에 있는 닉네임인지 확인 (수정 모드가 아닐 때)
+                if (!editMode && addresses.some(a => a.nickname === inputData.nickname)) {
+                    if (!confirm("이미 존재하는 닉네임입니다. 덮어씌우시겠습니까?")) return;
+                }
+
+                setAddresses(prev => {
+                    // 기존 거 제거하고 새로 추가 (덮어쓰기 효과)
+                    const next = prev.filter(a => a.nickname !== inputData.nickname);
+                    return [...next, inputData];
+                });
+                
+                setEditMode(null);
+                setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '' });
+                alert("저장되었습니다.");
+            };
+
+            const handleEdit = (customer) => {
+                setEditMode(customer.nickname);
+                setInputData(customer);
+            };
+
+            const handleDelete = (nickname) => {
+                if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) {
+                    setAddresses(prev => prev.filter(a => a.nickname !== nickname));
+                }
+            };
+
+            // 엑셀 업로드 핸들러 (스마트 파싱 적용)
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const bstr = evt.target.result;
+                        const wb = XLSX.read(bstr, { type: 'binary' });
+                        const wsname = wb.SheetNames[0];
+                        const ws = wb.Sheets[wsname];
+                        // 헤더가 있는 JSON으로 변환 (raw:false로 하면 포맷된 문자열로 가져옴 - 0 유지 유리)
+                        const data = XLSX.utils.sheet_to_json(ws, { raw: false });
+                        
+                        // 데이터 정제 및 병합
+                        const newAddresses = data.map(row => {
+                            // 컬럼명 매칭 (다양한 케이스 대응)
+                            const nickname = row['닉네임'] || row['nickname'] || '';
+                            const realname = row['이름'] || row['실명'] || row['성함'] || '';
+                            let phone = row['전화번호'] || row['연락처'] || row['휴대폰'] || '';
+                            let fullAddr = row['주소'] || row['배송지'] || '';
+                            
+                            // 1. 전화번호 0 채우기 (혹시 숫자로 인식돼서 1012345678 이면 010 붙이기)
+                            phone = String(phone).replace(/[^0-9]/g, '');
+                            if (phone.length === 10 && phone.startsWith('10')) phone = '0' + phone;
+                            if (phone.length === 11) phone = phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+
+                            // 2. 주소에서 우편번호 분리 ( (12345) 서울시... 형태 파싱 )
+                            let zipcode = '';
+                            let address = fullAddr;
+                            
+                            // (12345) 또는 [12345] 형태 찾기
+                            const zipMatch = fullAddr.match(/[\(\[](\d{5})[\)\]]/);
+                            if (zipMatch) {
+                                zipcode = zipMatch[1]; // 괄호 안의 숫자만 추출
+                                address = fullAddr.replace(zipMatch[0], '').trim(); // 우편번호 부분 제거하고 나머지 주소만
+                            }
+
+                            return { nickname, realname, phone, zipcode, address };
+                        }).filter(a => a.nickname); // 닉네임 없으면 제외
+
+                        if (newAddresses.length > 0) {
+                            // 기존 데이터와 병합 (닉네임 기준 덮어쓰기)
+                            setAddresses(prev => {
+                                const map = new Map(prev.map(item => [item.nickname, item]));
+                                newAddresses.forEach(item => map.set(item.nickname, item));
+                                return Array.from(map.values());
+                            });
+                            alert(`✅ ${newAddresses.length}명 로드 완료! (중복은 최신 정보로 업데이트됨)`);
+                        } else {
+                            alert("데이터를 찾을 수 없습니다. 엑셀 A열에 '닉네임'이 있는지 확인하세요.");
+                        }
+                    } catch (err) {
+                        alert("엑셀 읽기 실패: " + err);
+                    }
+                };
+                reader.readAsBinaryString(file);
+                e.target.value = ''; 
+            };
+
+            return (
+                <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border p-4 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4 pb-4 border-b">
+                        <h2 className="text-xl font-bold flex items-center gap-2"><Icon name="address-book" weight="fill" className="text-indigo-600"/> 고객 주소록 관리 <span className="text-sm font-normal text-gray-500">({addresses.length}명)</span></h2>
+                        <div className="flex gap-2">
+                            <input type="file" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" accept=".xlsx, .xls" />
+                            <button onClick={() => fileInputRef.current.click()} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 shadow-sm">
+                                <Icon name="file-xls" weight="fill"/> 엑셀 일괄등록
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 입력 폼 */}
+                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4 flex gap-2 items-end">
+                        <div className="flex-1 grid grid-cols-5 gap-2">
+                            <div><label className="text-xs font-bold text-gray-500">닉네임(필수)</label><input type="text" value={inputData.nickname} onChange={e=>setInputData({...inputData, nickname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="예: 깔로" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">이름(실명)</label><input type="text" value={inputData.realname} onChange={e=>setInputData({...inputData, realname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="홍길동" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">전화번호</label><input type="text" value={inputData.phone} onChange={e=>setInputData({...inputData, phone:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="010-0000-0000" /></div>
+                            <div className="col-span-2 flex gap-1">
+                                <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
+                                <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="서울시 강남구..." /></div>
+                            </div>
+                        </div>
+                        <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold h-10 shadow-sm">{editMode ? '수정완료' : '추가'}</button>
+                        {editMode && <button onClick={()=>{setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '' });}} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded font-bold h-10">취소</button>}
+                    </div>
+
+                    {/* 검색창 */}
+                    <div className="relative mb-2">
+                        <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+                        <input type="text" placeholder="닉네임 또는 이름 검색..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="w-full pl-10 border rounded py-2 text-sm outline-none focus:border-indigo-500" />
+                    </div>
+
+                    {/* 리스트 */}
+                    <div className="flex-1 overflow-y-auto border rounded bg-white">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-100 text-gray-600 sticky top-0">
+                                <tr>
+                                    <th className="p-2 border-b">닉네임</th>
+                                    <th className="p-2 border-b">이름</th>
+                                    <th className="p-2 border-b">전화번호</th>
+                                    <th className="p-2 border-b w-16">우편번호</th>
+                                    <th className="p-2 border-b">주소</th>
+                                    <th className="p-2 border-b w-20 text-center">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {filteredAddresses.map((addr, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 group">
+                                        <td className="p-2 font-bold text-indigo-700">{addr.nickname}</td>
+                                        <td className="p-2">{addr.realname}</td>
+                                        <td className="p-2">{addr.phone}</td>
+                                        <td className="p-2 font-mono text-gray-500">{addr.zipcode}</td>
+                                        <td className="p-2 text-gray-600">{addr.address}</td>
+                                        <td className="p-2 text-center">
+                                            <button onClick={()=>handleEdit(addr)} className="text-blue-500 hover:text-blue-700 mx-1"><Icon name="pencil-simple" weight="fill"/></button>
+                                            <button onClick={()=>handleDelete(addr.nickname)} className="text-red-400 hover:text-red-600 mx-1"><Icon name="trash" weight="fill"/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {filteredAddresses.length === 0 && <div className="text-center py-10 text-gray-400">등록된 고객이 없습니다.</div>}
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [activeTab, setActiveTab] = useState('live');
@@ -653,48 +746,36 @@
             const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 000-0000-0000");
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
-            const [addresses, setAddresses] = useState([]);
-            // ✅ Gemini API Key 기본값 설정
-            const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('geminiKey') || 'AIzaSyB13knjwU8Om5Ci9E2Th9K2ZeE7l167hgc');
+            // ✅ 주소록 (로컬 스토리지에 저장)
+            const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem('verifiedAddresses')) || []);
 
             useEffect(() => { localStorage.setItem('youtubeOrders', JSON.stringify(orders)); }, [orders]);
             useEffect(() => { localStorage.setItem('productHistory', JSON.stringify(productHistory)); }, [productHistory]);
             useEffect(() => { localStorage.setItem('bankAccount', bankAccount); }, [bankAccount]);
             useEffect(() => { localStorage.setItem('shippingOverrides', JSON.stringify(shippingOverrides)); }, [shippingOverrides]);
-            useEffect(() => { localStorage.setItem('geminiKey', geminiKey); }, [geminiKey]);
+            useEffect(() => { localStorage.setItem('verifiedAddresses', JSON.stringify(addresses)); }, [addresses]);
 
-            const tabs = [{ id: 'live', label: '🎥 라이브관제', icon: 'monitor-play' }, { id: 'manage', label: '📊 주문관리(엑셀)', icon: 'file-xls' }];
-
-            // 설정 모달
-            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+            const tabs = [
+                { id: 'live', label: '🎥 라이브관제', icon: 'monitor-play' }, 
+                { id: 'customer', label: '👥 고객관리', icon: 'address-book' }, // 🆕 탭 추가
+                { id: 'manage', label: '📊 주문관리(엑셀)', icon: 'file-xls' }
+            ];
 
             return (
                 <div className="flex flex-col h-screen overflow-hidden text-slate-700">
                     <header className="h-12 bg-indigo-900 text-white flex items-center justify-between px-4 shrink-0 shadow-md">
-                        <div className="font-bold text-lg flex items-center gap-2"><Icon name="lightning" className="text-yellow-400" weight="fill"/> 깔로 주문서 PRO <span className="text-xs bg-indigo-800 px-2 py-0.5 rounded text-indigo-300">AI 탑재</span></div>
+                        <div className="font-bold text-lg flex items-center gap-2"><Icon name="lightning" className="text-yellow-400" weight="fill"/> 깔로 주문서 PRO</div>
                         <div className="flex items-center gap-2">
                             <div className="flex bg-indigo-800 rounded p-1 gap-1">
                                 {tabs.map(tab => (
                                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name={tab.icon} weight="bold"/> {tab.label}</button>
                                 ))}
                             </div>
-                            <button onClick={()=>setIsSettingsOpen(!isSettingsOpen)} className="p-2 hover:bg-indigo-800 rounded text-indigo-300 hover:text-white"><Icon name="gear" weight="fill" size={20}/></button>
                         </div>
                     </header>
-                    
-                    {/* 설정 모달 (Gemini Key 입력) */}
-                    {isSettingsOpen && (
-                        <div className="absolute top-12 right-4 bg-white shadow-xl border rounded-lg p-4 w-80 z-50 animate-pop">
-                            <h3 className="font-bold mb-2 flex items-center gap-2"><Icon name="sparkle" weight="fill" className="text-purple-500"/> AI 설정</h3>
-                            <div className="text-sm text-gray-600 mb-2">Gemini API 키를 입력하면 AI 자동분석 및 메시지 작성이 가능합니다.</div>
-                            <input type="password" value={geminiKey} onChange={(e)=>setGeminiKey(e.target.value)} placeholder="API Key 입력" className="w-full border rounded px-2 py-1 text-sm mb-2" />
-                            <div className="text-xs text-gray-400">키는 브라우저에만 저장됩니다.</div>
-                            <button onClick={()=>setIsSettingsOpen(false)} className="w-full bg-indigo-600 text-white rounded py-1 text-sm font-bold mt-2">닫기</button>
-                        </div>
-                    )}
-
-                    <main className="flex-1 overflow-hidden bg-gray-100">
-                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} setAddresses={setAddresses} addresses={addresses} geminiKey={geminiKey} setGeminiKey={setGeminiKey} />)}
+                    <main className="flex-1 overflow-hidden bg-gray-100 p-2">
+                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} addresses={addresses} />)}
+                        {activeTab === 'customer' && (<CustomerTab addresses={addresses} setAddresses={setAddresses} />)}
                         {activeTab === 'manage' && (<OrderManagementTab orders={orders} shippingOverrides={shippingOverrides} quickShipping={quickShipping} addresses={addresses} />)}
                     </main>
                 </div>
