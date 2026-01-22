@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (완전구동)</title>
+    <title>깔로 주문서 PRO (최종완성)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -84,7 +84,6 @@
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
-            
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -102,6 +101,7 @@
             const [isSaving, setIsSaving] = useState(false);
             const [lastSavedTime, setLastSavedTime] = useState(null);
 
+            // 데이터 로딩
             const fetchData = async () => {
                 try {
                     const res = await fetch(googleScriptUrl);
@@ -115,11 +115,10 @@
                         if (data.chats.length === 0) setConnectionStatus({ code: 'warning_empty', msg: '데이터 0건' });
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
-                    // ✅ 입금 내역 ID 보정 (밀림 방지 핵심)
                     if (data.deposits) {
+                        // ID 보정
                         const stableDeposits = data.deposits.map((d, i) => ({
                             ...d,
-                            // 서버에서 uid를 보내주면 쓰고, 없으면 이름+금액+인덱스로 고유 ID 생성 (안전장치)
                             id: d.uid || `dep_${d.name}_${d.amount}_${i}`
                         }));
                         setDeposits(stableDeposits);
@@ -136,7 +135,11 @@
                 return () => clearInterval(interval);
             }, [googleScriptUrl]);
 
-            const findAddress = (nick) => addresses.find(a => a.nickname.trim() === nick.trim());
+            const findAddress = (nick) => {
+                if(!addresses) return null;
+                return addresses.find(a => a.nickname.trim() === nick.trim());
+            };
+
             const handleAddKeyword = (e) => { e.preventDefault(); if(!keywordInput.trim()) return; setKeywords(prev => new Set(prev).add(keywordInput.trim())); setKeywordInput(''); };
             const handleRemoveKeyword = (keyword) => { setKeywords(prev => { const next = new Set(prev); next.delete(keyword); return next; }); };
             const toggleCardPayment = (nick) => { setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] })); };
@@ -173,10 +176,9 @@
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content, 1); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct, 1); setManualProduct(''); };
             
-            // ✅ 입금 클릭 로직 (안전장치 추가)
-            const handleDepositClick = (deposit) => {
-                const depositId = deposit.id;
-                // 안전장치: matchedDeposits가 없으면 빈 Set 사용
+            // 입금 클릭 로직
+            const handleDepositClick = (deposit, index) => {
+                const depositId = deposit.id !== undefined ? deposit.id : index;
                 const currentMatched = matchedDeposits || new Set();
 
                 if (currentMatched.has(depositId)) {
@@ -197,7 +199,6 @@
                     setMatchedDeposits(prev => { const next = new Set(prev); next.delete(depositId); return next; });
                     return;
                 }
-
                 if (!selectedNick) return alert("오른쪽에서 닉네임을 먼저 선택해주세요!");
                 const depositAmount = Number(deposit.amount);
                 setOrders(prev => {
@@ -236,9 +237,13 @@
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
             const handleOrderDelete = (id) => { if(confirm("완전 삭제?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // [카톡 복사]
+            // [카톡 복사] - 완납 로직 강화
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance, isCard) => {
                 const activeItems = items.filter(i => !i.isCancelled);
+                
+                // 가격이 0원인 상품이 있는지 확인
+                const hasZeroPrice = activeItems.some(i => Number(i.price) === 0);
+
                 const itemListText = activeItems.map(i => {
                     const qtyPart = i.quantity > 1 ? `(${i.quantity}개)` : '';
                     return `${i.product}${qtyPart} ${Number(i.price).toLocaleString()}원`;
@@ -268,8 +273,8 @@
                     msg += `------------------\n\n`;
 
                 } else {
-                    const hasZeroPrice = activeItems.some(i => Number(i.price) === 0);
-                    const isPaid = (balance >= 0) && (grandTotal > 0) && !hasZeroPrice;
+                    // ✅ 완납 조건: (잔액 <= 0) AND (총액 > 0) AND (0원상품 없음)
+                    const isPaid = (balance <= 0) && (grandTotal > 0) && !hasZeroPrice;
 
                     if (depositTotal > 0) {
                         msg += `[입금확인]\n`;
@@ -281,9 +286,11 @@
                         msg += `완납 확인! 감사합니다 😍\n`;
                         msg += `------------------\n\n`;
                     } else {
+                        // 미입금 또는 부분입금
                         msg += `[미입금]\n`;
                         msg += `총 입금하실 금액\n`;
-                        msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
+                        const amountDue = balance > 0 ? balance : 0;
+                        msg += `👉 ${amountDue.toLocaleString()}원 \n\n`;
                         msg += `${FIXED_BANK_ACCOUNT}\n`; 
                         msg += `입금 부탁드립니다 🙏\n\n`;
                         msg += `------------------\n\n`;
@@ -332,17 +339,25 @@
                 const groups = {};
                 orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
                 return Object.entries(groups).filter(([nick, items]) => {
-                    if (orderSearch && !nick.toLowerCase().includes(orderSearch.toLowerCase())) return false;
+                    if (orderSearch) {
+                        const term = orderSearch.toLowerCase();
+                        const nickMatch = nick.toLowerCase().includes(term);
+                        const productMatch = items.some(i => i.product && i.product.toLowerCase().includes(term));
+                        if (!nickMatch && !productMatch) return false;
+                    }
+
                     const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
                     const activeItems = items.filter(i => !i.isCancelled);
                     const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
                     const finalShipping = activeItems.length > 0 ? currentShipping : 0;
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + finalShipping;
-                    const balance = grandTotal - depositTotal;
+                    
+                    // ✅ 잔액(미수금) = 총액 - 입금액
+                    const balance = grandTotal - depositTotal; 
                     
                     const hasZeroPrice = activeItems.some(i => Number(i.price) === 0);
-                    const isPaid = (balance >= 0) && (grandTotal > 0) && !hasZeroPrice;
+                    const isPaid = (balance <= 0) && (grandTotal > 0) && !hasZeroPrice;
                     
                     if (filterStatus === 'unpaid' && isPaid) return false;
                     if (filterStatus === 'paid' && !isPaid) return false;
@@ -387,7 +402,7 @@
                 <div className="flex h-full gap-2 p-2 overflow-hidden bg-gray-50 text-slate-800">
                     <datalist id="product-list">{Object.keys(productHistory).map(name => <option key={name} value={name} />)}</datalist>
                     
-                    {/* [1. 댓글 영역 (30%)] */}
+                    {/* [1. 댓글 영역] */}
                     <div className="w-[30%] flex flex-col bg-white border rounded-lg shadow-sm overflow-hidden">
                         <div className="p-2 bg-indigo-50 border-b flex flex-col gap-2">
                             <div className="font-bold text-indigo-700 flex items-center justify-between">
@@ -426,7 +441,7 @@
                         </div>
                     </div>
 
-                    {/* [2. 입금 영역 (20%)] */}
+                    {/* [2. 입금 영역] */}
                     <div className="w-[20%] flex flex-col bg-white border rounded-lg shadow-sm overflow-hidden">
                         <div className="p-2 bg-yellow-50 border-b flex flex-col gap-2">
                             <div className="font-bold text-yellow-700 flex items-center justify-between"><span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span><span className="text-xs text-gray-500">{filteredDeposits.length}건</span></div>
@@ -435,13 +450,11 @@
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
                             {filteredDeposits.map((d, i) => {
-                                // 안전장치: id가 없으면 i(인덱스)라도 사용
                                 const depositId = d.id !== undefined ? d.id : i;
-                                // 안전장치: matchedDeposits가 없을 경우 대비
-                                const isUsed = (matchedDeposits || new Set()).has(depositId);
-                                
+                                const isUsed = matchedDeposits.has(depositId);
+                                const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
                                 return (
-                                    <div key={depositId} onClick={() => handleDepositClick(d, i)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} bg-white hover:bg-yellow-100`}>
+                                    <div key={depositId} onClick={() => handleDepositClick(d, i)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}`}>
                                         <span className="text-gray-700 text-sm">{d.name}</span><span className="font-mono text-blue-600 font-bold text-sm">+{Number(d.amount).toLocaleString()}</span>
                                     </div>
                                 );
@@ -452,7 +465,7 @@
                         </div>
                     </div>
 
-                    {/* [3. 주문서 영역 (50%)] */}
+                    {/* [3. 주문서 영역] */}
                     <div className="w-[50%] bg-gray-100 border rounded-lg flex flex-col overflow-hidden">
                         {/* 대시보드 */}
                         <div className="grid grid-cols-4 gap-2 p-2 bg-indigo-50 border-b border-indigo-100 text-center text-xs">
@@ -494,7 +507,7 @@
                                     {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={10}/></button>}
                                 </div>
                             </div>
-                            {/* ✅ 배송비 입력칸 수정 */}
+                            {/* 배송비 입력칸 */}
                             <div className="bg-white p-2 rounded border border-gray-200 flex items-center justify-end gap-2 text-xs">
                                 <span className="font-bold text-gray-600">🚚 기본 배송비:</span>
                                 <input 
@@ -517,6 +530,7 @@
                                 const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                                 const finalShipping = activeItems.length > 0 ? currentShipping : 0;
                                 const grandTotal = productTotal + finalShipping;
+                                // ✅ 미수금(balance) = 총액 - 입금액
                                 const balance = grandTotal - depositTotal;
                                 const isCard = cardPayments[nick]; 
 
@@ -525,8 +539,8 @@
                                 let statusBadge;
                                 if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
                                 else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
-                                // ✅ 0원 주문은 미납으로 간주
-                                else if (balance >= 0 && grandTotal > 0 && !hasZeroPrice) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
+                                // ✅ 0원 상품이 있거나 총액이 0이면 완납 아님
+                                else if (balance <= 0 && grandTotal > 0 && !hasZeroPrice) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
 
                                 const addr = findAddress(nick);
@@ -540,7 +554,7 @@
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-bold text-sm text-gray-800">{nick}</span>
                                                     <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-300 hover:text-indigo-600"><Icon name="pencil-simple" weight="bold" size={12}/></button>
-                                                    <span className="text-[10px] bg-white border px-1 rounded text-gray-400">{items.length}</span>
+                                                    <span className="text-[10px] bg-white border px-1 rounded text-gray-400">{items.length}건</span>
                                                     
                                                     <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} className={`ml-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isCard ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold' : 'bg-white text-gray-400 hover:bg-gray-100'}`}>카드</button>
                                                     <div onClick={(e) => { e.stopPropagation(); const newFee = prompt(`'${nick}'님의 배송비를 입력하세요`, currentShipping); if(newFee !== null) handleShippingChange(nick, Number(newFee)); }} className="cursor-pointer flex items-center gap-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded border hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
@@ -556,6 +570,7 @@
                                                     <span className="font-bold text-sm font-mono text-gray-800">{grandTotal.toLocaleString()}원</span>
                                                     {statusBadge}
                                                 </div>
+                                                {/* ✅ 카톡 복사 시 balance 전달 */}
                                                 <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance, isCard); }} className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all ${isCopied ? 'bg-green-500 text-white copy-anim' : 'bg-yellow-300 hover:bg-yellow-400 text-black'}`}>
                                                     {isCopied ? <Icon name="check" weight="bold"/> : <Icon name="chat-circle-dots" weight="fill"/>} 카톡
                                                 </button>
@@ -571,12 +586,13 @@
                                                         </div>
                                                         <div className="flex items-center gap-1 pl-1">
                                                             <span className="font-bold text-indigo-600 bg-indigo-50 px-1 rounded text-[10px] shrink-0">{item.quantity}개</span>
+                                                            {/* ✅ 가격이 0원이면 빨간색으로 경고 표시 */}
                                                             <input 
                                                                 type="number" 
                                                                 value={item.price} 
                                                                 onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} 
                                                                 onClick={(e) => e.stopPropagation()} 
-                                                                className={`w-14 text-right font-mono text-gray-500 bg-transparent outline-none focus:text-indigo-600 ${isZeroPrice && !item.isCancelled ? 'bg-red-50 border-b border-red-300' : ''}`}
+                                                                className={`w-14 text-right font-mono text-gray-500 bg-transparent outline-none focus:text-indigo-600 ${isZeroPrice && !item.isCancelled ? 'bg-red-50 border-b-2 border-red-300' : ''}`}
                                                                 disabled={item.isCancelled} 
                                                             />
                                                             <div className="flex gap-0.5 w-8 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
@@ -587,7 +603,6 @@
                                                     </div>
                                                 );
                                             })}
-                                            {/* ✅ 배송비 입력칸 여백 및 스타일 개선 */}
                                             <div className="flex justify-end items-center gap-2 px-2 py-2 text-xs text-gray-400 border-t border-dashed border-gray-100 mt-1">
                                                 <span>배송비:</span>
                                                 <input 
@@ -605,7 +620,7 @@
                                                     <button onClick={(e) => { e.stopPropagation(); resetUserDeposit(nick); }} className="text-gray-400 hover:text-red-500 p-0.5 rounded" title="입금액 0원으로 초기화"><Icon name="arrow-counter-clockwise" weight="bold"/></button>
                                                 </div>
                                             </div>)}
-                                            {isCard && balance < 0 && (<div className="mt-1 pt-1 border-t border-dashed bg-purple-50 p-1 rounded text-[11px] text-right text-gray-600"><div>미수금 {Math.abs(balance).toLocaleString()}원 + 10%</div><div className="font-bold text-purple-700">💳 결제: {(Math.abs(balance) * 1.1).toLocaleString()}원</div></div>)}
+                                            {isCard && balance > 0 && (<div className="mt-1 pt-1 border-t border-dashed bg-purple-50 p-1 rounded text-[11px] text-right text-gray-600"><div>미수금 {Math.abs(balance).toLocaleString()}원 + 10%</div><div className="font-bold text-purple-700">💳 결제: {(Math.abs(balance) * 1.1).toLocaleString()}원</div></div>)}
                                         </div>
                                     </div>
                                 );
@@ -638,10 +653,7 @@
             const handleEdit = (customer) => { setEditMode(customer.nickname); setInputData(customer); };
             const handleDelete = (nickname) => { if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) { setAddresses(prev => prev.filter(a => a.nickname !== nickname)); } };
 
-            // ✅ [추가] 다음 주소 검색 API 연동
             const handleAddressSearch = () => {
-                // 다음 주소창 띄우기
-                // 주의: 팝업 방식은 일부 환경에서 차단될 수 있으나 표준 방식 사용
                 try {
                     new window.daum.Postcode({
                         oncomplete: function(data) {
@@ -729,7 +741,6 @@
                                 <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
                                 <div className="flex-1 flex gap-1">
                                     <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="서울시 강남구..." /></div>
-                                    {/* ✅ 주소 검색 버튼 추가 */}
                                     <button onClick={handleAddressSearch} className="bg-slate-500 text-white px-2 rounded text-xs whitespace-nowrap h-[29px] mt-auto">검색</button>
                                 </div>
                             </div>
