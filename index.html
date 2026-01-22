@@ -828,26 +828,26 @@
                     const addrInfo = addresses.find(a => a.nickname.trim() === nick.trim()) || {};
                     const fullAddress = addrInfo.zipcode ? `(${addrInfo.zipcode}) ${addrInfo.address || ''}` : (addrInfo.address || '');
 
-                    const commonData = { 
-                        '날짜시간': new Date().toLocaleString(), 
-                        '닉네임': nick, 
-                        '이름': addrInfo.realname || '', 
-                        '핸드폰번호': addrInfo.phone || '', 
-                        '주소': fullAddress, 
+                    // Helper to create row with strict order
+                    const createRow = (productValue) => ({
+                        '날짜시간': new Date().toLocaleString(),
+                        '공란1': '',
+                        '공란2': '',
+                        '닉네임': nick,
+                        '주문제품(수량)': productValue,
+                        '이름': addrInfo.realname || '',
+                        '핸드폰번호': addrInfo.phone || '',
+                        '주소': fullAddress,
                         '배송메모': addrInfo.memo || '' 
-                    };
-
-                    excelRows.push({
-                        ...commonData,
-                        '주문제품(수량)': `[ ${nick} ]`
                     });
 
+                    // 1. 첫 줄: [ 닉네임 ]
+                    excelRows.push(createRow(`[ ${nick} ]`));
+
+                    // 2. 이후 줄: 각 상품별
                     activeItems.forEach(item => {
                         const qtyPart = item.quantity > 1 ? ` ★ ${item.quantity}개` : '';
-                        excelRows.push({
-                            ...commonData,
-                            '주문제품(수량)': `${item.product}${qtyPart}`
-                        });
+                        excelRows.push(createRow(`${item.product}${qtyPart}`));
                     });
                 });
 
