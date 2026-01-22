@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (여백수정)</title>
+    <title>깔로 주문서 PRO (화면개선)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -39,10 +39,6 @@
         .keyword-badge { background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 0.7rem; font-weight: bold; }
         .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 2px; }
-        
-        /* 복사 완료 애니메이션 */
-        @keyframes copySuccess { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .copy-anim { animation: copySuccess 0.3s ease-in-out; }
     </style>
 </head>
 <body>
@@ -622,8 +618,17 @@
                                                         <Icon name="credit-card" weight={isCard ? "fill" : "regular"}/> 카드
                                                     </button>
                                                 </div>
-                                                <div className="flex items-center gap-1 text-xs">
-                                                    {addr ? <span className="text-green-600 font-bold flex items-center gap-1"><Icon name="house-line" weight="fill"/> {addr.realname} ({addr.address.substring(0,10)}...)</span> : <span className="text-red-400 flex items-center gap-1"><Icon name="warning-circle" weight="fill"/> 주소없음</span>}
+                                                {/* ✅ [개선] 주소가 길면 다음 줄로 넘김 */}
+                                                <div className="flex items-start gap-1 text-xs mt-1">
+                                                    {addr ? (
+                                                        <div className="text-green-600 font-bold flex flex-col gap-0.5">
+                                                             <span className="flex items-center gap-1"><Icon name="house-line" weight="fill"/> {addr.realname} ({addr.phone})</span>
+                                                             {/* 💡 [핵심] 주소가 길어도 다 보이게 스타일 수정 */}
+                                                             <span className="text-[11px] text-slate-500 font-normal break-all whitespace-normal leading-tight">{addr.address}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-red-400 flex items-center gap-1"><Icon name="warning-circle" weight="fill"/> 주소없음</span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right flex items-center gap-3">
@@ -656,8 +661,18 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            {/* [수정] 배송비 수정 필드 너비 및 패딩 증가 */}
-                                            <div className="flex justify-end items-center gap-2 px-2 py-1 text-xs text-gray-400">배송비 수정: <input type="number" value={currentShipping} onClick={(e)=>e.stopPropagation()} onChange={(e)=>handleShippingChange(nick, e.target.value)} className="w-20 text-right border rounded bg-white p-1.5 focus:ring-1 focus:ring-indigo-500" /></div>
+                                            {/* ✅ [수정] 배송비 입력칸 여백 및 스타일 개선 */}
+                                            <div className="flex justify-end items-center gap-2 px-2 py-2 text-xs text-gray-400 border-t border-dashed border-gray-100 mt-1">
+                                                <span>배송비:</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={currentShipping} 
+                                                    onClick={(e)=>e.stopPropagation()} 
+                                                    onChange={(e)=>handleShippingChange(nick, e.target.value)} 
+                                                    className="w-24 text-right border rounded bg-white px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-600 font-bold" 
+                                                />
+                                            </div>
+                                            
                                             {depositTotal > 0 && (<div className="mt-2 pt-2 border-t border-dashed flex justify-between text-sm text-green-600 font-bold px-2"><span>└ 입금확인액</span><span>{depositTotal.toLocaleString()}원</span></div>)}
                                             
                                             {/* 카드 결제 상세 내역 (화면 표시용) */}
@@ -802,20 +817,20 @@
                         </div>
                     </div>
 
-                    {/* 입력 폼 (여백 및 높이 수정) */}
+                    {/* 입력 폼 */}
                     <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4 flex gap-2 items-end">
                         <div className="flex-1 grid grid-cols-6 gap-2">
-                            <div><label className="text-xs font-bold text-gray-500">닉네임(필수)</label><input type="text" value={inputData.nickname} onChange={e=>setInputData({...inputData, nickname:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400" placeholder="예: 깔로" /></div>
-                            <div><label className="text-xs font-bold text-gray-500">이름(실명)</label><input type="text" value={inputData.realname} onChange={e=>setInputData({...inputData, realname:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400" placeholder="홍길동" /></div>
-                            <div><label className="text-xs font-bold text-gray-500">전화번호</label><input type="text" value={inputData.phone} onChange={e=>setInputData({...inputData, phone:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400" placeholder="010-0000-0000" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">닉네임(필수)</label><input type="text" value={inputData.nickname} onChange={e=>setInputData({...inputData, nickname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="예: 깔로" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">이름(실명)</label><input type="text" value={inputData.realname} onChange={e=>setInputData({...inputData, realname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="홍길동" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">전화번호</label><input type="text" value={inputData.phone} onChange={e=>setInputData({...inputData, phone:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="010-0000-0000" /></div>
                             <div className="col-span-2 flex gap-1">
-                                <div className="w-24"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400 text-center" placeholder="00000" /></div>
-                                <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded py-3 px-3 text-sm placeholder-gray-400" placeholder="서울시 강남구..." /></div>
+                                <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
+                                <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="서울시 강남구..." /></div>
                             </div>
-                            <div><label className="text-xs font-bold text-gray-500">배송메모</label><input type="text" value={inputData.memo} onChange={e=>setInputData({...inputData, memo:e.target.value})} className="w-full border rounded py-3 px-3 text-sm placeholder-gray-400" placeholder="문앞" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">배송메모</label><input type="text" value={inputData.memo} onChange={e=>setInputData({...inputData, memo:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="문앞" /></div>
                         </div>
-                        <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded font-bold h-full shadow-sm">{editMode ? '수정완료' : '추가'}</button>
-                        {editMode && <button onClick={()=>{setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });}} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-3 rounded font-bold h-full">취소</button>}
+                        <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold h-10 shadow-sm">{editMode ? '수정완료' : '추가'}</button>
+                        {editMode && <button onClick={()=>{setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });}} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded font-bold h-10">취소</button>}
                     </div>
 
                     {/* 검색창 */}
@@ -865,8 +880,7 @@
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [activeTab, setActiveTab] = useState('live');
             const [quickShipping, setQuickShipping] = useState(4000); 
-            // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 7942 18 01611 김선정)
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 7942-18-01611 김선정");
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 000-0000-0000");
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
             // ✅ 주소록 (로컬 스토리지에 저장)
