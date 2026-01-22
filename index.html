@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (최종완성)</title>
+    <title>깔로 주문서 PRO (매칭밀림해결)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -84,6 +84,7 @@
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
+            // matchedDeposits는 상위에서 전달받음
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -114,7 +115,15 @@
                         if (data.chats.length === 0) setConnectionStatus({ code: 'warning_empty', msg: '데이터 0건' });
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
-                    if (data.deposits) setDeposits(data.deposits);
+                    // ✅ [데이터 로딩 수정] 입금 내역에 ID가 제대로 있는지 확인하고 정리
+                    if (data.deposits) {
+                        const stableDeposits = data.deposits.map((d, i) => ({
+                            ...d,
+                            // 서버에서 uid를 보내주면 쓰고, 없으면 이름+금액으로 임시 ID 생성
+                            id: d.uid || d.id || `${d.name}_${d.amount}_${i}`
+                        }));
+                        setDeposits(stableDeposits);
+                    }
                 } catch (e) {
                     console.error("연결 실패:", e);
                     setConnectionStatus({ code: 'error_fetch', msg: e.message });
@@ -164,14 +173,16 @@
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content, 1); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct, 1); setManualProduct(''); };
             
-            // 입금 클릭 로직
-            const handleDepositClick = (deposit, index) => {
-                const depositId = deposit.id !== undefined ? deposit.id : index;
-                // ✅ [수정] matchedDeposits가 없을 경우를 대비해 기본값 처리
+            // ✅ [입금 클릭 로직 - 최종 수정]
+            const handleDepositClick = (deposit) => {
+                // deposit.id는 이제 fetchData에서 무조건 보장됨
+                const depositId = deposit.id; 
                 const currentMatched = matchedDeposits || new Set();
 
+                // 1. 이미 체크된 항목이면 -> 취소 모드
                 if (currentMatched.has(depositId)) {
                     if (!confirm("⚠️ 이 입금 확인을 취소하시겠습니까?")) return;
+                    // 선택된 닉네임이 있으면 그 사람 돈에서 뺌
                     if (selectedNick) {
                         const depositAmount = Number(deposit.amount);
                         setOrders(prev => {
@@ -179,16 +190,25 @@
                             const otherOrders = prev.filter(o => o.customer !== selectedNick);
                             if (targetOrders.length === 0) return prev;
                             const updatedTargets = targetOrders.map((o, i) => {
+                                // 0원 밑으로는 안 내려가게
                                 if (i === 0) return { ...o, deposit: Math.max(0, (o.deposit || 0) - depositAmount) };
                                 return o;
                             });
                             return [...updatedTargets, ...otherOrders];
                         });
                     }
-                    setMatchedDeposits(prev => { const next = new Set(prev); next.delete(depositId); return next; });
+                    // 체크 해제
+                    setMatchedDeposits(prev => { 
+                        const next = new Set(prev); 
+                        next.delete(depositId); 
+                        return next; 
+                    });
                     return;
                 }
+
+                // 2. 체크 안 된 항목이면 -> 입금 처리
                 if (!selectedNick) return alert("오른쪽에서 닉네임을 먼저 선택해주세요!");
+
                 const depositAmount = Number(deposit.amount);
                 setOrders(prev => {
                     const targetOrders = prev.filter(o => o.customer === selectedNick);
@@ -200,6 +220,8 @@
                     });
                     return [...updatedTargets, ...otherOrders];
                 });
+                
+                // 체크 등록
                 setMatchedDeposits(prev => new Set(prev).add(depositId));
             };
 
@@ -425,11 +447,12 @@
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
                             {filteredDeposits.map((d, i) => {
+                                // ID 사용, 없으면 index (안전장치)
                                 const depositId = d.id !== undefined ? d.id : i;
                                 const isUsed = matchedDeposits.has(depositId);
                                 const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
                                 return (
-                                    <div key={depositId} onClick={() => handleDepositClick(d, depositId)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}`}>
+                                    <div key={depositId} onClick={() => handleDepositClick(d, i)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}`}>
                                         <span className="text-gray-700 text-sm">{d.name}</span><span className="font-mono text-blue-600 font-bold text-sm">+{Number(d.amount).toLocaleString()}</span>
                                     </div>
                                 );
@@ -459,6 +482,7 @@
                                     <div className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isSaving ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700'}`}>
                                         {isSaving ? <Icon name="spinner" className="animate-spin" /> : <Icon name="cloud-check" weight="fill" />} {isSaving ? "저장중" : "자동저장"}
                                     </div>
+                                    {/* ✅ [설정] 톱니바퀴 (기본 배송비 수정용) */}
                                     <button onClick={() => { const newFee = prompt("기본 배송비를 얼마로 설정할까요?", quickShipping); if(newFee) setQuickShipping(Number(newFee)); }} className="p-1.5 rounded text-gray-500 hover:bg-gray-100"><Icon name="gear" weight="fill"/></button>
                                 </div>
                             </div>
@@ -513,6 +537,7 @@
                                 let statusBadge;
                                 if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
                                 else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
+                                // ✅ 0원 주문은 미납으로 간주
                                 else if (balance >= 0 && grandTotal > 0 && !hasZeroPrice) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
 
@@ -794,7 +819,7 @@
             const [activeTab, setActiveTab] = useState('live');
             const [quickShipping, setQuickShipping] = useState(4000); 
             // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 김선정 줄바꿈 적용)
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 김선정\n7942 18 01611");
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || FIXED_BANK_ACCOUNT);
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
             // ✅ 주소록 (로컬 스토리지에 저장)
