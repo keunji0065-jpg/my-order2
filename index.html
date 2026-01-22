@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (최종수정)</title>
+    <title>깔로 주문서 PRO (최종URL)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -12,6 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web" crossorigin="anonymous"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- 다음 주소 API -->
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     
     <script>
@@ -38,8 +39,12 @@
         
         .keyword-detected { border: 2px solid #60a5fa; background-color: #eff6ff; }
         .keyword-badge { background-color: #3b82f6; color: white; padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; }
-        .copy-anim { animation: copySuccess 0.3s ease-in-out; }
+        
+        /* 복사 완료 애니메이션 */
         @keyframes copySuccess { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .copy-anim { animation: copySuccess 0.3s ease-in-out; }
+        
+        /* 팝업 애니메이션 */
         .animate-pop { animation: pop 0.2s ease-out; }
         @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -50,7 +55,7 @@
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
         // ✅ URL 및 계좌번호 고정
-        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbwWpf_CrUfuzgKuyxxtd5EXQLg9KBj8VCLWnEKRJKwOhx9_BF8QhzoAqodZdt8rwxIbSA/exec";
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbx9hzT3n5RksZnLjtrEfDbSh8biJK9OQz8TEVaJjcn9saN1u7c_bbWTuun9QRq72MhY/exec";
         const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
 
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
@@ -79,6 +84,7 @@
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
+            // matchedDeposits는 상위에서 전달받음
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -173,7 +179,10 @@
                             const targetOrders = prev.filter(o => o.customer === selectedNick);
                             const otherOrders = prev.filter(o => o.customer !== selectedNick);
                             if (targetOrders.length === 0) return prev;
-                            const updatedTargets = targetOrders.map((o, i) => { if (i === 0) return { ...o, deposit: Math.max(0, (o.deposit || 0) - depositAmount) }; return o; });
+                            const updatedTargets = targetOrders.map((o, i) => {
+                                if (i === 0) return { ...o, deposit: Math.max(0, (o.deposit || 0) - depositAmount) };
+                                return o;
+                            });
                             return [...updatedTargets, ...otherOrders];
                         });
                     }
@@ -186,7 +195,10 @@
                     const targetOrders = prev.filter(o => o.customer === selectedNick);
                     const otherOrders = prev.filter(o => o.customer !== selectedNick);
                     if (targetOrders.length === 0) return prev;
-                    const updatedTargets = targetOrders.map((o, i) => { if (i === 0) return { ...o, deposit: (o.deposit || 0) + depositAmount }; return o; });
+                    const updatedTargets = targetOrders.map((o, i) => {
+                        if (i === 0) return { ...o, deposit: (o.deposit || 0) + depositAmount };
+                        return o;
+                    });
                     return [...updatedTargets, ...otherOrders];
                 });
                 setMatchedDeposits(prev => new Set(prev).add(depositId));
@@ -317,7 +329,6 @@
                 });
             }, [orders, orderSearch, filterStatus, shippingOverrides, quickShipping]);
 
-            // 대시보드 통계
             const dashboardStats = useMemo(() => {
                 let totalSales = 0, totalDeposit = 0, totalUnpaid = 0, totalCardExpected = 0;
                 const groups = {};
@@ -333,8 +344,11 @@
                     totalSales += grandTotal;
                     totalDeposit += depositTotal;
                     if (balance > 0) {
-                        if (cardPayments[nick]) totalCardExpected += (balance * 1.1);
-                        else totalUnpaid += balance;
+                        if (cardPayments[nick]) {
+                            totalCardExpected += (balance * 1.1);
+                        } else {
+                            totalUnpaid += balance;
+                        }
                     }
                 });
                 return { totalSales, totalDeposit, totalUnpaid, totalCardExpected };
@@ -432,6 +446,7 @@
                                     <div className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isSaving ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700'}`}>
                                         {isSaving ? <Icon name="spinner" className="animate-spin" /> : <Icon name="cloud-check" weight="fill" />} {isSaving ? "저장중" : "자동저장"}
                                     </div>
+                                    {/* ✅ [설정] 톱니바퀴 (기본 배송비 수정용) */}
                                     <button onClick={() => { const newFee = prompt("기본 배송비를 얼마로 설정할까요?", quickShipping); if(newFee) setQuickShipping(Number(newFee)); }} className="p-1.5 rounded text-gray-500 hover:bg-gray-100"><Icon name="gear" weight="fill"/></button>
                                 </div>
                             </div>
@@ -455,6 +470,7 @@
                                     {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={10}/></button>}
                                 </div>
                             </div>
+                            {/* ✅ 배송비 입력칸 수정 */}
                             <div className="bg-white p-2 rounded border border-gray-200 flex items-center justify-end gap-2 text-xs">
                                 <span className="font-bold text-gray-600">🚚 기본 배송비:</span>
                                 <input 
@@ -492,6 +508,7 @@
 
                                 return (
                                     <div key={nick} onClick={() => setSelectedNick(prev => prev === nick ? null : nick)} className={`bg-white rounded border shadow-sm transition-all overflow-hidden cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 shadow-md' : 'hover:border-indigo-300'}`}>
+                                        {/* 헤더 */}
                                         <div className={`px-2 py-1.5 flex justify-between items-center ${isSelected ? 'bg-indigo-50' : 'bg-gray-50'} border-b border-gray-100`}>
                                             <div className="flex flex-col gap-0.5">
                                                 <div className="flex items-center gap-2">
@@ -534,6 +551,7 @@
                                                     </div>
                                                 </div>
                                             ))}
+                                            {/* ✅ [수정] 배송비 입력칸 여백 및 스타일 개선 */}
                                             <div className="flex justify-end items-center gap-2 px-2 py-2 text-xs text-gray-400 border-t border-dashed border-gray-100 mt-1">
                                                 <span>배송비:</span>
                                                 <input 
@@ -544,11 +562,19 @@
                                                     className="w-20 text-right border rounded bg-white px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-600 font-bold" 
                                                 />
                                             </div>
+                                            
                                             {depositTotal > 0 && (<div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[11px] text-green-600 font-bold px-2">
                                                 <span>└ 입금확인</span>
                                                 <div className="flex items-center gap-1">
                                                     <span>{depositTotal.toLocaleString()}원</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); resetUserDeposit(nick); }} className="text-gray-400 hover:text-red-500 p-0.5 rounded" title="입금액 0원으로 초기화"><Icon name="arrow-counter-clockwise" weight="bold"/></button>
+                                                    {/* ✅ [NEW] 입금 초기화 버튼 */}
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); resetUserDeposit(nick); }} 
+                                                        className="text-gray-400 hover:text-red-500 p-0.5 rounded" 
+                                                        title="입금액 0원으로 초기화"
+                                                    >
+                                                        <Icon name="arrow-counter-clockwise" weight="bold"/>
+                                                    </button>
                                                 </div>
                                             </div>)}
                                             {isCard && balance < 0 && (<div className="mt-1 pt-1 border-t border-dashed bg-purple-50 p-1 rounded text-[11px] text-right text-gray-600"><div>미수금 {Math.abs(balance).toLocaleString()}원 + 10%</div><div className="font-bold text-purple-700">💳 결제: {(Math.abs(balance) * 1.1).toLocaleString()}원</div></div>)}
@@ -584,8 +610,10 @@
             const handleEdit = (customer) => { setEditMode(customer.nickname); setInputData(customer); };
             const handleDelete = (nickname) => { if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) { setAddresses(prev => prev.filter(a => a.nickname !== nickname)); } };
 
-            // 다음 주소 검색 API 연동
+            // ✅ [추가] 다음 주소 검색 API 연동
             const handleAddressSearch = () => {
+                // 다음 주소창 띄우기
+                // 주의: 팝업 방식은 일부 환경에서 차단될 수 있으나 표준 방식 사용
                 try {
                     new window.daum.Postcode({
                         oncomplete: function(data) {
@@ -673,6 +701,7 @@
                                 <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
                                 <div className="flex-1 flex gap-1">
                                     <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="서울시 강남구..." /></div>
+                                    {/* ✅ 주소 검색 버튼 추가 */}
                                     <button onClick={handleAddressSearch} className="bg-slate-500 text-white px-2 rounded text-xs whitespace-nowrap h-[29px] mt-auto">검색</button>
                                 </div>
                             </div>
@@ -716,6 +745,7 @@
                     const grandTotal = productTotal + currentShipping;
                     const balance = depositTotal - grandTotal;
                     
+                    // 수량 2개 이상일 때만 ★ 표시
                     const itemSummary = activeItems.map(i => {
                         const qtyPart = i.quantity > 1 ? ` ★ ${i.quantity}개` : '';
                         return `${i.product}${qtyPart}`;
@@ -751,14 +781,18 @@
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [activeTab, setActiveTab] = useState('live');
             const [quickShipping, setQuickShipping] = useState(4000); 
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || FIXED_BANK_ACCOUNT);
+            // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 김선정 줄바꿈 적용)
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 김선정\n7942 18 01611");
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
+            // ✅ 주소록 (로컬 스토리지에 저장)
             const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem('verifiedAddresses')) || []);
             const [cardPayments, setCardPayments] = useState(() => JSON.parse(localStorage.getItem('cardPayments')) || {});
-            const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
+            const [isSettingsOpen, setIsSettingsOpen] = useState(false); // ✅ 설정 모달 상태 추가
             
+            // [NEW] matchedDeposits 상태 상위로 이동 (저장용)
             const [matchedDeposits, setMatchedDeposits] = useState(() => {
+                // 저장된 Set 복원
                 const saved = localStorage.getItem('matchedDeposits');
                 return saved ? new Set(JSON.parse(saved)) : new Set();
             });
@@ -769,14 +803,20 @@
             useEffect(() => { localStorage.setItem('shippingOverrides', JSON.stringify(shippingOverrides)); }, [shippingOverrides]);
             useEffect(() => { localStorage.setItem('verifiedAddresses', JSON.stringify(addresses)); }, [addresses]);
             useEffect(() => { localStorage.setItem('cardPayments', JSON.stringify(cardPayments)); }, [cardPayments]);
-            useEffect(() => { localStorage.setItem('matchedDeposits', JSON.stringify([...matchedDeposits])); }, [matchedDeposits]);
+            
+            // [NEW] matchedDeposits 저장
+            useEffect(() => { 
+                localStorage.setItem('matchedDeposits', JSON.stringify([...matchedDeposits])); 
+            }, [matchedDeposits]);
 
+            // ✅ 탭 이름 깔끔하게 정리 (이모지 제거)
             const tabs = [
                 { id: 'live', label: '라이브관제', icon: 'monitor-play' }, 
                 { id: 'customer', label: '고객관리', icon: 'address-book' }, 
                 { id: 'manage', label: '주문관리(엑셀)', icon: 'file-xls' }
             ];
 
+            // 전체 초기화
             const resetAllStatus = () => {
                 if(confirm("모든 주문, 입금, 클릭 기록을 초기화하시겠습니까?\n(주소록과 상품 가격은 유지됩니다.)")) {
                     setOrders([]); setCardPayments({}); setShippingOverrides({}); setMatchedDeposits(new Set());
@@ -796,10 +836,12 @@
                                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name={tab.icon} weight="bold"/> {tab.label}</button>
                                 ))}
                             </div>
+                            {/* ✅ 톱니바퀴 설정 버튼 추가 */}
                             <button onClick={()=>setIsSettingsOpen(!isSettingsOpen)} className="p-2 hover:bg-indigo-800 rounded text-indigo-300 hover:text-white"><Icon name="gear" weight="fill" size={20}/></button>
                         </div>
                     </header>
 
+                    {/* ✅ 설정 모달 (배송비 기본값 변경용) */}
                     {isSettingsOpen && (
                         <div className="absolute top-12 right-4 bg-white shadow-xl border rounded-lg p-4 w-64 z-50 animate-pop">
                             <h3 className="font-bold mb-4 flex items-center gap-2 border-b pb-2"><Icon name="gear" weight="fill" className="text-gray-500"/> 환경설정</h3>
