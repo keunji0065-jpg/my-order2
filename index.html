@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (완납오류수정)</title>
+    <title>깔로 주문서 PRO (계좌완벽고정)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -57,8 +57,6 @@
         // ✅ URL 고정
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbwWpf_CrUfuzgKuyxxtd5EXQLg9KBj8VCLWnEKRJKwOhx9_BF8QhzoAqodZdt8rwxIbSA/exec";
         
-        const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
-
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
 
         const downloadExcel = (data, fileName) => {
@@ -73,7 +71,7 @@
             productHistory, setProductHistory, 
             quickShipping, setQuickShipping, 
             shippingOverrides, setShippingOverrides, 
-            bankAccount, setBankAccount, 
+            // bankAccount, // 이제 이 변수 안 쓰고 직접 박아버림
             googleScriptUrl, 
             addresses, setAddresses, 
             cardPayments, setCardPayments, 
@@ -99,6 +97,7 @@
             const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
             const [copyStatus, setCopyStatus] = useState({});
 
+            // 자동 저장 상태
             const [isSaving, setIsSaving] = useState(false);
             const [lastSavedTime, setLastSavedTime] = useState(null);
 
@@ -145,6 +144,7 @@
                 setKeywords(prev => new Set(prev).add(keywordInput.trim()));
                 setKeywordInput('');
             };
+
             const handleRemoveKeyword = (keyword) => {
                 setKeywords(prev => {
                     const next = new Set(prev);
@@ -260,7 +260,7 @@
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
             const handleOrderDelete = (id) => { if(confirm("완전 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // ✅ [수정] 카톡 복사 로직 (완납 판단 기준 수정 & 양식 적용)
+            // ✅ [카톡 복사] 사장님 지정 양식 (계좌번호 코드에 고정!)
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance, isCard) => {
                 const activeItems = items.filter(i => !i.isCancelled);
                 const itemListText = activeItems.map(i => `${i.product}(${i.quantity}개) ${Number(i.price).toLocaleString()}원`).join('\n');
@@ -277,20 +277,11 @@
                     const cardFee = cardBaseAmount * 0.1;     
                     const cardTotal = cardBaseAmount + cardFee; 
 
-                    if (depositTotal > 0) {
-                        msg += `[입금확인]\n`;
-                        msg += `${depositTotal.toLocaleString()}원\n\n`;
-                    }
-                    msg += `[카드결제]\n`;
-                    msg += `금액 ${cardBaseAmount.toLocaleString()}원\n`;
-                    msg += `10%   ${cardFee.toLocaleString()}원\n`;
-                    msg += `👉총 ${cardTotal.toLocaleString()}원 예정\n\n`;
-                    msg += `핸드폰번호 남겨주세요🌸\n`;
-                    msg += `------------------\n\n`;
+                    if (depositTotal > 0) msg += `[입금확인]\n${depositTotal.toLocaleString()}원\n\n`;
+                    msg += `[카드결제]\n금액 ${cardBaseAmount.toLocaleString()}원\n10%   ${cardFee.toLocaleString()}원\n👉총 ${cardTotal.toLocaleString()}원 예정\n\n핸드폰번호 남겨주세요🌸\n------------------\n\n`;
 
                 } else {
                     // ✅ 완납 판단 기준 수정: (잔액 >= 0) AND (총금액 > 0)
-                    // 가격이 0원이라서 완납으로 뜨는 오류 방지
                     const isPaid = (balance >= 0) && (grandTotal > 0);
 
                     // 입금 내역이 있으면 무조건 표시
@@ -308,8 +299,10 @@
                         msg += `[미입금]\n`;
                         msg += `총 입금하실 금액\n`;
                         msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
-                        msg += `${bankAccount}\n`; // 고정된 계좌번호
-                        msg += `입금 부탁드립니다 🙏\n\n`;
+                        // ✅ 사장님이 요청하신 계좌번호 고정!
+                        msg += `카카오뱅크 김선정\n`;
+                        msg += `7942 18 01611\n`; 
+                        msg += `입금 부탁드립니다 🙏\n`;
                         msg += `------------------\n\n`;
                     }
                 }
@@ -366,9 +359,8 @@
                     const finalShipping = activeItems.length > 0 ? currentShipping : 0;
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + finalShipping;
-                    const balance = depositTotal - grandTotal;
+                    const balance = grandTotal - depositTotal;
                     
-                    // ✅ 완납 필터 로직도 동일하게 수정 (0원 주문은 미납으로 간주)
                     const isPaid = (balance >= 0) && (grandTotal > 0);
                     
                     if (filterStatus === 'unpaid' && isPaid) return false;
@@ -539,7 +531,7 @@
                                 const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                                 const finalShipping = activeItems.length > 0 ? currentShipping : 0;
                                 const grandTotal = productTotal + finalShipping;
-                                const balance = depositTotal - grandTotal;
+                                const balance = grandTotal - depositTotal;
                                 const isCard = cardPayments[nick]; 
 
                                 let statusBadge;
