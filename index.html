@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (최종완성)</title>
+    <title>깔로 주문서 PRO (엑셀줄바꿈수정)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -84,6 +84,7 @@
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
+            // matchedDeposits는 상위에서 전달받음
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -101,7 +102,6 @@
             const [isSaving, setIsSaving] = useState(false);
             const [lastSavedTime, setLastSavedTime] = useState(null);
 
-            // 데이터 로딩
             const fetchData = async () => {
                 try {
                     const res = await fetch(googleScriptUrl);
@@ -135,11 +135,7 @@
                 return () => clearInterval(interval);
             }, [googleScriptUrl]);
 
-            const findAddress = (nick) => {
-                if(!addresses) return null;
-                return addresses.find(a => a.nickname.trim() === nick.trim());
-            };
-
+            const findAddress = (nick) => addresses.find(a => a.nickname.trim() === nick.trim());
             const handleAddKeyword = (e) => { e.preventDefault(); if(!keywordInput.trim()) return; setKeywords(prev => new Set(prev).add(keywordInput.trim())); setKeywordInput(''); };
             const handleRemoveKeyword = (keyword) => { setKeywords(prev => { const next = new Set(prev); next.delete(keyword); return next; }); };
             const toggleCardPayment = (nick) => { setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] })); };
@@ -507,7 +503,7 @@
                                     {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={10}/></button>}
                                 </div>
                             </div>
-                            {/* 배송비 입력칸 */}
+                            {/* ✅ 배송비 입력칸 수정 */}
                             <div className="bg-white p-2 rounded border border-gray-200 flex items-center justify-end gap-2 text-xs">
                                 <span className="font-bold text-gray-600">🚚 기본 배송비:</span>
                                 <input 
@@ -539,7 +535,7 @@
                                 let statusBadge;
                                 if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
                                 else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
-                                // ✅ 0원 상품이 있거나 총액이 0이면 완납 아님
+                                // ✅ 0원 주문은 미납으로 간주 (완납 조건: 잔액>=0 AND 총액>0)
                                 else if (balance <= 0 && grandTotal > 0 && !hasZeroPrice) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
 
@@ -570,7 +566,6 @@
                                                     <span className="font-bold text-sm font-mono text-gray-800">{grandTotal.toLocaleString()}원</span>
                                                     {statusBadge}
                                                 </div>
-                                                {/* ✅ 카톡 복사 시 balance 전달 */}
                                                 <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance, isCard); }} className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all ${isCopied ? 'bg-green-500 text-white copy-anim' : 'bg-yellow-300 hover:bg-yellow-400 text-black'}`}>
                                                     {isCopied ? <Icon name="check" weight="bold"/> : <Icon name="chat-circle-dots" weight="fill"/>} 카톡
                                                 </button>
@@ -586,13 +581,12 @@
                                                         </div>
                                                         <div className="flex items-center gap-1 pl-1">
                                                             <span className="font-bold text-indigo-600 bg-indigo-50 px-1 rounded text-[10px] shrink-0">{item.quantity}개</span>
-                                                            {/* ✅ 가격이 0원이면 빨간색으로 경고 표시 */}
                                                             <input 
                                                                 type="number" 
                                                                 value={item.price} 
                                                                 onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} 
                                                                 onClick={(e) => e.stopPropagation()} 
-                                                                className={`w-14 text-right font-mono text-gray-500 bg-transparent outline-none focus:text-indigo-600 ${isZeroPrice && !item.isCancelled ? 'bg-red-50 border-b-2 border-red-300' : ''}`}
+                                                                className={`w-14 text-right font-mono text-gray-500 bg-transparent outline-none focus:text-indigo-600 ${isZeroPrice && !item.isCancelled ? 'bg-red-50 border-b border-red-300' : ''}`}
                                                                 disabled={item.isCancelled} 
                                                             />
                                                             <div className="flex gap-0.5 w-8 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
@@ -603,6 +597,7 @@
                                                     </div>
                                                 );
                                             })}
+                                            {/* ✅ 배송비 입력칸 여백 및 스타일 개선 */}
                                             <div className="flex justify-end items-center gap-2 px-2 py-2 text-xs text-gray-400 border-t border-dashed border-gray-100 mt-1">
                                                 <span>배송비:</span>
                                                 <input 
@@ -613,6 +608,7 @@
                                                     className="w-20 text-right border rounded bg-white px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-600 font-bold" 
                                                 />
                                             </div>
+                                            
                                             {depositTotal > 0 && (<div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[11px] text-green-600 font-bold px-2">
                                                 <span>└ 입금확인</span>
                                                 <div className="flex items-center gap-1">
@@ -784,11 +780,11 @@
                     const grandTotal = productTotal + currentShipping;
                     const balance = depositTotal - grandTotal;
                     
-                    // 수량 2개 이상일 때만 ★ 표시
+                    // ✅ 엑셀 출력 시에도 줄바꿈으로 적용
                     const itemSummary = activeItems.map(i => {
                         const qtyPart = i.quantity > 1 ? ` ★ ${i.quantity}개` : '';
                         return `${i.product}${qtyPart}`;
-                    }).join(', ');
+                    }).join('\n'); // 콤마 대신 줄바꿈(\n)
                     
                     const finalItemSummary = `[ ${nick} ]\n${itemSummary}`;
                     const addrInfo = addresses.find(a => a.nickname.trim() === nick.trim()) || {};
