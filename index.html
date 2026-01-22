@@ -573,7 +573,7 @@
                             </div>
                             <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 items-center bg-white p-1 rounded border border-gray-100">
                                 <span>기본배송: <input type="number" value={quickShipping} onChange={(e)=>setQuickShipping(Number(e.target.value))} className="w-10 border rounded px-1 text-right bg-gray-50" />원</span>
-                                <span className="flex-1 flex items-center gap-1">계좌: <input type="text" value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="flex-1 border rounded px-1 bg-gray-50" placeholder="계좌 입력" /></span>
+                                <span className="flex-1 flex items-center gap-1">계좌: <textarea value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="flex-1 border rounded px-1 bg-gray-50 resize-none h-8 text-[10px] leading-tight" placeholder="계좌 입력"></textarea></span>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -880,7 +880,8 @@
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [activeTab, setActiveTab] = useState('live');
             const [quickShipping, setQuickShipping] = useState(4000); 
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 000-0000-0000");
+            // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 김선정 줄바꿈 적용)
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 김선정\n7942 18 01611");
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
             // ✅ 주소록 (로컬 스토리지에 저장)
