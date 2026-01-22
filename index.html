@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (안정화버전)</title>
+    <title>깔로 주문서 PRO (최종수정)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -12,7 +12,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web" crossorigin="anonymous"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <!-- 다음 주소 API -->
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     
     <script>
@@ -39,12 +38,8 @@
         
         .keyword-detected { border: 2px solid #60a5fa; background-color: #eff6ff; }
         .keyword-badge { background-color: #3b82f6; color: white; padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; }
-        
-        /* 복사 완료 애니메이션 */
-        @keyframes copySuccess { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         .copy-anim { animation: copySuccess 0.3s ease-in-out; }
-        
-        /* 팝업 애니메이션 */
+        @keyframes copySuccess { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         .animate-pop { animation: pop 0.2s ease-out; }
         @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -54,9 +49,8 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-        // ✅ URL 고정
+        // ✅ URL 및 계좌번호 고정
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbwWpf_CrUfuzgKuyxxtd5EXQLg9KBj8VCLWnEKRJKwOhx9_BF8QhzoAqodZdt8rwxIbSA/exec";
-        
         const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
 
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
@@ -68,6 +62,7 @@
             XLSX.writeFile(wb, `${fileName}_${new Date().toLocaleDateString()}.xlsx`);
         };
 
+        // --- LiveTab 컴포넌트 ---
         const LiveTab = ({ 
             orders, setOrders, 
             productHistory, setProductHistory, 
@@ -78,13 +73,12 @@
             addresses, 
             cardPayments, setCardPayments, 
             resetAllStatus,
-            matchedDeposits = new Set(), setMatchedDeposits // ✅ 기본값 추가로 오류 방지
+            matchedDeposits, setMatchedDeposits 
         }) => {
             const [chats, setChats] = useState([]);
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
-            // matchedDeposits는 상위에서 전달받음
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -99,23 +93,16 @@
 
             const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
             const [copyStatus, setCopyStatus] = useState({});
-
-            // 자동 저장 상태
             const [isSaving, setIsSaving] = useState(false);
             const [lastSavedTime, setLastSavedTime] = useState(null);
 
-            // 데이터 로딩
             const fetchData = async () => {
-                if (!googleScriptUrl || googleScriptUrl.includes("여기에")) {
-                    setConnectionStatus({ code: 'error_url', msg: '주소 미입력' });
-                    return;
-                }
                 try {
                     const res = await fetch(googleScriptUrl);
-                    if (!res.ok) throw new Error(`HTTP 에러: ${res.status}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const text = await res.text();
                     let data;
-                    try { data = JSON.parse(text); } catch (e) { throw new Error("응답 오류"); }
+                    try { data = JSON.parse(text); } catch (e) { throw new Error("JSON 파싱 오류"); }
                     
                     if (data.chats) {
                         setChats(data.chats.slice(0, 300));
@@ -123,9 +110,6 @@
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
                     if (data.deposits) setDeposits(data.deposits);
-                    
-                    if (data.error_yt) console.error("유튜브 에러:", data.error_yt);
-
                 } catch (e) {
                     console.error("연결 실패:", e);
                     setConnectionStatus({ code: 'error_fetch', msg: e.message });
@@ -138,79 +122,33 @@
                 return () => clearInterval(interval);
             }, [googleScriptUrl]);
 
-            const findAddress = (nick) => {
-                if (!addresses) return null;
-                return addresses.find(a => a.nickname.trim() === nick.trim());
-            };
-
-            const handleAddKeyword = (e) => {
-                e.preventDefault();
-                if(!keywordInput.trim()) return;
-                setKeywords(prev => new Set(prev).add(keywordInput.trim()));
-                setKeywordInput('');
-            };
-
-            const handleRemoveKeyword = (keyword) => {
-                setKeywords(prev => {
-                    const next = new Set(prev);
-                    next.delete(keyword);
-                    return next;
-                });
-            };
-
-            const toggleCardPayment = (nick) => {
-                setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] }));
-            };
+            const findAddress = (nick) => addresses.find(a => a.nickname.trim() === nick.trim());
+            const handleAddKeyword = (e) => { e.preventDefault(); if(!keywordInput.trim()) return; setKeywords(prev => new Set(prev).add(keywordInput.trim())); setKeywordInput(''); };
+            const handleRemoveKeyword = (keyword) => { setKeywords(prev => { const next = new Set(prev); next.delete(keyword); return next; }); };
+            const toggleCardPayment = (nick) => { setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] })); };
 
             const autoSaveToGoogleSheet = async () => {
                 if (Object.keys(orders).length === 0) return; 
-
                 setIsSaving(true);
                 let saveList = [];
                 orders.forEach(o => {
                     if (o.isCancelled) return;
                     const addr = findAddress(o.customer) || {};
                     const currentShipping = shippingOverrides[o.customer] !== undefined ? shippingOverrides[o.customer] : Number(quickShipping);
-                    const grandTotal = 0; 
-
-                    saveList.push({
-                        nickname: o.customer,
-                        product: o.product,
-                        qty: o.quantity,
-                        price: o.price,
-                        deposit: o.deposit,
-                        shipping: currentShipping, 
-                        grandTotal: grandTotal, 
-                        address: addr.address || '',
-                        zipcode: addr.zipcode || '', 
-                        phone: addr.phone || '',
-                        realname: addr.realname || '',
-                        memo: addr.memo || '' 
-                    });
+                    // 간소화된 저장 로직
+                    saveList.push({ nickname: o.customer, product: o.product, qty: o.quantity, price: o.price, deposit: o.deposit, shipping: currentShipping, grandTotal: 0, address: addr.address || '', zipcode: addr.zipcode || '', phone: addr.phone || '', realname: addr.realname || '', memo: addr.memo || '' });
                 });
-
-                try {
-                    await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(saveList) });
-                    setLastSavedTime(new Date().toLocaleTimeString());
-                } catch(e) {
-                    console.error("자동 저장 실패:", e);
-                } finally {
-                    setIsSaving(false);
-                }
+                try { await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(saveList) }); setLastSavedTime(new Date().toLocaleTimeString()); } 
+                catch(e) { console.error("저장 실패", e); } finally { setIsSaving(false); }
             };
-
-            useEffect(() => {
-                const saveInterval = setInterval(autoSaveToGoogleSheet, 60000);
-                return () => clearInterval(saveInterval);
-            }, [orders, shippingOverrides, quickShipping]); 
+            useEffect(() => { const saveInterval = setInterval(autoSaveToGoogleSheet, 60000); return () => clearInterval(saveInterval); }, [orders, shippingOverrides, quickShipping]); 
 
             const addOrderLogic = (nickname, content, qty = 1) => {
                 const initialProduct = content || '';
                 const initialPrice = productHistory[initialProduct] || 0;
                 setOrders(prev => {
                     const existIdx = prev.findIndex(o => o.customer === nickname && o.product === initialProduct && !o.isCancelled);
-                    setSelectedNick(nickname);
-                    setOrderSearch(''); 
+                    setSelectedNick(nickname); setOrderSearch(''); 
                     if (existIdx >= 0) {
                         const next = [...prev];
                         next[existIdx] = { ...next[existIdx], quantity: next[existIdx].quantity + qty, price: (next[existIdx].quantity + qty) * initialPrice };
@@ -219,21 +157,13 @@
                     return [{ id: Date.now(), customer: nickname, product: initialProduct, quantity: qty, price: initialPrice, deposit: 0, originalText: content, isCancelled: false }, ...prev];
                 });
             };
-
-            const handleChatClick = (chat) => { 
-                setClickedChats(prev => new Set(prev).add(chat.id));
-                addOrderLogic(chat.nickname, chat.content, 1); 
-            };
-
+            const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content, 1); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct, 1); setManualProduct(''); };
             
-            // 입금 확인 및 취소 로직
+            // ✅ 입금 클릭 로직 (취소 기능 포함)
             const handleDepositClick = (deposit, index) => {
-                // ✅ [안전장치] matchedDeposits가 없으면 빈 Set으로 처리 (오류 방지)
-                const currentMatched = matchedDeposits || new Set();
-
-                // ✅ [수정] id가 있으면 id 사용, 없으면 index 사용
                 const depositId = deposit.id !== undefined ? deposit.id : index;
+                const currentMatched = matchedDeposits || new Set();
 
                 if (currentMatched.has(depositId)) {
                     if (!confirm("⚠️ 이 입금 확인을 취소하시겠습니까?")) return;
@@ -243,43 +173,26 @@
                             const targetOrders = prev.filter(o => o.customer === selectedNick);
                             const otherOrders = prev.filter(o => o.customer !== selectedNick);
                             if (targetOrders.length === 0) return prev;
-                            const updatedTargets = targetOrders.map((o, i) => {
-                                if (i === 0) return { ...o, deposit: Math.max(0, (o.deposit || 0) - depositAmount) };
-                                return o;
-                            });
+                            const updatedTargets = targetOrders.map((o, i) => { if (i === 0) return { ...o, deposit: Math.max(0, (o.deposit || 0) - depositAmount) }; return o; });
                             return [...updatedTargets, ...otherOrders];
                         });
                     }
-                    setMatchedDeposits(prev => {
-                        const next = new Set(prev);
-                        next.delete(depositId);
-                        return next;
-                    });
+                    setMatchedDeposits(prev => { const next = new Set(prev); next.delete(depositId); return next; });
                     return;
                 }
-
                 if (!selectedNick) return alert("오른쪽에서 닉네임을 먼저 선택해주세요!");
-
                 const depositAmount = Number(deposit.amount);
                 setOrders(prev => {
                     const targetOrders = prev.filter(o => o.customer === selectedNick);
                     const otherOrders = prev.filter(o => o.customer !== selectedNick);
                     if (targetOrders.length === 0) return prev;
-                    const updatedTargets = targetOrders.map((o, i) => {
-                        if (i === 0) return { ...o, deposit: (o.deposit || 0) + depositAmount };
-                        return o;
-                    });
+                    const updatedTargets = targetOrders.map((o, i) => { if (i === 0) return { ...o, deposit: (o.deposit || 0) + depositAmount }; return o; });
                     return [...updatedTargets, ...otherOrders];
                 });
                 setMatchedDeposits(prev => new Set(prev).add(depositId));
             };
 
-            // 입금액 강제 초기화 함수
-            const resetUserDeposit = (nick) => {
-                if(!confirm(`'${nick}'님의 입금액을 0원으로 초기화하시겠습니까?`)) return;
-                setOrders(prev => prev.map(o => o.customer === nick ? { ...o, deposit: 0 } : o));
-            };
-
+            const resetUserDeposit = (nick) => { if(!confirm(`'${nick}'님의 입금액을 0원으로 초기화하시겠습니까?`)) return; setOrders(prev => prev.map(o => o.customer === nick ? { ...o, deposit: 0 } : o)); };
             const handleProductChange = (id, field, value) => {
                 setOrders(prev => prev.map(o => {
                     if (o.id === id) {
@@ -295,20 +208,17 @@
                 const newNick = prompt(`'${oldNick}'님의 닉네임을 변경합니다.`, oldNick);
                 if (newNick && newNick !== oldNick) {
                     setOrders(prev => prev.map(o => o.customer === oldNick ? { ...o, customer: newNick } : o));
-                    if (shippingOverrides[oldNick]) {
-                        const newOverrides = { ...shippingOverrides, [newNick]: shippingOverrides[oldNick] };
-                        delete newOverrides[oldNick];
-                        setShippingOverrides(newOverrides);
-                    }
+                    if (shippingOverrides[oldNick]) { const newOverrides = { ...shippingOverrides, [newNick]: shippingOverrides[oldNick] }; delete newOverrides[oldNick]; setShippingOverrides(newOverrides); }
                     if (selectedNick === oldNick) setSelectedNick(newNick);
                 }
             };
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
-            const handleOrderDelete = (id) => { if(confirm("완전 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
+            const handleOrderDelete = (id) => { if(confirm("완전 삭제?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // [카톡 복사]
+            // ✅✅ [최종 수정] 카톡 복사 로직 (사장님 요청 양식 완벽 반영)
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance, isCard) => {
                 const activeItems = items.filter(i => !i.isCancelled);
+                // 상품명(수량) 가격원
                 const itemListText = activeItems.map(i => `${i.product}(${i.quantity}개) ${Number(i.price).toLocaleString()}원`).join('\n');
                 const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
                 
@@ -323,37 +233,43 @@
                     const cardFee = cardBaseAmount * 0.1;     
                     const cardTotal = cardBaseAmount + cardFee; 
 
-                    if (depositTotal > 0) msg += `[입금확인]\n${depositTotal.toLocaleString()}원\n\n`;
-                    msg += `[카드결제]\n금액 ${cardBaseAmount.toLocaleString()}원\n10%   ${cardFee.toLocaleString()}원\n👉총 ${cardTotal.toLocaleString()}원 예정\n\n핸드폰번호 남겨주세요🌸\n------------------\n\n`;
+                    if (depositTotal > 0) {
+                        msg += `[입금확인]\n`;
+                        msg += `${depositTotal.toLocaleString()}원\n\n`;
+                    }
+                    msg += `[카드결제]\n`;
+                    msg += `금액 ${cardBaseAmount.toLocaleString()}원\n`;
+                    msg += `10%   ${cardFee.toLocaleString()}원\n`;
+                    msg += `👉총 ${cardTotal.toLocaleString()}원 예정\n\n`;
+                    msg += `핸드폰번호 남겨주세요🌸\n`;
+                    msg += `------------------\n\n`;
 
                 } else {
                     const isPaid = (balance >= 0) && (grandTotal > 0);
 
+                    // 1. 입금 확인 내역은 있으면 무조건 표시
                     if (depositTotal > 0) {
                         msg += `[입금확인]\n`;
                         msg += `${depositTotal.toLocaleString()}원\n\n`;
                         msg += `------------------\n\n`;
                     }
 
+                    // 2. 완납 여부에 따른 분기
                     if (isPaid) {
                         msg += `완납 확인! 감사합니다 😍\n`;
                         msg += `------------------\n\n`;
                     } else {
+                        // 미입금이거나 부분입금인 경우
                         msg += `[미입금]\n`;
                         msg += `총 입금하실 금액\n`;
+                        // 🚨 중요: 남은 금액(balance)을 보여줌
                         msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
                         msg += `${FIXED_BANK_ACCOUNT}\n`; 
                         msg += `입금 부탁드립니다 🙏\n\n`;
                         msg += `------------------\n\n`;
                     }
                 }
-                msg += `방송마다 1회\n`;
-                msg += `하단의 주문서(배송지입력) 필수!!\n\n`;
-                msg += `이미 참여한 설문 일 경우\n`;
-                msg += `▫ 답변 수정하기 \n`;
-                msg += `▫ 또는 설문 추가 참여\n\n`;
-                msg += `미입력이 많아 계속 안내합니다. \n`;
-                msg += `양해부탁드립니다.`;
+                msg += `방송마다 1회\n하단의 주문서(배송지입력) 필수!!\n\n이미 참여한 설문 일 경우\n▫ 답변 수정하기 \n▫ 또는 설문 추가 참여\n\n미입력이 많아 계속 안내합니다. \n양해부탁드립니다.`;
 
                 const textArea = document.createElement("textarea");
                 textArea.value = msg;
@@ -362,24 +278,16 @@
                 try { 
                     document.execCommand('copy'); 
                     setCopyStatus(prev => ({ ...prev, [nick]: true }));
-                    setTimeout(() => {
-                        setCopyStatus(prev => ({ ...prev, [nick]: false }));
-                    }, 2000);
+                    setTimeout(() => setCopyStatus(prev => ({ ...prev, [nick]: false })), 2000);
                 } catch (err) { alert('복사 실패'); }
                 document.body.removeChild(textArea);
             };
 
+            // 필터링 로직들...
             const filteredChats = useMemo(() => {
                 let result = chats;
-                if (showKeywordOnly) {
-                    result = result.filter(c => {
-                        const content = c.content.toLowerCase();
-                        return [...keywords].some(k => content.includes(k.toLowerCase()));
-                    });
-                }
-                if (chatSearch) {
-                    result = result.filter(c => c.nickname.toLowerCase().includes(chatSearch.toLowerCase()) || c.content.toLowerCase().includes(chatSearch.toLowerCase()));
-                }
+                if (showKeywordOnly) result = result.filter(c => [...keywords].some(k => c.content.includes(k)));
+                if (chatSearch) result = result.filter(c => c.nickname.toLowerCase().includes(chatSearch.toLowerCase()) || c.content.toLowerCase().includes(chatSearch.toLowerCase()));
                 return result;
             }, [chats, chatSearch, showKeywordOnly, keywords]);
 
@@ -400,13 +308,16 @@
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + finalShipping;
                     const balance = grandTotal - depositTotal;
+                    
                     const isPaid = (balance >= 0) && (grandTotal > 0);
+                    
                     if (filterStatus === 'unpaid' && isPaid) return false;
                     if (filterStatus === 'paid' && !isPaid) return false;
                     return true;
                 });
             }, [orders, orderSearch, filterStatus, shippingOverrides, quickShipping]);
 
+            // 대시보드 통계
             const dashboardStats = useMemo(() => {
                 let totalSales = 0, totalDeposit = 0, totalUnpaid = 0, totalCardExpected = 0;
                 const groups = {};
@@ -422,11 +333,8 @@
                     totalSales += grandTotal;
                     totalDeposit += depositTotal;
                     if (balance > 0) {
-                        if (cardPayments[nick]) {
-                            totalCardExpected += (balance * 1.1);
-                        } else {
-                            totalUnpaid += balance;
-                        }
+                        if (cardPayments[nick]) totalCardExpected += (balance * 1.1);
+                        else totalUnpaid += balance;
                     }
                 });
                 return { totalSales, totalDeposit, totalUnpaid, totalCardExpected };
@@ -492,7 +400,7 @@
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
                             {filteredDeposits.map((d, i) => {
-                                // ✅ [수정] ID가 없으면 Index를 고유키로 사용 (Set 오류 방지)
+                                // ID 사용, 없으면 index (안전장치)
                                 const depositId = d.id !== undefined ? d.id : i;
                                 const isUsed = matchedDeposits.has(depositId);
                                 const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
@@ -524,7 +432,6 @@
                                     <div className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isSaving ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700'}`}>
                                         {isSaving ? <Icon name="spinner" className="animate-spin" /> : <Icon name="cloud-check" weight="fill" />} {isSaving ? "저장중" : "자동저장"}
                                     </div>
-                                    {/* ✅ [설정] 톱니바퀴 (기본 배송비 수정용) */}
                                     <button onClick={() => { const newFee = prompt("기본 배송비를 얼마로 설정할까요?", quickShipping); if(newFee) setQuickShipping(Number(newFee)); }} className="p-1.5 rounded text-gray-500 hover:bg-gray-100"><Icon name="gear" weight="fill"/></button>
                                 </div>
                             </div>
@@ -548,7 +455,6 @@
                                     {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={10}/></button>}
                                 </div>
                             </div>
-                            {/* ✅ 배송비 입력칸 수정 */}
                             <div className="bg-white p-2 rounded border border-gray-200 flex items-center justify-end gap-2 text-xs">
                                 <span className="font-bold text-gray-600">🚚 기본 배송비:</span>
                                 <input 
@@ -577,6 +483,7 @@
                                 let statusBadge;
                                 if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
                                 else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
+                                // ✅ 0원 주문은 미납으로 간주 (완납 조건: 잔액>=0 AND 총액>0)
                                 else if (balance >= 0 && grandTotal > 0) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
 
@@ -585,7 +492,6 @@
 
                                 return (
                                     <div key={nick} onClick={() => setSelectedNick(prev => prev === nick ? null : nick)} className={`bg-white rounded border shadow-sm transition-all overflow-hidden cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 shadow-md' : 'hover:border-indigo-300'}`}>
-                                        {/* 헤더 */}
                                         <div className={`px-2 py-1.5 flex justify-between items-center ${isSelected ? 'bg-indigo-50' : 'bg-gray-50'} border-b border-gray-100`}>
                                             <div className="flex flex-col gap-0.5">
                                                 <div className="flex items-center gap-2">
@@ -628,7 +534,6 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            {/* ✅ [수정] 배송비 입력칸 여백 및 스타일 개선 */}
                                             <div className="flex justify-end items-center gap-2 px-2 py-2 text-xs text-gray-400 border-t border-dashed border-gray-100 mt-1">
                                                 <span>배송비:</span>
                                                 <input 
@@ -639,19 +544,11 @@
                                                     className="w-20 text-right border rounded bg-white px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-600 font-bold" 
                                                 />
                                             </div>
-                                            
                                             {depositTotal > 0 && (<div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[11px] text-green-600 font-bold px-2">
                                                 <span>└ 입금확인</span>
                                                 <div className="flex items-center gap-1">
                                                     <span>{depositTotal.toLocaleString()}원</span>
-                                                    {/* ✅ [NEW] 입금 초기화 버튼 */}
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); resetUserDeposit(nick); }} 
-                                                        className="text-gray-400 hover:text-red-500 p-0.5 rounded" 
-                                                        title="입금액 0원으로 초기화"
-                                                    >
-                                                        <Icon name="arrow-counter-clockwise" weight="bold"/>
-                                                    </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); resetUserDeposit(nick); }} className="text-gray-400 hover:text-red-500 p-0.5 rounded" title="입금액 0원으로 초기화"><Icon name="arrow-counter-clockwise" weight="bold"/></button>
                                                 </div>
                                             </div>)}
                                             {isCard && balance < 0 && (<div className="mt-1 pt-1 border-t border-dashed bg-purple-50 p-1 rounded text-[11px] text-right text-gray-600"><div>미수금 {Math.abs(balance).toLocaleString()}원 + 10%</div><div className="font-bold text-purple-700">💳 결제: {(Math.abs(balance) * 1.1).toLocaleString()}원</div></div>)}
@@ -687,10 +584,8 @@
             const handleEdit = (customer) => { setEditMode(customer.nickname); setInputData(customer); };
             const handleDelete = (nickname) => { if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) { setAddresses(prev => prev.filter(a => a.nickname !== nickname)); } };
 
-            // ✅ [추가] 다음 주소 검색 API 연동
+            // 다음 주소 검색 API 연동
             const handleAddressSearch = () => {
-                // 다음 주소창 띄우기
-                // 주의: 팝업 방식은 일부 환경에서 차단될 수 있으나 표준 방식 사용
                 try {
                     new window.daum.Postcode({
                         oncomplete: function(data) {
@@ -778,7 +673,6 @@
                                 <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
                                 <div className="flex-1 flex gap-1">
                                     <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="서울시 강남구..." /></div>
-                                    {/* ✅ 주소 검색 버튼 추가 */}
                                     <button onClick={handleAddressSearch} className="bg-slate-500 text-white px-2 rounded text-xs whitespace-nowrap h-[29px] mt-auto">검색</button>
                                 </div>
                             </div>
@@ -822,7 +716,6 @@
                     const grandTotal = productTotal + currentShipping;
                     const balance = depositTotal - grandTotal;
                     
-                    // 수량 2개 이상일 때만 ★ 표시
                     const itemSummary = activeItems.map(i => {
                         const qtyPart = i.quantity > 1 ? ` ★ ${i.quantity}개` : '';
                         return `${i.product}${qtyPart}`;
@@ -858,18 +751,14 @@
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [activeTab, setActiveTab] = useState('live');
             const [quickShipping, setQuickShipping] = useState(4000); 
-            // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 김선정 줄바꿈 적용)
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 김선정\n7942 18 01611");
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || FIXED_BANK_ACCOUNT);
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
-            // ✅ 주소록 (로컬 스토리지에 저장)
             const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem('verifiedAddresses')) || []);
             const [cardPayments, setCardPayments] = useState(() => JSON.parse(localStorage.getItem('cardPayments')) || {});
-            const [isSettingsOpen, setIsSettingsOpen] = useState(false); // ✅ 설정 모달 상태 추가
+            const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
             
-            // [NEW] matchedDeposits 상태 상위로 이동 (저장용)
             const [matchedDeposits, setMatchedDeposits] = useState(() => {
-                // 저장된 Set 복원
                 const saved = localStorage.getItem('matchedDeposits');
                 return saved ? new Set(JSON.parse(saved)) : new Set();
             });
@@ -880,20 +769,14 @@
             useEffect(() => { localStorage.setItem('shippingOverrides', JSON.stringify(shippingOverrides)); }, [shippingOverrides]);
             useEffect(() => { localStorage.setItem('verifiedAddresses', JSON.stringify(addresses)); }, [addresses]);
             useEffect(() => { localStorage.setItem('cardPayments', JSON.stringify(cardPayments)); }, [cardPayments]);
-            
-            // [NEW] matchedDeposits 저장
-            useEffect(() => { 
-                localStorage.setItem('matchedDeposits', JSON.stringify([...matchedDeposits])); 
-            }, [matchedDeposits]);
+            useEffect(() => { localStorage.setItem('matchedDeposits', JSON.stringify([...matchedDeposits])); }, [matchedDeposits]);
 
-            // ✅ 탭 이름 깔끔하게 정리 (이모지 제거)
             const tabs = [
                 { id: 'live', label: '라이브관제', icon: 'monitor-play' }, 
                 { id: 'customer', label: '고객관리', icon: 'address-book' }, 
                 { id: 'manage', label: '주문관리(엑셀)', icon: 'file-xls' }
             ];
 
-            // 전체 초기화
             const resetAllStatus = () => {
                 if(confirm("모든 주문, 입금, 클릭 기록을 초기화하시겠습니까?\n(주소록과 상품 가격은 유지됩니다.)")) {
                     setOrders([]); setCardPayments({}); setShippingOverrides({}); setMatchedDeposits(new Set());
@@ -913,12 +796,10 @@
                                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name={tab.icon} weight="bold"/> {tab.label}</button>
                                 ))}
                             </div>
-                            {/* ✅ 톱니바퀴 설정 버튼 추가 */}
                             <button onClick={()=>setIsSettingsOpen(!isSettingsOpen)} className="p-2 hover:bg-indigo-800 rounded text-indigo-300 hover:text-white"><Icon name="gear" weight="fill" size={20}/></button>
                         </div>
                     </header>
 
-                    {/* ✅ 설정 모달 (배송비 기본값 변경용) */}
                     {isSettingsOpen && (
                         <div className="absolute top-12 right-4 bg-white shadow-xl border rounded-lg p-4 w-64 z-50 animate-pop">
                             <h3 className="font-bold mb-4 flex items-center gap-2 border-b pb-2"><Icon name="gear" weight="fill" className="text-gray-500"/> 환경설정</h3>
