@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (최종URL)</title>
+    <title>깔로 주문서 PRO (수량표시수정)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -84,7 +84,9 @@
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
-            // matchedDeposits는 상위에서 전달받음
+            const [matchedDepositsState, setMatchedDepositsState] = useState(new Set());
+            // 상위 matchedDeposits가 없을 경우를 대비해 로컬 state 사용 (props로 받지만 안전장치)
+            
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -141,7 +143,6 @@
                     if (o.isCancelled) return;
                     const addr = findAddress(o.customer) || {};
                     const currentShipping = shippingOverrides[o.customer] !== undefined ? shippingOverrides[o.customer] : Number(quickShipping);
-                    // 간소화된 저장 로직
                     saveList.push({ nickname: o.customer, product: o.product, qty: o.quantity, price: o.price, deposit: o.deposit, shipping: currentShipping, grandTotal: 0, address: addr.address || '', zipcode: addr.zipcode || '', phone: addr.phone || '', realname: addr.realname || '', memo: addr.memo || '' });
                 });
                 try { await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(saveList) }); setLastSavedTime(new Date().toLocaleTimeString()); } 
@@ -166,9 +167,10 @@
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content, 1); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct, 1); setManualProduct(''); };
             
-            // ✅ 입금 클릭 로직 (취소 기능 포함)
+            // 입금 클릭 로직
             const handleDepositClick = (deposit, index) => {
                 const depositId = deposit.id !== undefined ? deposit.id : index;
+                // Props로 받은 matchedDeposits가 있으면 사용, 없으면 빈 Set
                 const currentMatched = matchedDeposits || new Set();
 
                 if (currentMatched.has(depositId)) {
@@ -227,11 +229,15 @@
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
             const handleOrderDelete = (id) => { if(confirm("완전 삭제?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // ✅✅ [최종 수정] 카톡 복사 로직 (사장님 요청 양식 완벽 반영)
+            // [카톡 복사] - 수량 표시 로직 수정 (1개면 생략)
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance, isCard) => {
                 const activeItems = items.filter(i => !i.isCancelled);
-                // 상품명(수량) 가격원
-                const itemListText = activeItems.map(i => `${i.product}(${i.quantity}개) ${Number(i.price).toLocaleString()}원`).join('\n');
+                const itemListText = activeItems.map(i => {
+                    // ✅ 수량이 1보다 클 때만 (N개) 표시
+                    const qtyPart = i.quantity > 1 ? `(${i.quantity}개)` : '';
+                    return `${i.product}${qtyPart} ${Number(i.price).toLocaleString()}원`;
+                }).join('\n');
+                
                 const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
                 
                 let msg = `💙 ${nick} 님 💙\n\n\n`;
@@ -259,22 +265,18 @@
                 } else {
                     const isPaid = (balance >= 0) && (grandTotal > 0);
 
-                    // 1. 입금 확인 내역은 있으면 무조건 표시
                     if (depositTotal > 0) {
                         msg += `[입금확인]\n`;
                         msg += `${depositTotal.toLocaleString()}원\n\n`;
                         msg += `------------------\n\n`;
                     }
 
-                    // 2. 완납 여부에 따른 분기
                     if (isPaid) {
                         msg += `완납 확인! 감사합니다 😍\n`;
                         msg += `------------------\n\n`;
                     } else {
-                        // 미입금이거나 부분입금인 경우
                         msg += `[미입금]\n`;
                         msg += `총 입금하실 금액\n`;
-                        // 🚨 중요: 남은 금액(balance)을 보여줌
                         msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
                         msg += `${FIXED_BANK_ACCOUNT}\n`; 
                         msg += `입금 부탁드립니다 🙏\n\n`;
@@ -290,16 +292,24 @@
                 try { 
                     document.execCommand('copy'); 
                     setCopyStatus(prev => ({ ...prev, [nick]: true }));
-                    setTimeout(() => setCopyStatus(prev => ({ ...prev, [nick]: false })), 2000);
+                    setTimeout(() => {
+                        setCopyStatus(prev => ({ ...prev, [nick]: false }));
+                    }, 2000);
                 } catch (err) { alert('복사 실패'); }
                 document.body.removeChild(textArea);
             };
 
-            // 필터링 로직들...
             const filteredChats = useMemo(() => {
                 let result = chats;
-                if (showKeywordOnly) result = result.filter(c => [...keywords].some(k => c.content.includes(k)));
-                if (chatSearch) result = result.filter(c => c.nickname.toLowerCase().includes(chatSearch.toLowerCase()) || c.content.toLowerCase().includes(chatSearch.toLowerCase()));
+                if (showKeywordOnly) {
+                    result = result.filter(c => {
+                        const content = c.content.toLowerCase();
+                        return [...keywords].some(k => content.includes(k.toLowerCase()));
+                    });
+                }
+                if (chatSearch) {
+                    result = result.filter(c => c.nickname.toLowerCase().includes(chatSearch.toLowerCase()) || c.content.toLowerCase().includes(chatSearch.toLowerCase()));
+                }
                 return result;
             }, [chats, chatSearch, showKeywordOnly, keywords]);
 
@@ -499,7 +509,7 @@
                                 let statusBadge;
                                 if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
                                 else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
-                                // ✅ 0원 주문은 미납으로 간주 (완납 조건: 잔액>=0 AND 총액>0)
+                                // ✅ 0원 주문(가격 미입력)은 미납으로 간주
                                 else if (balance >= 0 && grandTotal > 0) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
 
