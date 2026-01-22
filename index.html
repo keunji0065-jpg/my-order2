@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (고객관리/주소분리)</title>
+    <title>깔로 주문서 PRO (카톡양식 커스텀)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -39,6 +39,10 @@
         .keyword-badge { background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 0.7rem; font-weight: bold; }
         .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 2px; }
+        
+        /* 복사 완료 애니메이션 */
+        @keyframes copySuccess { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .copy-anim { animation: copySuccess 0.3s ease-in-out; }
     </style>
 </head>
 <body>
@@ -67,20 +71,20 @@
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
-            // 검색 필터
             const [chatSearch, setChatSearch] = useState('');
             const [depositSearch, setDepositSearch] = useState('');
             const [orderSearch, setOrderSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('all');
             
-            // 키워드 필터 상태
             const [keywords, setKeywords] = useState(new Set()); 
             const [keywordInput, setKeywordInput] = useState('');
             const [showKeywordOnly, setShowKeywordOnly] = useState(false);
 
             const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
+            
+            // 복사 버튼 상태 관리 (ID별)
+            const [copyStatus, setCopyStatus] = useState({});
 
-            // 데이터 로딩
             const fetchData = async () => {
                 if (!googleScriptUrl || googleScriptUrl.includes("여기에")) {
                     setConnectionStatus({ code: 'error_url', msg: '주소 미입력' });
@@ -99,7 +103,6 @@
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
                     if (data.deposits) setDeposits(data.deposits);
-                    // 주소는 로컬 파일/수정본 사용 (충돌 방지)
                     if (data.error_yt) console.error("유튜브 시트 에러:", data.error_yt);
 
                 } catch (e) {
@@ -118,7 +121,6 @@
                 return addresses.find(a => a.nickname.trim() === nick.trim());
             };
 
-            // 키워드 관리
             const handleAddKeyword = (e) => {
                 e.preventDefault();
                 if(!keywordInput.trim()) return;
@@ -153,10 +155,10 @@
                         shipping: currentShipping, 
                         grandTotal: 0, 
                         address: addr.address || '',
-                        zipcode: addr.zipcode || '', // 우편번호 추가
+                        zipcode: addr.zipcode || '', 
                         phone: addr.phone || '',
                         realname: addr.realname || '',
-                        memo: addr.memo || '' // 배송메모 추가
+                        memo: addr.memo || '' 
                     });
                 });
 
@@ -234,21 +236,66 @@
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
             const handleOrderDelete = (id) => { if(confirm("이 주문을 완전히 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
+            // ✅ [카톡 복사] 사장님 맞춤 양식 (알림창 X, 버튼 변화 O)
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance) => {
                 const activeItems = items.filter(i => !i.isCancelled);
-                const itemListText = activeItems.map(i => `- ${i.product} ${i.quantity}개`).join('\n');
-                const isPaid = balance >= 0;
-                let msg = `[주문서] ${nick}님\n\n📦 주문 내역\n${itemListText}\n\n`;
-                msg += `💰 총 금액: ${grandTotal.toLocaleString()}원\n`;
-                if (depositTotal > 0) msg += `💸 입금 확인: ${depositTotal.toLocaleString()}원\n`;
-                if (isPaid) { msg += `✅ 완납되었습니다! 감사합니다.`; if (balance > 0) msg += ` (잔액 ${balance.toLocaleString()}원은 적립)`; } 
-                else { msg += `------------------\n🔺 미입금액: ${Math.abs(balance).toLocaleString()}원\n------------------\n🏦 계좌: ${bankAccount}\n입금 부탁드립니다! 😊`; }
                 
+                // 상품 리스트 포맷 (상품명(수량) 가격원)
+                const itemListText = activeItems.map(i => `${i.product}(${i.quantity}개) ${Number(i.price).toLocaleString()}원`).join('\n');
+                
+                const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
+                const isPaid = balance >= 0;
+
+                // 머리말
+                let msg = `💙 ${nick} 님 💙\n\n\n`;
+                msg += `${itemListText}\n`;
+                msg += `배송비 ${currentShipping.toLocaleString()}원\n\n`;
+                msg += `총 주문금액 ${grandTotal.toLocaleString()}원\n\n`;
+                msg += `------------------\n`;
+
+                if (depositTotal > 0) {
+                    msg += `[입금확인]\n`;
+                    msg += `${depositTotal.toLocaleString()}원\n\n`;
+                    msg += `------------------\n\n`;
+                }
+
+                if (isPaid) {
+                    msg += `완납 확인! 감사합니다 😍\n`;
+                    msg += `------------------\n\n`;
+                } else {
+                    msg += `[미입금]\n`;
+                    msg += `총 입금하실 금액\n`;
+                    msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
+                    msg += `${bankAccount}\n`;
+                    msg += `입금 부탁드립니다 🙏\n\n`;
+                    msg += `------------------\n\n`;
+                }
+
+                // 꼬리말 (고정 안내 문구)
+                msg += `방송마다 1회\n`;
+                msg += `하단의 주문서(배송지입력) 필수!!\n\n`;
+                msg += `이미 참여한 설문 일 경우\n`;
+                msg += `▫ 답변 수정하기 \n`;
+                msg += `▫ 또는 설문 추가 참여\n\n`;
+                msg += `미입력이 많아 계속 안내합니다. \n`;
+                msg += `양해부탁드립니다.`;
+
+                // 클립보드 복사 (구형 방식 - 호환성 최우선)
                 const textArea = document.createElement("textarea");
                 textArea.value = msg;
                 document.body.appendChild(textArea);
                 textArea.select();
-                try { document.execCommand('copy'); alert(`${nick}님 주문서 복사 완료!`); } catch (err) { alert('복사 실패: ' + err); }
+                try { 
+                    document.execCommand('copy'); 
+                    // 성공 시 버튼 상태 변경 (UI 피드백)
+                    setCopyStatus(prev => ({ ...prev, [nick]: true }));
+                    setTimeout(() => {
+                        setCopyStatus(prev => ({ ...prev, [nick]: false }));
+                    }, 2000);
+                } catch (err) { 
+                    // 에러 날 때만 알림
+                    alert('복사 실패: ' + err); 
+                }
                 document.body.removeChild(textArea);
             };
 
@@ -448,6 +495,10 @@
                                     {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill"/></button>}
                                 </div>
                             </div>
+                            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 items-center bg-white p-1 rounded border border-gray-100">
+                                <span>기본배송: <input type="number" value={quickShipping} onChange={(e)=>setQuickShipping(Number(e.target.value))} className="w-10 border rounded px-1 text-right bg-gray-50" />원</span>
+                                <span className="flex-1 flex items-center gap-1">계좌: <input type="text" value={bankAccount} onChange={(e)=>setBankAccount(e.target.value)} className="flex-1 border rounded px-1 bg-gray-50" placeholder="계좌 입력" /></span>
+                            </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-3 space-y-3">
                             {filteredGroupedOrders.map(([nick, items]) => {
@@ -466,6 +517,7 @@
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded text-xs font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원 부족</span>;
 
                                 const addr = findAddress(nick);
+                                const isCopied = copyStatus[nick]; // 복사 상태 확인
 
                                 return (
                                     <div key={nick} onClick={() => setSelectedNick(prev => prev === nick ? null : nick)} className={`bg-white rounded-xl border shadow-sm transition-all overflow-hidden cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 shadow-md' : 'hover:border-indigo-300'}`}>
@@ -482,7 +534,16 @@
                                             </div>
                                             <div className="text-right flex items-center gap-3">
                                                 <div className="text-xs text-gray-500 text-right"><div>상품 {productTotal.toLocaleString()} + 배송 {finalShipping.toLocaleString()}</div><div className="font-bold text-lg font-mono text-gray-800">{grandTotal.toLocaleString()}원</div></div>
-                                                <div className="flex flex-col gap-1 items-end">{statusBadge}<button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance); }} className="bg-yellow-300 hover:bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm"><Icon name="chat-circle-dots" weight="fill"/> 카톡복사</button></div>
+                                                <div className="flex flex-col gap-1 items-end">
+                                                    {statusBadge}
+                                                    <div className="flex gap-1">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance); }} 
+                                                            className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm transition-all ${isCopied ? 'bg-green-500 text-white copy-anim' : 'bg-yellow-300 hover:bg-yellow-400 text-black'}`}>
+                                                            {isCopied ? <><Icon name="check" weight="bold"/> 복사됨!</> : <><Icon name="chat-circle-dots" weight="fill"/> 카톡복사</>}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="p-2 space-y-1">
@@ -536,7 +597,7 @@
                     
                     const addrInfo = addresses.find(a => a.nickname.trim() === nick.trim()) || {};
 
-                    return { '닉네임': nick, '실명': addrInfo.realname || '', '전화번호': addrInfo.phone || '', '우편번호': addrInfo.zipcode || '', '주소': addrInfo.address || '', '배송메모': addrInfo.memo || '', '주문내역': itemSummary, '상품합계': productTotal, '배송비': currentShipping, '총주문금액': grandTotal, '입금확인액': depositTotal, '잔액(미수금)': -balance, '상태': balance >= 0 ? '완납' : '미납' };
+                    return { '닉네임': nick, '실명': addrInfo.realname || '', '전화번호': addrInfo.phone || '', '주소': addrInfo.address || '', '주문내역': itemSummary, '상품합계': productTotal, '배송비': currentShipping, '총주문금액': grandTotal, '입금확인액': depositTotal, '잔액(미수금)': -balance, '상태': balance >= 0 ? '완납' : '미납' };
                 }).filter(d => d !== null);
                 downloadExcel(data, '고객별_정산_배송리스트');
             };
@@ -741,7 +802,8 @@
             const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
             const [activeTab, setActiveTab] = useState('live');
             const [quickShipping, setQuickShipping] = useState(4000); 
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 000-0000-0000");
+            // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 7942 18 01611 김선정)
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 7942 18 01611 김선정");
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
             // ✅ 주소록 (로컬 스토리지에 저장)
