@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (오류완전해결)</title>
+    <title>깔로 주문서 PRO (최종완성)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -84,7 +84,6 @@
             const [deposits, setDeposits] = useState([]);
             const [clickedChats, setClickedChats] = useState(new Set());
             const [selectedNick, setSelectedNick] = useState(null); 
-            
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
@@ -165,13 +164,10 @@
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, chat.content, 1); };
             const handleManualSubmit = (e) => { e.preventDefault(); if (!manualNick.trim()) return alert("닉네임!"); addOrderLogic(manualNick, manualProduct, 1); setManualProduct(''); };
             
-            // 입금 확인 및 취소 로직
+            // 입금 클릭 로직
             const handleDepositClick = (deposit, index) => {
-                // ✅ 안전장치: deposit이 없을 경우 대비
-                if (!deposit) return;
-                
                 const depositId = deposit.id !== undefined ? deposit.id : index;
-                // ✅ 안전장치: matchedDeposits가 없을 경우 빈 Set 사용
+                // ✅ [수정] matchedDeposits가 없을 경우를 대비해 기본값 처리
                 const currentMatched = matchedDeposits || new Set();
 
                 if (currentMatched.has(depositId)) {
@@ -250,17 +246,37 @@
                     const cardFee = cardBaseAmount * 0.1;     
                     const cardTotal = cardBaseAmount + cardFee; 
 
-                    if (depositTotal > 0) msg += `[입금확인]\n${depositTotal.toLocaleString()}원\n\n`;
-                    msg += `[카드결제]\n금액 ${cardBaseAmount.toLocaleString()}원\n10%   ${cardFee.toLocaleString()}원\n👉총 ${cardTotal.toLocaleString()}원 예정\n\n핸드폰번호 남겨주세요🌸\n------------------\n\n`;
+                    if (depositTotal > 0) {
+                        msg += `[입금확인]\n`;
+                        msg += `${depositTotal.toLocaleString()}원\n\n`;
+                    }
+                    msg += `[카드결제]\n`;
+                    msg += `금액 ${cardBaseAmount.toLocaleString()}원\n`;
+                    msg += `10%   ${cardFee.toLocaleString()}원\n`;
+                    msg += `👉총 ${cardTotal.toLocaleString()}원 예정\n\n`;
+                    msg += `핸드폰번호 남겨주세요🌸\n`;
+                    msg += `------------------\n\n`;
 
                 } else {
-                    const isPaid = (balance >= 0) && (grandTotal > 0);
+                    const hasZeroPrice = activeItems.some(i => Number(i.price) === 0);
+                    const isPaid = (balance >= 0) && (grandTotal > 0) && !hasZeroPrice;
 
-                    if (depositTotal > 0) msg += `[입금확인]\n${depositTotal.toLocaleString()}원\n------------------\n\n`;
+                    if (depositTotal > 0) {
+                        msg += `[입금확인]\n`;
+                        msg += `${depositTotal.toLocaleString()}원\n\n`;
+                        msg += `------------------\n\n`;
+                    }
+
                     if (isPaid) {
-                        msg += `완납 확인! 감사합니다 😍\n------------------\n\n`;
+                        msg += `완납 확인! 감사합니다 😍\n`;
+                        msg += `------------------\n\n`;
                     } else {
-                        msg += `[미입금]\n총 입금하실 금액\n👉 ${Math.abs(balance).toLocaleString()}원 \n\n${FIXED_BANK_ACCOUNT}\n입금 부탁드립니다 🙏\n------------------\n\n`;
+                        msg += `[미입금]\n`;
+                        msg += `총 입금하실 금액\n`;
+                        msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
+                        msg += `${FIXED_BANK_ACCOUNT}\n`; 
+                        msg += `입금 부탁드립니다 🙏\n\n`;
+                        msg += `------------------\n\n`;
                     }
                 }
                 msg += `방송마다 1회\n하단의 주문서(배송지입력) 필수!!\n\n이미 참여한 설문 일 경우\n▫ 답변 수정하기 \n▫ 또는 설문 추가 참여\n\n미입력이 많아 계속 안내합니다. \n양해부탁드립니다.`;
@@ -297,8 +313,7 @@
                 if (!depositSearch) return deposits;
                 return deposits.filter(d => d.name.toLowerCase().includes(depositSearch.toLowerCase()) || String(d.amount).includes(depositSearch));
             }, [deposits, depositSearch]);
-            
-            // 입금 합계
+
             const totalDepositAmount = useMemo(() => {
                 return filteredDeposits.reduce((sum, d) => sum + Number(d.amount), 0);
             }, [filteredDeposits]);
@@ -316,7 +331,8 @@
                     const grandTotal = productTotal + finalShipping;
                     const balance = grandTotal - depositTotal;
                     
-                    const isPaid = (balance >= 0) && (grandTotal > 0);
+                    const hasZeroPrice = activeItems.some(i => Number(i.price) === 0);
+                    const isPaid = (balance >= 0) && (grandTotal > 0) && !hasZeroPrice;
                     
                     if (filterStatus === 'unpaid' && isPaid) return false;
                     if (filterStatus === 'paid' && !isPaid) return false;
@@ -409,7 +425,6 @@
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
                             {filteredDeposits.map((d, i) => {
-                                // ID 사용, 없으면 index (안전장치)
                                 const depositId = d.id !== undefined ? d.id : i;
                                 const isUsed = matchedDeposits.has(depositId);
                                 const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
@@ -493,11 +508,12 @@
                                 const balance = grandTotal - depositTotal;
                                 const isCard = cardPayments[nick]; 
 
+                                const hasZeroPrice = activeItems.some(i => Number(i.price) === 0);
+
                                 let statusBadge;
                                 if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
                                 else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
-                                // ✅ 0원 주문은 미납으로 간주
-                                else if (balance >= 0 && grandTotal > 0) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
+                                else if (balance >= 0 && grandTotal > 0 && !hasZeroPrice) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
                                 else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
 
                                 const addr = findAddress(nick);
@@ -511,7 +527,7 @@
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-bold text-sm text-gray-800">{nick}</span>
                                                     <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-300 hover:text-indigo-600"><Icon name="pencil-simple" weight="bold" size={12}/></button>
-                                                    <span className="text-[10px] bg-white border px-1 rounded text-gray-400">{items.length}</span>
+                                                    <span className="text-[10px] bg-white border px-1 rounded text-gray-400">{items.length}건</span>
                                                     
                                                     <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} className={`ml-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isCard ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold' : 'bg-white text-gray-400 hover:bg-gray-100'}`}>카드</button>
                                                     <div onClick={(e) => { e.stopPropagation(); const newFee = prompt(`'${nick}'님의 배송비를 입력하세요`, currentShipping); if(newFee !== null) handleShippingChange(nick, Number(newFee)); }} className="cursor-pointer flex items-center gap-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded border hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
@@ -533,22 +549,32 @@
                                             </div>
                                         </div>
                                         <div className="p-1 space-y-1">
-                                            {items.map((item, idx) => (
-                                                <div key={idx} className={`flex justify-between items-center text-xs p-1 hover:bg-gray-50 rounded group ${item.isCancelled ? 'cancelled-item' : ''}`}>
-                                                    <div className="flex-1 flex gap-1 items-center">
-                                                        <input type="text" list="product-list" value={item.product} onChange={(e) => handleProductChange(item.id, 'product', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-full bg-transparent focus:bg-white outline-none px-1 rounded focus:ring-1 focus:ring-indigo-100" placeholder="상품명" disabled={item.isCancelled} />
-                                                    </div>
-                                                    <div className="flex items-center gap-1 pl-1">
-                                                        <span className="font-bold text-indigo-600 bg-indigo-50 px-1 rounded text-[10px] shrink-0">{item.quantity}개</span>
-                                                        <input type="number" value={item.price} onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-14 text-right font-mono text-gray-500 bg-transparent outline-none focus:text-indigo-600" disabled={item.isCancelled} />
-                                                        <div className="flex gap-0.5 w-8 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id);}} className="text-gray-300 hover:text-red-500"><Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/></button>
-                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id);}} className="text-gray-300 hover:text-red-500"><Icon name="trash" weight="bold"/></button>
+                                            {items.map((item, idx) => {
+                                                const isZeroPrice = Number(item.price) === 0;
+                                                return (
+                                                    <div key={idx} className={`flex justify-between items-center text-xs p-1 hover:bg-gray-50 rounded group ${item.isCancelled ? 'cancelled-item' : ''}`}>
+                                                        <div className="flex-1 flex gap-1 items-center">
+                                                            <input type="text" list="product-list" value={item.product} onChange={(e) => handleProductChange(item.id, 'product', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-full bg-transparent focus:bg-white outline-none px-1 rounded focus:ring-1 focus:ring-indigo-100" placeholder="상품명" disabled={item.isCancelled} />
+                                                        </div>
+                                                        <div className="flex items-center gap-1 pl-1">
+                                                            <span className="font-bold text-indigo-600 bg-indigo-50 px-1 rounded text-[10px] shrink-0">{item.quantity}개</span>
+                                                            <input 
+                                                                type="number" 
+                                                                value={item.price} 
+                                                                onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} 
+                                                                onClick={(e) => e.stopPropagation()} 
+                                                                className={`w-14 text-right font-mono text-gray-500 bg-transparent outline-none focus:text-indigo-600 ${isZeroPrice && !item.isCancelled ? 'bg-red-50 border-b border-red-300' : ''}`}
+                                                                disabled={item.isCancelled} 
+                                                            />
+                                                            <div className="flex gap-0.5 w-8 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id);}} className="text-gray-300 hover:text-red-500"><Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/></button>
+                                                                <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id);}} className="text-gray-300 hover:text-red-500"><Icon name="trash" weight="bold"/></button>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
-                                            {/* ✅ [수정] 배송비 입력칸 여백 및 스타일 개선 */}
+                                                );
+                                            })}
+                                            {/* ✅ 배송비 입력칸 여백 및 스타일 개선 */}
                                             <div className="flex justify-end items-center gap-2 px-2 py-2 text-xs text-gray-400 border-t border-dashed border-gray-100 mt-1">
                                                 <span>배송비:</span>
                                                 <input 
@@ -559,19 +585,11 @@
                                                     className="w-20 text-right border rounded bg-white px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-600 font-bold" 
                                                 />
                                             </div>
-                                            
                                             {depositTotal > 0 && (<div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[11px] text-green-600 font-bold px-2">
                                                 <span>└ 입금확인</span>
                                                 <div className="flex items-center gap-1">
                                                     <span>{depositTotal.toLocaleString()}원</span>
-                                                    {/* ✅ [NEW] 입금 초기화 버튼 */}
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); resetUserDeposit(nick); }} 
-                                                        className="text-gray-400 hover:text-red-500 p-0.5 rounded" 
-                                                        title="입금액 0원으로 초기화"
-                                                    >
-                                                        <Icon name="arrow-counter-clockwise" weight="bold"/>
-                                                    </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); resetUserDeposit(nick); }} className="text-gray-400 hover:text-red-500 p-0.5 rounded" title="입금액 0원으로 초기화"><Icon name="arrow-counter-clockwise" weight="bold"/></button>
                                                 </div>
                                             </div>)}
                                             {isCard && balance < 0 && (<div className="mt-1 pt-1 border-t border-dashed bg-purple-50 p-1 rounded text-[11px] text-right text-gray-600"><div>미수금 {Math.abs(balance).toLocaleString()}원 + 10%</div><div className="font-bold text-purple-700">💳 결제: {(Math.abs(balance) * 1.1).toLocaleString()}원</div></div>)}
@@ -607,10 +625,7 @@
             const handleEdit = (customer) => { setEditMode(customer.nickname); setInputData(customer); };
             const handleDelete = (nickname) => { if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) { setAddresses(prev => prev.filter(a => a.nickname !== nickname)); } };
 
-            // ✅ [추가] 다음 주소 검색 API 연동
             const handleAddressSearch = () => {
-                // 다음 주소창 띄우기
-                // 주의: 팝업 방식은 일부 환경에서 차단될 수 있으나 표준 방식 사용
                 try {
                     new window.daum.Postcode({
                         oncomplete: function(data) {
