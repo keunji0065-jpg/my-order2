@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (카톡양식 커스텀)</title>
+    <title>깔로 주문서 PRO (여백수정)</title>
     
     <!-- 라이브러리 로드 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -71,20 +71,24 @@
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             
+            // 검색 필터
             const [chatSearch, setChatSearch] = useState('');
             const [depositSearch, setDepositSearch] = useState('');
             const [orderSearch, setOrderSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('all');
             
+            // 키워드 필터 상태
             const [keywords, setKeywords] = useState(new Set()); 
             const [keywordInput, setKeywordInput] = useState('');
             const [showKeywordOnly, setShowKeywordOnly] = useState(false);
 
+            // 카드 결제 상태
+            const [cardPayments, setCardPayments] = useState({});
+
             const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
-            
-            // 복사 버튼 상태 관리 (ID별)
             const [copyStatus, setCopyStatus] = useState({});
 
+            // 데이터 로딩
             const fetchData = async () => {
                 if (!googleScriptUrl || googleScriptUrl.includes("여기에")) {
                     setConnectionStatus({ code: 'error_url', msg: '주소 미입력' });
@@ -103,6 +107,7 @@
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
                     if (data.deposits) setDeposits(data.deposits);
+                    // 주소는 로컬 파일/수정본 사용 (충돌 방지)
                     if (data.error_yt) console.error("유튜브 시트 에러:", data.error_yt);
 
                 } catch (e) {
@@ -121,6 +126,7 @@
                 return addresses.find(a => a.nickname.trim() === nick.trim());
             };
 
+            // 키워드 관리
             const handleAddKeyword = (e) => {
                 e.preventDefault();
                 if(!keywordInput.trim()) return;
@@ -134,6 +140,10 @@
                     next.delete(keyword);
                     return next;
                 });
+            };
+
+            const toggleCardPayment = (nick) => {
+                setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] }));
             };
 
             const saveToGoogleSheet = async () => {
@@ -155,10 +165,10 @@
                         shipping: currentShipping, 
                         grandTotal: 0, 
                         address: addr.address || '',
-                        zipcode: addr.zipcode || '', 
+                        zipcode: addr.zipcode || '', // 우편번호 추가
                         phone: addr.phone || '',
                         realname: addr.realname || '',
-                        memo: addr.memo || '' 
+                        memo: addr.memo || '' // 배송메모 추가
                     });
                 });
 
@@ -236,42 +246,60 @@
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
             const handleOrderDelete = (id) => { if(confirm("이 주문을 완전히 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // ✅ [카톡 복사] 사장님 맞춤 양식 (알림창 X, 버튼 변화 O)
-            const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance) => {
+            // ✅ [카톡 복사] 사장님 맞춤 양식 (카드결제 포함, 알림창 제거)
+            const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance, isCard) => {
                 const activeItems = items.filter(i => !i.isCancelled);
                 
-                // 상품 리스트 포맷 (상품명(수량) 가격원)
                 const itemListText = activeItems.map(i => `${i.product}(${i.quantity}개) ${Number(i.price).toLocaleString()}원`).join('\n');
                 
                 const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
-                const isPaid = balance >= 0;
-
-                // 머리말
+                
                 let msg = `💙 ${nick} 님 💙\n\n\n`;
                 msg += `${itemListText}\n`;
                 msg += `배송비 ${currentShipping.toLocaleString()}원\n\n`;
                 msg += `총 주문금액 ${grandTotal.toLocaleString()}원\n\n`;
                 msg += `------------------\n`;
 
-                if (depositTotal > 0) {
-                    msg += `[입금확인]\n`;
-                    msg += `${depositTotal.toLocaleString()}원\n\n`;
-                    msg += `------------------\n\n`;
-                }
+                if (isCard) {
+                    // 카드 결제 양식
+                    const cardBaseAmount = Math.abs(balance); // 결제할 원금 (미수금)
+                    const cardFee = cardBaseAmount * 0.1;     // 수수료 10%
+                    const cardTotal = cardBaseAmount + cardFee; // 총 결제액
 
-                if (isPaid) {
-                    msg += `완납 확인! 감사합니다 😍\n`;
+                    if (depositTotal > 0) {
+                        msg += `[입금확인]\n`;
+                        msg += `${depositTotal.toLocaleString()}원\n\n`;
+                    }
+                    msg += `[카드결제]\n`;
+                    msg += `금액 ${cardBaseAmount.toLocaleString()}원\n`;
+                    msg += `10%   ${cardFee.toLocaleString()}원\n`;
+                    msg += `👉총 ${cardTotal.toLocaleString()}원 예정\n\n`;
+                    msg += `핸드폰번호 남겨주세요🌸\n`;
                     msg += `------------------\n\n`;
+
                 } else {
-                    msg += `[미입금]\n`;
-                    msg += `총 입금하실 금액\n`;
-                    msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
-                    msg += `${bankAccount}\n`;
-                    msg += `입금 부탁드립니다 🙏\n\n`;
-                    msg += `------------------\n\n`;
+                    // 현금 결제 양식 (기존 유지)
+                    const isPaid = balance >= 0;
+
+                    if (depositTotal > 0) {
+                        msg += `[입금확인]\n`;
+                        msg += `${depositTotal.toLocaleString()}원\n\n`;
+                        msg += `------------------\n\n`;
+                    }
+
+                    if (isPaid) {
+                        msg += `완납 확인! 감사합니다 😍\n`;
+                        msg += `------------------\n\n`;
+                    } else {
+                        msg += `[미입금]\n`;
+                        msg += `총 입금하실 금액\n`;
+                        msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
+                        msg += `${bankAccount}\n`;
+                        msg += `입금 부탁드립니다 🙏\n\n`;
+                        msg += `------------------\n\n`;
+                    }
                 }
 
-                // 꼬리말 (고정 안내 문구)
                 msg += `방송마다 1회\n`;
                 msg += `하단의 주문서(배송지입력) 필수!!\n\n`;
                 msg += `이미 참여한 설문 일 경우\n`;
@@ -280,22 +308,17 @@
                 msg += `미입력이 많아 계속 안내합니다. \n`;
                 msg += `양해부탁드립니다.`;
 
-                // 클립보드 복사 (구형 방식 - 호환성 최우선)
                 const textArea = document.createElement("textarea");
                 textArea.value = msg;
                 document.body.appendChild(textArea);
                 textArea.select();
                 try { 
                     document.execCommand('copy'); 
-                    // 성공 시 버튼 상태 변경 (UI 피드백)
                     setCopyStatus(prev => ({ ...prev, [nick]: true }));
                     setTimeout(() => {
                         setCopyStatus(prev => ({ ...prev, [nick]: false }));
                     }, 2000);
-                } catch (err) { 
-                    // 에러 날 때만 알림
-                    alert('복사 실패: ' + err); 
-                }
+                } catch (err) { alert('복사 실패: ' + err); }
                 document.body.removeChild(textArea);
             };
 
@@ -336,6 +359,42 @@
                     return true;
                 });
             }, [orders, orderSearch, filterStatus, shippingOverrides, quickShipping]);
+
+            // 대시보드 통계 계산
+            const dashboardStats = useMemo(() => {
+                let totalSales = 0;
+                let totalDeposit = 0;
+                let totalUnpaid = 0;
+                let totalCardExpected = 0;
+
+                const groups = {};
+                orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
+
+                Object.entries(groups).forEach(([nick, items]) => {
+                    const activeItems = items.filter(i => !i.isCancelled);
+                    if (activeItems.length === 0) return;
+
+                    const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
+                    const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
+                    const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
+                    const grandTotal = productTotal + currentShipping;
+                    const balance = grandTotal - depositTotal; // 미수금 (양수)
+
+                    totalSales += grandTotal;
+                    totalDeposit += depositTotal;
+
+                    if (balance > 0) {
+                        if (cardPayments[nick]) {
+                            const fee = balance * 0.1;
+                            totalCardExpected += (balance + fee);
+                        } else {
+                            totalUnpaid += balance;
+                        }
+                    }
+                });
+
+                return { totalSales, totalDeposit, totalUnpaid, totalCardExpected };
+            }, [orders, shippingOverrides, quickShipping, cardPayments]);
 
             const StatusMessage = () => {
                 const { code, msg } = connectionStatus;
@@ -466,6 +525,27 @@
 
                     {/* [3. 주문서 영역 (50%)] */}
                     <div className="w-[50%] bg-gray-100 border rounded-lg flex flex-col overflow-hidden">
+                        
+                        {/* [NEW] 상단 대시보드 */}
+                        <div className="grid grid-cols-4 gap-2 p-2 bg-indigo-50 border-b border-indigo-100 text-center text-xs">
+                            <div className="bg-white p-1 rounded shadow-sm">
+                                <div className="text-gray-400">총 매출</div>
+                                <div className="font-bold text-indigo-700 text-sm">{dashboardStats.totalSales.toLocaleString()}원</div>
+                            </div>
+                            <div className="bg-white p-1 rounded shadow-sm">
+                                <div className="text-gray-400">입금액</div>
+                                <div className="font-bold text-green-600 text-sm">{dashboardStats.totalDeposit.toLocaleString()}원</div>
+                            </div>
+                            <div className="bg-white p-1 rounded shadow-sm">
+                                <div className="text-gray-400">미수금</div>
+                                <div className="font-bold text-red-500 text-sm">{dashboardStats.totalUnpaid.toLocaleString()}원</div>
+                            </div>
+                            <div className="bg-white p-1 rounded shadow-sm ring-1 ring-purple-100">
+                                <div className="text-gray-400">카드예정(10%)</div>
+                                <div className="font-bold text-purple-600 text-sm">{dashboardStats.totalCardExpected.toLocaleString()}원</div>
+                            </div>
+                        </div>
+
                         <div className="p-2 bg-white border-b font-bold text-indigo-700 shadow-sm flex flex-col gap-2">
                             <div className="flex justify-between items-center">
                                 <span>📦 주문서 ({filteredGroupedOrders.length}명)</span>
@@ -511,10 +591,18 @@
                                 const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                                 const grandTotal = productTotal + finalShipping;
                                 const balance = depositTotal - grandTotal;
+                                const isCard = cardPayments[nick]; // 카드 결제 여부
+
                                 let statusBadge;
-                                if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-bold">미입금</span>;
-                                else if (balance >= 0) statusBadge = <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">✅ 완납</span>;
-                                else statusBadge = <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded text-xs font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원 부족</span>;
+                                if (isCard) {
+                                    statusBadge = <span className="bg-purple-100 text-purple-600 px-2 py-0.5 rounded text-xs font-bold border border-purple-200">💳 카드</span>;
+                                } else if (depositTotal === 0) {
+                                    statusBadge = <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-bold">미입금</span>;
+                                } else if (balance >= 0) {
+                                    statusBadge = <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">✅ 완납</span>;
+                                } else {
+                                    statusBadge = <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded text-xs font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원 부족</span>;
+                                }
 
                                 const addr = findAddress(nick);
                                 const isCopied = copyStatus[nick]; // 복사 상태 확인
@@ -527,6 +615,12 @@
                                                     <span className="font-bold text-lg text-gray-800">{nick}</span>
                                                     <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="pencil-simple" weight="bold"/></button>
                                                     <span className="text-xs bg-white border px-1.5 rounded text-gray-500">{items.length}건</span>
+                                                    
+                                                    {/* [NEW] 카드 결제 토글 버튼 */}
+                                                    <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} 
+                                                        className={`ml-2 text-xs px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${isCard ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
+                                                        <Icon name="credit-card" weight={isCard ? "fill" : "regular"}/> 카드
+                                                    </button>
                                                 </div>
                                                 <div className="flex items-center gap-1 text-xs">
                                                     {addr ? <span className="text-green-600 font-bold flex items-center gap-1"><Icon name="house-line" weight="fill"/> {addr.realname} ({addr.address.substring(0,10)}...)</span> : <span className="text-red-400 flex items-center gap-1"><Icon name="warning-circle" weight="fill"/> 주소없음</span>}
@@ -538,7 +632,7 @@
                                                     {statusBadge}
                                                     <div className="flex gap-1">
                                                         <button 
-                                                            onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance); }} 
+                                                            onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance, isCard); }} 
                                                             className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm transition-all ${isCopied ? 'bg-green-500 text-white copy-anim' : 'bg-yellow-300 hover:bg-yellow-400 text-black'}`}>
                                                             {isCopied ? <><Icon name="check" weight="bold"/> 복사됨!</> : <><Icon name="chat-circle-dots" weight="fill"/> 카톡복사</>}
                                                         </button>
@@ -562,54 +656,23 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            <div className="flex justify-end items-center gap-2 px-2 py-1 text-xs text-gray-400">배송비 수정: <input type="number" value={currentShipping} onClick={(e)=>e.stopPropagation()} onChange={(e)=>handleShippingChange(nick, e.target.value)} className="w-12 text-right border rounded bg-white px-1 focus:ring-1 focus:ring-indigo-500" /></div>
+                                            {/* [수정] 배송비 수정 필드 너비 및 패딩 증가 */}
+                                            <div className="flex justify-end items-center gap-2 px-2 py-1 text-xs text-gray-400">배송비 수정: <input type="number" value={currentShipping} onClick={(e)=>e.stopPropagation()} onChange={(e)=>handleShippingChange(nick, e.target.value)} className="w-20 text-right border rounded bg-white p-1.5 focus:ring-1 focus:ring-indigo-500" /></div>
                                             {depositTotal > 0 && (<div className="mt-2 pt-2 border-t border-dashed flex justify-between text-sm text-green-600 font-bold px-2"><span>└ 입금확인액</span><span>{depositTotal.toLocaleString()}원</span></div>)}
+                                            
+                                            {/* 카드 결제 상세 내역 (화면 표시용) */}
+                                            {isCard && balance < 0 && (
+                                                <div className="mt-1 pt-2 border-t border-dashed bg-purple-50 p-2 rounded text-xs text-right text-gray-600">
+                                                    <div>미수금 {Math.abs(balance).toLocaleString()}원</div>
+                                                    <div>+ 카드수수료 10% {(Math.abs(balance)*0.1).toLocaleString()}원</div>
+                                                    <div className="font-bold text-purple-700 mt-1">💳 카드 결제예정: {(Math.abs(balance) * 1.1).toLocaleString()}원</div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const OrderManagementTab = ({ orders, shippingOverrides, quickShipping, addresses }) => {
-            const handleExportProducts = () => {
-                const summary = {}; orders.forEach(o => { 
-                    if(o.isCancelled) return; 
-                    const name = o.product || '(상품명 없음)'; if (!summary[name]) summary[name] = 0; summary[name] += Number(o.quantity); 
-                });
-                const data = Object.entries(summary).map(([product, qty]) => ({ '상품명': product, '총필요수량': qty }));
-                downloadExcel(data, '상품별_발주리스트');
-            };
-            const handleExportCustomers = () => {
-                const groups = {}; orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
-                const data = Object.entries(groups).map(([nick, items]) => {
-                    const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
-                    const activeItems = items.filter(i => !i.isCancelled);
-                    if(activeItems.length === 0) return null; 
-                    const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
-                    const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
-                    const grandTotal = productTotal + currentShipping;
-                    const balance = depositTotal - grandTotal;
-                    const itemSummary = activeItems.map(i => `${i.product}(${i.quantity})`).join(', ');
-                    
-                    const addrInfo = addresses.find(a => a.nickname.trim() === nick.trim()) || {};
-
-                    return { '닉네임': nick, '실명': addrInfo.realname || '', '전화번호': addrInfo.phone || '', '주소': addrInfo.address || '', '주문내역': itemSummary, '상품합계': productTotal, '배송비': currentShipping, '총주문금액': grandTotal, '입금확인액': depositTotal, '잔액(미수금)': -balance, '상태': balance >= 0 ? '완납' : '미납' };
-                }).filter(d => d !== null);
-                downloadExcel(data, '고객별_정산_배송리스트');
-            };
-            return (
-                <div className="flex flex-col items-center justify-center h-full p-10 gap-6">
-                    <div className="bg-white p-8 rounded-xl shadow-lg border text-center w-full max-w-md">
-                        <div className="text-4xl mb-4">📦</div><h2 className="text-xl font-bold mb-2">발주용 품목 집계</h2><p className="text-gray-500 mb-6 text-sm">어떤 상품이 몇 개 필요한지 정리해드립니다.</p>
-                        <button onClick={handleExportProducts} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"><Icon name="file-xls" weight="fill" size={20}/> 엑셀 다운로드</button>
-                    </div>
-                    <div className="bg-white p-8 rounded-xl shadow-lg border text-center w-full max-w-md">
-                        <div className="text-4xl mb-4">👥</div><h2 className="text-xl font-bold mb-2">배송용 고객 리스트</h2><p className="text-gray-500 mb-6 text-sm">주소, 전화번호 포함된 배송 명단을 뽑습니다.</p>
-                        <button onClick={handleExportCustomers} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"><Icon name="file-xls" weight="fill" size={20}/> 엑셀 다운로드</button>
                     </div>
                 </div>
             );
@@ -739,20 +802,20 @@
                         </div>
                     </div>
 
-                    {/* 입력 폼 */}
+                    {/* 입력 폼 (여백 및 높이 수정) */}
                     <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4 flex gap-2 items-end">
                         <div className="flex-1 grid grid-cols-6 gap-2">
-                            <div><label className="text-xs font-bold text-gray-500">닉네임(필수)</label><input type="text" value={inputData.nickname} onChange={e=>setInputData({...inputData, nickname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="예: 깔로" /></div>
-                            <div><label className="text-xs font-bold text-gray-500">이름(실명)</label><input type="text" value={inputData.realname} onChange={e=>setInputData({...inputData, realname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="홍길동" /></div>
-                            <div><label className="text-xs font-bold text-gray-500">전화번호</label><input type="text" value={inputData.phone} onChange={e=>setInputData({...inputData, phone:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="010-0000-0000" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">닉네임(필수)</label><input type="text" value={inputData.nickname} onChange={e=>setInputData({...inputData, nickname:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400" placeholder="예: 깔로" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">이름(실명)</label><input type="text" value={inputData.realname} onChange={e=>setInputData({...inputData, realname:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400" placeholder="홍길동" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">전화번호</label><input type="text" value={inputData.phone} onChange={e=>setInputData({...inputData, phone:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400" placeholder="010-0000-0000" /></div>
                             <div className="col-span-2 flex gap-1">
-                                <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
-                                <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="서울시 강남구..." /></div>
+                                <div className="w-24"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded py-2.5 px-3 text-sm placeholder-gray-400 text-center" placeholder="00000" /></div>
+                                <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded py-3 px-3 text-sm placeholder-gray-400" placeholder="서울시 강남구..." /></div>
                             </div>
-                            <div><label className="text-xs font-bold text-gray-500">배송메모</label><input type="text" value={inputData.memo} onChange={e=>setInputData({...inputData, memo:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="문앞" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">배송메모</label><input type="text" value={inputData.memo} onChange={e=>setInputData({...inputData, memo:e.target.value})} className="w-full border rounded py-3 px-3 text-sm placeholder-gray-400" placeholder="문앞" /></div>
                         </div>
-                        <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold h-10 shadow-sm">{editMode ? '수정완료' : '추가'}</button>
-                        {editMode && <button onClick={()=>{setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });}} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded font-bold h-10">취소</button>}
+                        <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded font-bold h-full shadow-sm">{editMode ? '수정완료' : '추가'}</button>
+                        {editMode && <button onClick={()=>{setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });}} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-3 rounded font-bold h-full">취소</button>}
                     </div>
 
                     {/* 검색창 */}
@@ -803,17 +866,20 @@
             const [activeTab, setActiveTab] = useState('live');
             const [quickShipping, setQuickShipping] = useState(4000); 
             // 🔹 사장님의 요청대로 기본값 설정 (카카오뱅크 7942 18 01611 김선정)
-            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 7942 18 01611 김선정");
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || "카카오뱅크 7942-18-01611 김선정");
             const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
             const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
             // ✅ 주소록 (로컬 스토리지에 저장)
             const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem('verifiedAddresses')) || []);
+            const [cardPayments, setCardPayments] = useState(() => JSON.parse(localStorage.getItem('cardPayments')) || {});
 
             useEffect(() => { localStorage.setItem('youtubeOrders', JSON.stringify(orders)); }, [orders]);
             useEffect(() => { localStorage.setItem('productHistory', JSON.stringify(productHistory)); }, [productHistory]);
             useEffect(() => { localStorage.setItem('bankAccount', bankAccount); }, [bankAccount]);
             useEffect(() => { localStorage.setItem('shippingOverrides', JSON.stringify(shippingOverrides)); }, [shippingOverrides]);
             useEffect(() => { localStorage.setItem('verifiedAddresses', JSON.stringify(addresses)); }, [addresses]);
+            useEffect(() => { localStorage.setItem('cardPayments', JSON.stringify(cardPayments)); }, [cardPayments]);
+
 
             const tabs = [
                 { id: 'live', label: '🎥 라이브관제', icon: 'monitor-play' }, 
@@ -834,7 +900,7 @@
                         </div>
                     </header>
                     <main className="flex-1 overflow-hidden bg-gray-100 p-2">
-                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} addresses={addresses} />)}
+                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} addresses={addresses} cardPayments={cardPayments} setCardPayments={setCardPayments} />)}
                         {activeTab === 'customer' && (<CustomerTab addresses={addresses} setAddresses={setAddresses} />)}
                         {activeTab === 'manage' && (<OrderManagementTab orders={orders} shippingOverrides={shippingOverrides} quickShipping={quickShipping} addresses={addresses} />)}
                     </main>
