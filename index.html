@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>깔로 주문서 PRO (자동저장)</title>
+    <title>깔로 주문서 PRO (Lite & Stable)</title>
     
-    <!-- 라이브러리 로드 -->
+    <!-- 라이브러리 로드 (필수) -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
@@ -26,38 +26,32 @@
     </script>
     <style>
         @import url("https://cdn.jsdelivr.net/gh/moonspam/NanumSquareNeo/nanumsquareneo.css");
-        body { font-family: 'NanumSquareNeo', sans-serif; background-color: #f1f5f9; }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        body { font-family: 'NanumSquareNeo', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         
-        .processed-chat { text-decoration: line-through; background-color: #f3f4f6 !important; color: #9ca3af !important; border-color: #e5e7eb !important; opacity: 0.6; }
-        .selected-chat-active { border-left: 4px solid #3182ce; background-color: #ebf8ff; }
+        .processed-chat { text-decoration: line-through; background-color: #f1f5f9 !important; color: #94a3b8 !important; opacity: 0.6; }
+        .selected-chat-active { border-left: 3px solid #3b82f6; background-color: #eff6ff; }
         .badge-pulse { animation: pulse-orange 2s infinite; }
         @keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); } 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); } }
         .cancelled-item { text-decoration: line-through; color: #9ca3af; background-color: #f3f4f6; }
         
-        .keyword-detected { border: 2px solid #3b82f6; background-color: #eff6ff; }
-        .keyword-badge { background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 0.7rem; font-weight: bold; }
-        .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 2px; }
-        
-        /* 복사 완료 애니메이션 */
-        @keyframes copySuccess { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .copy-anim { animation: copySuccess 0.3s ease-in-out; }
+        .keyword-detected { border: 2px solid #60a5fa; background-color: #eff6ff; }
+        .keyword-badge { background-color: #3b82f6; color: white; padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
         // ✅ URL 고정
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbw2kxALNMEKEKZJOqi19hlZc5vU7ebCuUP0rQQpEEdxirZTDSCBPY0pjSr_kql5NtHVDw/exec";
-        
         // ✅ 계좌번호 고정
         const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
 
         const Icon = ({ name, className="" }) => <i className={`ph ph-${name} ${className}`}></i>;
 
+        // 엑셀 다운로드 함수
         const downloadExcel = (data, fileName) => {
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
@@ -65,13 +59,15 @@
             XLSX.writeFile(wb, `${fileName}_${new Date().toLocaleDateString()}.xlsx`);
         };
 
+        // --- 컴포넌트 1: 라이브 관제 탭 ---
         const LiveTab = ({ 
             orders, setOrders, 
             productHistory, setProductHistory, 
             quickShipping, setQuickShipping, 
             shippingOverrides, setShippingOverrides, 
+            bankAccount, 
             googleScriptUrl, 
-            addresses, setAddresses, 
+            addresses, 
             cardPayments, setCardPayments, 
             resetAllStatus 
         }) => {
@@ -95,7 +91,7 @@
             const [connectionStatus, setConnectionStatus] = useState({ code: 'loading', msg: '' }); 
             const [copyStatus, setCopyStatus] = useState({});
 
-            // [NEW] 자동 저장 관련 상태
+            // 자동 저장 상태
             const [isSaving, setIsSaving] = useState(false);
             const [lastSavedTime, setLastSavedTime] = useState(null);
 
@@ -110,17 +106,16 @@
                     if (!res.ok) throw new Error(`HTTP 에러: ${res.status}`);
                     const text = await res.text();
                     let data;
-                    try { data = JSON.parse(text); } catch (e) { throw new Error("응답 데이터 오류"); }
+                    try { data = JSON.parse(text); } catch (e) { throw new Error("응답 오류"); }
                     
                     if (data.chats) {
-                        setChats(data.chats);
+                        // 최적화: 채팅은 최신 300개까지만 유지하여 속도 저하 방지
+                        setChats(data.chats.slice(0, 300));
                         if (data.chats.length === 0) setConnectionStatus({ code: 'warning_empty', msg: '데이터 0건' });
                         else setConnectionStatus({ code: 'success', msg: '연결 성공' });
                     }
                     if (data.deposits) setDeposits(data.deposits);
                     
-                    if (data.error_yt) console.error("유튜브 시트 에러:", data.error_yt);
-
                 } catch (e) {
                     console.error("연결 실패:", e);
                     setConnectionStatus({ code: 'error_fetch', msg: e.message });
@@ -129,21 +124,23 @@
 
             useEffect(() => {
                 fetchData();
-                const interval = setInterval(fetchData, 5000);
+                const interval = setInterval(fetchData, 5000); // 5초 주기
                 return () => clearInterval(interval);
             }, [googleScriptUrl]);
 
+            // 주소 찾기
             const findAddress = (nick) => {
+                if (!addresses) return null;
                 return addresses.find(a => a.nickname.trim() === nick.trim());
             };
 
+            // 키워드 관리
             const handleAddKeyword = (e) => {
                 e.preventDefault();
                 if(!keywordInput.trim()) return;
                 setKeywords(prev => new Set(prev).add(keywordInput.trim()));
                 setKeywordInput('');
             };
-
             const handleRemoveKeyword = (keyword) => {
                 setKeywords(prev => {
                     const next = new Set(prev);
@@ -156,9 +153,9 @@
                 setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] }));
             };
 
-            // ✅ [수정] 자동 저장 함수 (알림창 없음, 상태 표시만)
+            // 자동 저장
             const autoSaveToGoogleSheet = async () => {
-                if (Object.keys(orders).length === 0) return; // 저장할 거 없으면 패스
+                if (Object.keys(orders).length === 0) return; 
 
                 setIsSaving(true);
                 let saveList = [];
@@ -167,10 +164,6 @@
                     const addr = findAddress(o.customer) || {};
                     const currentShipping = shippingOverrides[o.customer] !== undefined ? shippingOverrides[o.customer] : Number(quickShipping);
                     
-                    // 총합계 계산 (주문자별 합계 아님, 단순히 저장용 데이터 구성)
-                    // 정확한 정산은 엑셀 다운로드나 화면에서 처리하므로 여기서는 각 항목 저장에 집중
-                    const grandTotal = 0; // 시트에서 계산하거나 필요시 로직 추가
-
                     saveList.push({
                         nickname: o.customer,
                         product: o.product,
@@ -178,7 +171,7 @@
                         price: o.price,
                         deposit: o.deposit,
                         shipping: currentShipping, 
-                        grandTotal: grandTotal, 
+                        grandTotal: 0, // 계산 생략
                         address: addr.address || '',
                         zipcode: addr.zipcode || '', 
                         phone: addr.phone || '',
@@ -188,14 +181,8 @@
                 });
 
                 try {
-                    const res = await fetch(googleScriptUrl, {
-                        method: 'POST',
-                        body: JSON.stringify(saveList)
-                    });
-                    const json = await res.json();
-                    if(json.result === 'success') {
-                        setLastSavedTime(new Date().toLocaleTimeString());
-                    }
+                    await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(saveList) });
+                    setLastSavedTime(new Date().toLocaleTimeString());
                 } catch(e) {
                     console.error("자동 저장 실패:", e);
                 } finally {
@@ -203,15 +190,13 @@
                 }
             };
 
-            // ✅ [수정] 1분마다 자동 저장 실행
+            // 1분마다 자동 저장
             useEffect(() => {
-                const saveInterval = setInterval(() => {
-                    autoSaveToGoogleSheet();
-                }, 60000); // 60초
+                const saveInterval = setInterval(autoSaveToGoogleSheet, 60000);
                 return () => clearInterval(saveInterval);
             }, [orders, shippingOverrides, quickShipping]); 
 
-
+            // 주문 추가 로직
             const addOrderLogic = (nickname, content, qty = 1) => {
                 const initialProduct = content || '';
                 const initialPrice = productHistory[initialProduct] || 0;
@@ -259,7 +244,7 @@
             };
             const handleShippingChange = (nick, val) => { setShippingOverrides(prev => ({ ...prev, [nick]: Number(val) })); };
             const handleNicknameEdit = (oldNick) => {
-                const newNick = prompt(`'${oldNick}'님의 닉네임을 무엇으로 변경할까요?`, oldNick);
+                const newNick = prompt(`'${oldNick}'님의 닉네임을 변경합니다.`, oldNick);
                 if (newNick && newNick !== oldNick) {
                     setOrders(prev => prev.map(o => o.customer === oldNick ? { ...o, customer: newNick } : o));
                     if (shippingOverrides[oldNick]) {
@@ -271,14 +256,12 @@
                 }
             };
             const handleOrderCancel = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)); };
-            const handleOrderDelete = (id) => { if(confirm("이 주문을 완전히 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
+            const handleOrderDelete = (id) => { if(confirm("완전 삭제하시겠습니까?")) setOrders(prev => prev.filter(o => o.id !== id)); };
 
-            // [카톡 복사]
+            // 카톡 복사
             const copyOrderSheet = (nick, items, grandTotal, depositTotal, balance, isCard) => {
                 const activeItems = items.filter(i => !i.isCancelled);
-                
                 const itemListText = activeItems.map(i => `${i.product}(${i.quantity}개) ${Number(i.price).toLocaleString()}원`).join('\n');
-                
                 const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
                 
                 let msg = `💙 ${nick} 님 💙\n\n\n`;
@@ -292,46 +275,19 @@
                     const cardFee = cardBaseAmount * 0.1;     
                     const cardTotal = cardBaseAmount + cardFee; 
 
-                    if (depositTotal > 0) {
-                        msg += `[입금확인]\n`;
-                        msg += `${depositTotal.toLocaleString()}원\n\n`;
-                    }
-                    msg += `[카드결제]\n`;
-                    msg += `금액 ${cardBaseAmount.toLocaleString()}원\n`;
-                    msg += `10%   ${cardFee.toLocaleString()}원\n`;
-                    msg += `👉총 ${cardTotal.toLocaleString()}원 예정\n\n`;
-                    msg += `핸드폰번호 남겨주세요🌸\n`;
-                    msg += `------------------\n\n`;
+                    if (depositTotal > 0) msg += `[입금확인]\n${depositTotal.toLocaleString()}원\n\n`;
+                    msg += `[카드결제]\n금액 ${cardBaseAmount.toLocaleString()}원\n10%   ${cardFee.toLocaleString()}원\n👉총 ${cardTotal.toLocaleString()}원 예정\n\n핸드폰번호 남겨주세요🌸\n------------------\n\n`;
 
                 } else {
                     const isPaid = balance >= 0;
-
-                    if (depositTotal > 0) {
-                        msg += `[입금확인]\n`;
-                        msg += `${depositTotal.toLocaleString()}원\n\n`;
-                        msg += `------------------\n\n`;
-                    }
-
+                    if (depositTotal > 0) msg += `[입금확인]\n${depositTotal.toLocaleString()}원\n------------------\n\n`;
                     if (isPaid) {
-                        msg += `완납 확인! 감사합니다 😍\n`;
-                        msg += `------------------\n\n`;
+                        msg += `완납 확인! 감사합니다 😍\n------------------\n\n`;
                     } else {
-                        msg += `[미입금]\n`;
-                        msg += `총 입금하실 금액\n`;
-                        msg += `👉 ${Math.abs(balance).toLocaleString()}원 \n\n`;
-                        msg += `${FIXED_BANK_ACCOUNT}\n`; // 고정된 계좌번호 사용
-                        msg += `입금 부탁드립니다 🙏\n\n`;
-                        msg += `------------------\n\n`;
+                        msg += `[미입금]\n총 입금하실 금액\n👉 ${Math.abs(balance).toLocaleString()}원 \n\n${bankAccount}\n입금 부탁드립니다 🙏\n------------------\n\n`;
                     }
                 }
-
-                msg += `방송마다 1회\n`;
-                msg += `하단의 주문서(배송지입력) 필수!!\n\n`;
-                msg += `이미 참여한 설문 일 경우\n`;
-                msg += `▫ 답변 수정하기 \n`;
-                msg += `▫ 또는 설문 추가 참여\n\n`;
-                msg += `미입력이 많아 계속 안내합니다. \n`;
-                msg += `양해부탁드립니다.`;
+                msg += `방송마다 1회\n하단의 주문서(배송지입력) 필수!!\n\n이미 참여한 설문 일 경우\n▫ 답변 수정하기 \n▫ 또는 설문 추가 참여\n\n미입력이 많아 계속 안내합니다. \n양해부탁드립니다.`;
 
                 const textArea = document.createElement("textarea");
                 textArea.value = msg;
@@ -340,24 +296,15 @@
                 try { 
                     document.execCommand('copy'); 
                     setCopyStatus(prev => ({ ...prev, [nick]: true }));
-                    setTimeout(() => {
-                        setCopyStatus(prev => ({ ...prev, [nick]: false }));
-                    }, 2000);
-                } catch (err) { alert('복사 실패: ' + err); }
+                    setTimeout(() => { setCopyStatus(prev => ({ ...prev, [nick]: false })); }, 2000);
+                } catch (err) { alert('복사 실패'); }
                 document.body.removeChild(textArea);
             };
 
             const filteredChats = useMemo(() => {
                 let result = chats;
-                if (showKeywordOnly) {
-                    result = result.filter(c => {
-                        const content = c.content.toLowerCase();
-                        return [...keywords].some(k => content.includes(k.toLowerCase()));
-                    });
-                }
-                if (chatSearch) {
-                    result = result.filter(c => c.nickname.toLowerCase().includes(chatSearch.toLowerCase()) || c.content.toLowerCase().includes(chatSearch.toLowerCase()));
-                }
+                if (showKeywordOnly) result = result.filter(c => [...keywords].some(k => c.content.includes(k)));
+                if (chatSearch) result = result.filter(c => c.nickname.toLowerCase().includes(chatSearch.toLowerCase()) || c.content.toLowerCase().includes(chatSearch.toLowerCase()));
                 return result;
             }, [chats, chatSearch, showKeywordOnly, keywords]);
 
@@ -377,7 +324,7 @@
                     const finalShipping = activeItems.length > 0 ? currentShipping : 0;
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + finalShipping;
-                    const balance = grandTotal - depositTotal;
+                    const balance = depositTotal - grandTotal;
                     const isPaid = balance >= 0 && depositTotal > 0;
                     if (filterStatus === 'unpaid' && isPaid) return false;
                     if (filterStatus === 'paid' && !isPaid) return false;
@@ -385,49 +332,30 @@
                 });
             }, [orders, orderSearch, filterStatus, shippingOverrides, quickShipping]);
 
-            // 대시보드 통계 계산
             const dashboardStats = useMemo(() => {
-                let totalSales = 0;
-                let totalDeposit = 0;
-                let totalUnpaid = 0;
-                let totalCardExpected = 0;
-
+                let totalSales = 0, totalDeposit = 0, totalUnpaid = 0, totalCardExpected = 0;
                 const groups = {};
                 orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
-
                 Object.entries(groups).forEach(([nick, items]) => {
                     const activeItems = items.filter(i => !i.isCancelled);
                     if (activeItems.length === 0) return;
-
                     const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
                     const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
                     const grandTotal = productTotal + currentShipping;
-                    const balance = grandTotal - depositTotal; // 미수금 (양수)
-
+                    const balance = grandTotal - depositTotal;
                     totalSales += grandTotal;
                     totalDeposit += depositTotal;
-
                     if (balance > 0) {
                         if (cardPayments[nick]) {
-                            const fee = balance * 0.1;
-                            totalCardExpected += (balance + fee);
+                            totalCardExpected += (balance * 1.1);
                         } else {
                             totalUnpaid += balance;
                         }
                     }
                 });
-
                 return { totalSales, totalDeposit, totalUnpaid, totalCardExpected };
             }, [orders, shippingOverrides, quickShipping, cardPayments]);
-
-            const StatusMessage = () => {
-                const { code, msg } = connectionStatus;
-                if (code === 'error_url') return <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 m-2 text-xs">🚨 주소 없음</div>;
-                if (code === 'error_fetch') return <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-2 m-2 text-xs">⚠️ 연결 실패: {msg}</div>;
-                if (code === 'warning_empty') return <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-2 m-2 text-xs">ℹ️ 데이터 0건 (시트 이름 Sheet1 확인 필요)</div>;
-                return null;
-            };
 
             return (
                 <div className="flex h-full gap-2 p-2 overflow-hidden bg-gray-50 text-slate-800">
@@ -435,74 +363,392 @@
                     
                     {/* [1. 댓글 영역 (30%)] */}
                     <div className="w-[30%] flex flex-col bg-white border rounded-lg shadow-sm overflow-hidden">
-                        <div className="p-2 bg-red-50 border-b flex flex-col gap-2">
-                            <div className="font-bold text-red-600 flex items-center justify-between">
-                                <span className="flex items-center gap-1"><Icon name="youtube-logo" weight="fill"/> 라이브 댓글</span>
+                        <div className="p-2 bg-indigo-50 border-b flex flex-col gap-2">
+                            <div className="font-bold text-indigo-700 flex items-center justify-between">
+                                <span className="flex items-center gap-1"><Icon name="youtube-logo" weight="fill" className="text-red-600"/> 라이브 댓글</span>
                                 <span className="text-xs text-gray-500">{filteredChats.length}건</span>
                             </div>
-                            
-                            {/* 키워드 등록창 */}
-                            <div className="flex flex-col gap-2 bg-gray-50 p-2 rounded border border-gray-100">
+                            <div className="flex flex-col gap-2 bg-white p-2 rounded border border-indigo-100">
                                 <form onSubmit={handleAddKeyword} className="flex gap-1">
-                                    <input 
-                                        type="text" 
-                                        value={keywordInput}
-                                        onChange={(e) => setKeywordInput(e.target.value)}
-                                        placeholder="키워드 추가 (예: 240, 주문)" 
-                                        className="flex-1 text-xs border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500" 
-                                    />
-                                    <button type="submit" className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-600">추가</button>
+                                    <input type="text" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)} placeholder="키워드 추가" className="flex-1 text-xs border rounded px-2 py-1 outline-none" />
+                                    <button type="submit" className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold">추가</button>
                                 </form>
-                                {/* 키워드 리스트 */}
-                                {keywords.size > 0 && (
-                                    <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto scrollbar-thin mt-1 p-1 bg-white border rounded">
-                                        {[...keywords].map(k => (
-                                            <span key={k} onClick={() => handleRemoveKeyword(k)} 
-                                                className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] cursor-pointer hover:bg-red-100 hover:text-red-600 flex items-center gap-1 shrink-0">
-                                                {k} <Icon name="x" weight="bold"/>
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                                {keywords.size > 0 && <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto scrollbar-thin mt-1 p-1 bg-gray-50 border rounded">{[...keywords].map(k => <span key={k} onClick={() => handleRemoveKeyword(k)} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] cursor-pointer hover:bg-red-100 hover:text-red-600 flex items-center gap-1 shrink-0">{k} <Icon name="x" weight="bold"/></span>)}</div>}
                             </div>
-
-                            {/* 필터 버튼 */}
                             <div className="flex gap-2">
-                                <button onClick={()=>setShowKeywordOnly(!showKeywordOnly)} 
-                                    className={`flex-1 px-2 py-1.5 text-xs rounded border flex justify-center items-center gap-1 ${showKeywordOnly ? 'bg-blue-100 text-blue-700 border-blue-300 font-bold' : 'bg-gray-50 text-gray-500'}`}>
-                                    <Icon name={showKeywordOnly ? "check-square" : "square"} /> 🎯 키워드만 보기
-                                </button>
+                                <button onClick={()=>setShowKeywordOnly(!showKeywordOnly)} className={`flex-1 px-2 py-1.5 text-xs rounded border flex justify-center items-center gap-1 ${showKeywordOnly ? 'bg-blue-100 text-blue-700 border-blue-300 font-bold' : 'bg-white text-gray-500'}`}><Icon name={showKeywordOnly ? "check-square" : "square"} /> 🎯 키워드만</button>
                             </div>
-
                             <div className="relative">
                                 <Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"/>
-                                <input type="text" placeholder="닉네임/내용 검색" value={chatSearch} onChange={e => setChatSearch(e.target.value)} 
-                                    className="w-full text-xs pl-7 pr-2 py-1.5 border rounded focus:ring-1 focus:ring-red-500 outline-none" />
+                                <input type="text" placeholder="닉네임/내용 검색" value={chatSearch} onChange={e => setChatSearch(e.target.value)} className="w-full text-xs pl-7 pr-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500 outline-none" />
                                 {chatSearch && <button onClick={()=>setChatSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={12}/></button>}
                             </div>
                         </div>
-                        
-                        <StatusMessage />
-
+                        {connectionStatus.code !== 'success' && connectionStatus.code !== 'loading' && <div className="bg-red-50 text-red-600 text-xs p-2">{connectionStatus.msg}</div>}
                         <div className="flex-1 overflow-y-auto p-2 space-y-1">
                             {filteredChats.map(chat => {
                                 const isClicked = clickedChats.has(chat.id);
                                 const isKeywordMatch = [...keywords].some(k => chat.content.includes(k));
+                                return (
+                                    <div key={chat.id} onClick={() => handleChatClick(chat)} className={`p-2 border rounded cursor-pointer transition-all flex flex-col gap-1 ${isClicked ? 'processed-chat' : 'bg-white hover:bg-indigo-50'} ${isKeywordMatch && !isClicked ? 'keyword-detected' : ''}`}>
+                                        <div className="flex justify-between text-xs mb-1"><span className={`font-bold ${isClicked ? 'text-gray-500' : 'text-gray-700'}`}>{chat.nickname}</span><span className="text-gray-400">{chat.time ? new Date(chat.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span></div>
+                                        <div className="text-sm">{chat.content}</div>
+                                        {isKeywordMatch && !isClicked && (<div className="flex justify-between items-center mt-1"><span className="keyword-badge flex items-center gap-1"><Icon name="target" weight="fill"/> 키워드됨</span></div>)}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* [2. 입금 영역 (20%)] */}
+                    <div className="w-[20%] flex flex-col bg-white border rounded-lg shadow-sm overflow-hidden">
+                        <div className="p-2 bg-yellow-50 border-b flex flex-col gap-2">
+                            <div className="font-bold text-yellow-700 flex items-center justify-between"><span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span><span className="text-xs text-gray-500">{filteredDeposits.length}건</span></div>
+                            <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"/><input type="text" placeholder="입금자/금액 검색" value={depositSearch} onChange={e => setDepositSearch(e.target.value)} className="w-full text-xs pl-7 pr-2 py-1.5 border rounded focus:ring-1 focus:ring-yellow-500 outline-none" />{depositSearch && <button onClick={()=>setDepositSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
+                            {selectedNick && <div className="text-[11px] text-blue-600 bg-blue-50 p-1 rounded text-center animate-pulse">👇 '{selectedNick}'님 매칭</div>}
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2 space-y-1 bg-yellow-50/30">
+                            {filteredDeposits.map((d, i) => {
+                                const isUsed = matchedDeposits.has(i);
+                                const isSuggested = selectedNick && d.name.includes(selectedNick.replace(/ /g,''));
+                                return (
+                                    <div key={i} onClick={() => handleDepositClick(d, i)} className={`flex justify-between p-2 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-40 bg-gray-100 line-through' : ''} ${isSuggested && !isUsed ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-100'}`}>
+                                        <span className="text-gray-700 text-sm">{d.name}</span><span className="font-mono text-blue-600 font-bold text-sm">+{Number(d.amount).toLocaleString()}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* [3. 주문서 영역 (50%)] */}
+                    <div className="w-[50%] bg-gray-100 border rounded-lg flex flex-col overflow-hidden">
+                        {/* 대시보드 */}
+                        <div className="grid grid-cols-4 gap-2 p-2 bg-indigo-50 border-b border-indigo-100 text-center text-xs">
+                            <div className="bg-white p-1 rounded shadow-sm"><div className="text-gray-400">총 매출</div><div className="font-bold text-indigo-700">{dashboardStats.totalSales.toLocaleString()}</div></div>
+                            <div className="bg-white p-1 rounded shadow-sm"><div className="text-gray-400">입금액</div><div className="font-bold text-green-600">{dashboardStats.totalDeposit.toLocaleString()}</div></div>
+                            <div className="bg-white p-1 rounded shadow-sm"><div className="text-gray-400">미수금</div><div className="font-bold text-red-500">{dashboardStats.totalUnpaid.toLocaleString()}</div></div>
+                            <div className="bg-white p-1 rounded shadow-sm ring-1 ring-purple-100"><div className="text-gray-400">카드예정</div><div className="font-bold text-purple-600">{dashboardStats.totalCardExpected.toLocaleString()}</div></div>
+                        </div>
+
+                        {/* 툴바 */}
+                        <div className="p-2 bg-white border-b font-bold text-indigo-700 shadow-sm flex flex-col gap-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm">📦 주문서 ({filteredGroupedOrders.length}명)</span>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={resetAllStatus} className="bg-rose-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-rose-600 flex items-center gap-1" title="초기화"><Icon name="trash" weight="fill"/> 초기화</button>
+                                    <div className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isSaving ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700'}`}>
+                                        {isSaving ? <Icon name="spinner" className="animate-spin" /> : <Icon name="cloud-check" weight="fill" />} {isSaving ? "저장중" : "자동저장"}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                                        <span className="font-bold text-gray-600">배송비:</span>
+                                        <input type="number" value={quickShipping} onChange={(e)=>setQuickShipping(Number(e.target.value))} className="w-12 text-right font-bold text-gray-800 bg-transparent outline-none focus:border-b focus:border-indigo-500" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                                <div className="flex bg-gray-100 rounded p-0.5 gap-0.5 text-xs shrink-0">
+                                    <button onClick={()=>setFilterStatus('all')} className={`px-2 py-1 rounded ${filterStatus==='all' ? 'bg-white shadow text-indigo-600 font-bold':'text-gray-500'}`}>전체</button>
+                                    <button onClick={()=>setFilterStatus('unpaid')} className={`px-2 py-1 rounded ${filterStatus==='unpaid' ? 'bg-white shadow text-red-600 font-bold':'text-gray-500'}`}>🔺미납</button>
+                                    <button onClick={()=>setFilterStatus('paid')} className={`px-2 py-1 rounded ${filterStatus==='paid' ? 'bg-white shadow text-green-600 font-bold':'text-gray-500'}`}>✅완납</button>
+                                </div>
+                                <div className="flex-1 flex gap-1 items-center bg-indigo-50 p-1 rounded border border-indigo-100">
+                                    <span className="text-xs font-bold text-indigo-600 whitespace-nowrap pl-1">🖐️</span>
+                                    <form onSubmit={handleManualSubmit} className="flex gap-1 w-full">
+                                        <input type="text" placeholder="닉네임" value={manualNick} onChange={e => setManualNick(e.target.value)} className="w-20 border rounded px-2 py-1 text-xs outline-none" />
+                                        <input type="text" list="product-list" placeholder="상품명" value={manualProduct} onChange={e => setManualProduct(e.target.value)} className="flex-1 border rounded px-2 py-1 text-xs outline-none" />
+                                        <button type="submit" className="bg-indigo-600 text-white px-2 py-1 rounded text-xs font-bold hover:bg-indigo-700">＋</button>
+                                    </form>
+                                </div>
+                                <div className="w-32 relative">
+                                    <Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs"/>
+                                    <input type="text" placeholder="검색..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} className="w-full pl-6 pr-2 py-1 border rounded text-xs outline-none" />
+                                    {orderSearch && <button onClick={()=>setOrderSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon name="x-circle" weight="fill" size={10}/></button>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 리스트 */}
+                        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                            {filteredGroupedOrders.map(([nick, items]) => {
+                                const isSelected = selectedNick === nick;
+                                const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
+                                const activeItems = items.filter(i => !i.isCancelled);
+                                const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
+                                const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
+                                const finalShipping = activeItems.length > 0 ? currentShipping : 0;
+                                const grandTotal = productTotal + finalShipping;
+                                const balance = depositTotal - grandTotal;
+                                const isCard = cardPayments[nick]; 
+
+                                let statusBadge;
+                                if (isCard) statusBadge = <span className="bg-purple-100 text-purple-600 px-1.5 rounded text-[10px] font-bold border border-purple-200">💳 카드</span>;
+                                else if (depositTotal === 0) statusBadge = <span className="bg-red-100 text-red-600 px-1.5 rounded text-[10px] font-bold">미입금</span>;
+                                else if (balance >= 0) statusBadge = <span className="bg-green-100 text-green-700 px-1.5 rounded text-[10px] font-bold">✅ 완납</span>;
+                                else statusBadge = <span className="bg-orange-100 text-orange-600 px-1.5 rounded text-[10px] font-bold badge-pulse">🔺 {Math.abs(balance).toLocaleString()}원</span>;
+
+                                const addr = findAddress(nick);
+                                const isCopied = copyStatus[nick]; 
 
                                 return (
-                                    <div key={chat.id} onClick={() => handleChatClick(chat)} 
-                                         className={`p-2 border rounded cursor-pointer transition-all flex flex-col gap-1 
-                                            ${isClicked ? 'processed-chat' : 'bg-white hover:bg-red-50 hover:border-red-200'}
-                                            ${isKeywordMatch && !isClicked ? 'keyword-detected' : ''} 
-                                         `}>
-                                        <div className="flex justify-between text-xs mb-1">
-                                            <span className={`font-bold ${isClicked ? 'text-gray-500' : 'text-gray-700'}`}>{chat.nickname}</span>
-                                            <span className="text-gray-400">{chat.time ? new Date(chat.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
-                                        </div>
-                                        <div className="text-sm">{chat.content}</div>
-                                        {isKeywordMatch && !isClicked && (
-                                             <div className="flex justify-between items-center mt-1">
-                                                <span className="keyword-badge flex items-center gap-1"><Icon name="target" weight="fill"/> 키워드됨</span>
+                                    <div key={nick} onClick={() => setSelectedNick(prev => prev === nick ? null : nick)} className={`bg-white rounded border shadow-sm transition-all overflow-hidden cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 shadow-md' : 'hover:border-indigo-300'}`}>
+                                        <div className={`px-2 py-1.5 flex justify-between items-center ${isSelected ? 'bg-indigo-50' : 'bg-gray-50'} border-b border-gray-100`}>
+                                            <div className="flex flex-col gap-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-gray-800">{nick}</span>
+                                                    <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-300 hover:text-indigo-600"><Icon name="pencil-simple" weight="bold" size={12}/></button>
+                                                    <span className="text-[10px] bg-white border px-1 rounded text-gray-400">{items.length}</span>
+                                                    
+                                                    <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} className={`ml-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors ${isCard ? 'bg-purple-100 border-purple-300 text-purple-700 font-bold' : 'bg-white text-gray-400 hover:bg-gray-100'}`}>카드</button>
+                                                    <div onClick={(e) => { e.stopPropagation(); const newFee = prompt(`'${nick}'님의 배송비를 입력하세요`, currentShipping); if(newFee !== null) handleShippingChange(nick, Number(newFee)); }} className="cursor-pointer flex items-center gap-1 text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded border hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                                        <Icon name="truck" weight="fill"/> <span>{currentShipping.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start gap-1 text-xs">
+                                                    {addr ? (<span className="text-green-600 text-[10px] flex items-center gap-1"><Icon name="house-line" weight="fill"/> {addr.realname} ({addr.phone})</span>) : (<span className="text-red-300 text-[10px] flex items-center gap-1"><Icon name="warning-circle" weight="fill"/> 주소없음</span>)}
+                                                </div>
                                             </div>
-                                        )}
+                                            <div className="flex flex-col gap-1 items-end">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm font-mono text-gray-800">{grandTotal.toLocaleString()}원</span>
+                                                    {statusBadge}
+                                                </div>
+                                                <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance, isCard); }} className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all ${isCopied ? 'bg-green-500 text-white copy-anim' : 'bg-yellow-300 hover:bg-yellow-400 text-black'}`}>
+                                                    {isCopied ? <Icon name="check" weight="bold"/> : <Icon name="chat-circle-dots" weight="fill"/>} 카톡
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="p-1 space-y-1">
+                                            {items.map((item, idx) => (
+                                                <div key={idx} className={`flex justify-between items-center text-xs p-1 hover:bg-gray-50 rounded group ${item.isCancelled ? 'cancelled-item' : ''}`}>
+                                                    <div className="flex-1 flex gap-1 items-center">
+                                                        <input type="text" list="product-list" value={item.product} onChange={(e) => handleProductChange(item.id, 'product', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-full bg-transparent focus:bg-white outline-none px-1 rounded focus:ring-1 focus:ring-indigo-100" placeholder="상품명" disabled={item.isCancelled} />
+                                                    </div>
+                                                    <div className="flex items-center gap-1 pl-1">
+                                                        <span className="font-bold text-indigo-600 bg-indigo-50 px-1 rounded text-[10px] shrink-0">{item.quantity}</span>
+                                                        <input type="number" value={item.price} onChange={(e) => handleProductChange(item.id, 'price', e.target.value)} onClick={(e) => e.stopPropagation()} className="w-14 text-right font-mono text-gray-500 bg-transparent outline-none focus:text-indigo-600" disabled={item.isCancelled} />
+                                                        <div className="flex gap-0.5 w-8 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id);}} className="text-gray-300 hover:text-red-500"><Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/></button>
+                                                            <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id);}} className="text-gray-300 hover:text-red-500"><Icon name="trash" weight="bold"/></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {depositTotal > 0 && (<div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[11px] text-green-600 font-bold px-2"><span>└ 입금확인</span><span>{depositTotal.toLocaleString()}원</span></div>)}
+                                            {isCard && balance < 0 && (<div className="mt-1 pt-1 border-t border-dashed bg-purple-50 p-1 rounded text-[11px] text-right text-gray-600"><div>미수금 {Math.abs(balance).toLocaleString()}원 + 10%</div><div className="font-bold text-purple-700">💳 결제: {(Math.abs(balance) * 1.1).toLocaleString()}원</div></div>)}
+                                        </div>
                                     </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 컴포넌트 2: 고객관리 탭 ---
+        const CustomerTab = ({ addresses, setAddresses }) => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const fileInputRef = useRef(null);
+            const [editMode, setEditMode] = useState(null); 
+            const [inputData, setInputData] = useState({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });
+
+            const filteredAddresses = useMemo(() => {
+                if (!searchTerm) return addresses;
+                return addresses.filter(a => a.nickname.toLowerCase().includes(searchTerm.toLowerCase()) || a.realname.toLowerCase().includes(searchTerm.toLowerCase()));
+            }, [addresses, searchTerm]);
+
+            const handleSave = () => {
+                if (!inputData.nickname) return alert("닉네임은 필수입니다.");
+                if (!editMode && addresses.some(a => a.nickname === inputData.nickname)) { if (!confirm("이미 존재하는 닉네임입니다. 덮어씌우시겠습니까?")) return; }
+                setAddresses(prev => { const next = prev.filter(a => a.nickname !== inputData.nickname); return [...next, inputData]; });
+                setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' }); alert("저장되었습니다.");
+            };
+
+            const handleEdit = (customer) => { setEditMode(customer.nickname); setInputData(customer); };
+            const handleDelete = (nickname) => { if (confirm(`${nickname}님의 정보를 삭제하시겠습니까?`)) { setAddresses(prev => prev.filter(a => a.nickname !== nickname)); } };
+
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const bstr = evt.target.result;
+                        const wb = XLSX.read(bstr, { type: 'binary' });
+                        const wsname = wb.SheetNames[0];
+                        const ws = wb.Sheets[wsname];
+                        const data = XLSX.utils.sheet_to_json(ws, { raw: false, header: "A" });
+                        
+                        const newAddresses = data.map(row => {
+                            const nickname = row['D'] ? String(row['D']).trim() : '';
+                            if (!nickname || nickname === '닉네임') return null; 
+
+                            const realname = row['F'] ? String(row['F']).trim() : '';
+                            let phone = row['G'] ? String(row['G']).trim() : '';
+                            let fullAddr = row['H'] ? String(row['H']).trim() : '';
+                            const memo = row['I'] ? String(row['I']).trim() : '';
+                            
+                            phone = String(phone).replace(/[^0-9]/g, '');
+                            if (phone.length === 10 && phone.startsWith('10')) phone = '0' + phone;
+                            if (phone.length === 11) phone = phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+
+                            let zipcode = '';
+                            let address = fullAddr;
+                            const zipMatch = fullAddr.match(/[\(\[](\d{5})[\)\]]/);
+                            if (zipMatch) { zipcode = zipMatch[1]; address = fullAddr.replace(zipMatch[0], '').trim(); }
+
+                            return { nickname, realname, phone, zipcode, address, memo };
+                        }).filter(a => a);
+
+                        if (newAddresses.length > 0) {
+                            setAddresses(prev => { const map = new Map(prev.map(item => [item.nickname, item])); newAddresses.forEach(item => map.set(item.nickname, item)); return Array.from(map.values()); });
+                            alert(`✅ ${newAddresses.length}명 로드 완료!`);
+                        } else { alert("데이터를 찾을 수 없습니다. 엑셀 D열 확인 필요."); }
+                    } catch (err) { alert("엑셀 읽기 실패: " + err); }
+                };
+                reader.readAsBinaryString(file);
+                e.target.value = ''; 
+            };
+
+            return (
+                <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border p-4 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4 pb-4 border-b">
+                        <h2 className="text-xl font-bold flex items-center gap-2"><Icon name="address-book" weight="fill" className="text-indigo-600"/> 고객 주소록 관리 <span className="text-sm font-normal text-gray-500">({addresses.length}명)</span></h2>
+                        <div className="flex gap-2">
+                            <input type="file" ref={fileInputRef} onChange={handleExcelUpload} className="hidden" accept=".xlsx, .xls" />
+                            <button onClick={() => fileInputRef.current.click()} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 shadow-sm">
+                                <Icon name="file-xls" weight="fill"/> 엑셀 일괄등록
+                            </button>
+                        </div>
+                    </div>
+                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4 flex gap-2 items-end">
+                        <div className="flex-1 grid grid-cols-6 gap-2">
+                            <div><label className="text-xs font-bold text-gray-500">닉네임</label><input type="text" value={inputData.nickname} onChange={e=>setInputData({...inputData, nickname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="예: 깔로" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">이름</label><input type="text" value={inputData.realname} onChange={e=>setInputData({...inputData, realname:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="홍길동" /></div>
+                            <div><label className="text-xs font-bold text-gray-500">전화번호</label><input type="text" value={inputData.phone} onChange={e=>setInputData({...inputData, phone:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="010-0000-0000" /></div>
+                            <div className="col-span-2 flex gap-1">
+                                <div className="w-20"><label className="text-xs font-bold text-gray-500">우편번호</label><input type="text" value={inputData.zipcode} onChange={e=>setInputData({...inputData, zipcode:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="01234" /></div>
+                                <div className="flex-1"><label className="text-xs font-bold text-gray-500">주소</label><input type="text" value={inputData.address} onChange={e=>setInputData({...inputData, address:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="주소" /></div>
+                            </div>
+                            <div><label className="text-xs font-bold text-gray-500">메모</label><input type="text" value={inputData.memo} onChange={e=>setInputData({...inputData, memo:e.target.value})} className="w-full border rounded px-2 py-1 text-sm" placeholder="문앞" /></div>
+                        </div>
+                        <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold h-10 shadow-sm">{editMode ? '수정' : '추가'}</button>
+                        {editMode && <button onClick={()=>{setEditMode(null); setInputData({ nickname: '', realname: '', phone: '', zipcode: '', address: '', memo: '' });}} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded font-bold h-10">취소</button>}
+                    </div>
+                    <div className="flex-1 overflow-y-auto border rounded bg-white">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-100 text-gray-600 sticky top-0"><tr><th className="p-2 border-b">닉네임</th><th className="p-2 border-b">이름</th><th className="p-2 border-b">전화번호</th><th className="p-2 border-b">주소</th><th className="p-2 border-b w-20 text-center">관리</th></tr></thead>
+                            <tbody className="divide-y">{filteredAddresses.map((addr, i) => (<tr key={i} className="hover:bg-gray-50 group"><td className="p-2 font-bold text-indigo-700">{addr.nickname}</td><td className="p-2">{addr.realname}</td><td className="p-2">{addr.phone}</td><td className="p-2 text-gray-600">{addr.address}</td><td className="p-2 text-center"><button onClick={()=>handleEdit(addr)} className="text-blue-500 hover:text-blue-700 mx-1"><Icon name="pencil-simple" weight="fill"/></button><button onClick={()=>handleDelete(addr.nickname)} className="text-red-400 hover:text-red-600 mx-1"><Icon name="trash" weight="fill"/></button></td></tr>))}</tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 컴포넌트 3: 엑셀 다운로드 탭 ---
+        const OrderManagementTab = ({ orders, shippingOverrides, quickShipping, addresses }) => {
+            const handleExportProducts = () => {
+                const summary = {}; orders.forEach(o => { 
+                    if(o.isCancelled) return; 
+                    const name = o.product || '(상품명 없음)'; if (!summary[name]) summary[name] = 0; summary[name] += Number(o.quantity); 
+                });
+                const data = Object.entries(summary).map(([product, qty]) => ({ '상품명': product, '총필요수량': qty }));
+                downloadExcel(data, '상품별_발주리스트');
+            };
+            const handleExportCustomers = () => {
+                const groups = {}; orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
+                const data = Object.entries(groups).map(([nick, items]) => {
+                    const currentShipping = shippingOverrides[nick] !== undefined ? shippingOverrides[nick] : Number(quickShipping);
+                    const activeItems = items.filter(i => !i.isCancelled);
+                    if(activeItems.length === 0) return null; 
+                    const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
+                    const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
+                    const grandTotal = productTotal + currentShipping;
+                    const balance = depositTotal - grandTotal;
+                    
+                    // 수량 2개 이상일 때만 ★ 표시
+                    const itemSummary = activeItems.map(i => {
+                        const qtyPart = i.quantity > 1 ? ` ★ ${i.quantity}개` : '';
+                        return `${i.product}${qtyPart}`;
+                    }).join(', ');
+                    
+                    const finalItemSummary = `[ ${nick} ]\n${itemSummary}`;
+                    const addrInfo = addresses.find(a => a.nickname.trim() === nick.trim()) || {};
+                    const fullAddress = addrInfo.zipcode ? `(${addrInfo.zipcode}) ${addrInfo.address || ''}` : (addrInfo.address || '');
+
+                    return { 
+                        '날짜시간': new Date().toLocaleString(), '공란1': '', '공란2': '', '닉네임': nick, '주문제품(수량)': finalItemSummary, 
+                        '이름': addrInfo.realname || '', '핸드폰번호': addrInfo.phone || '', '주소': fullAddress, '배송메모': addrInfo.memo || '' 
+                    };
+                }).filter(d => d !== null);
+                downloadExcel(data, '고객별_정산_배송리스트');
+            };
+            return (
+                <div className="flex flex-col items-center justify-center h-full p-10 gap-6">
+                    <div className="bg-white p-8 rounded-xl shadow-lg border text-center w-full max-w-md">
+                        <div className="text-4xl mb-4">📦</div><h2 className="text-xl font-bold mb-2">발주용 품목 집계</h2><p className="text-gray-500 mb-6 text-sm">어떤 상품이 몇 개 필요한지 정리해드립니다.</p>
+                        <button onClick={handleExportProducts} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"><Icon name="file-xls" weight="fill" size={20}/> 엑셀 다운로드</button>
+                    </div>
+                    <div className="bg-white p-8 rounded-xl shadow-lg border text-center w-full max-w-md">
+                        <div className="text-4xl mb-4">👥</div><h2 className="text-xl font-bold mb-2">배송용 고객 리스트</h2><p className="text-gray-500 mb-6 text-sm">주소, 전화번호 포함된 배송 명단을 뽑습니다.</p>
+                        <button onClick={handleExportCustomers} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"><Icon name="file-xls" weight="fill" size={20}/> 엑셀 다운로드</button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        const App = () => {
+            const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem('youtubeOrders')) || []);
+            const [activeTab, setActiveTab] = useState('live');
+            const [quickShipping, setQuickShipping] = useState(4000); 
+            const [bankAccount, setBankAccount] = useState(() => localStorage.getItem('bankAccount') || FIXED_BANK_ACCOUNT);
+            const [productHistory, setProductHistory] = useState(() => JSON.parse(localStorage.getItem('productHistory')) || {});
+            const [shippingOverrides, setShippingOverrides] = useState(() => JSON.parse(localStorage.getItem('shippingOverrides')) || {});
+            const [addresses, setAddresses] = useState(() => JSON.parse(localStorage.getItem('verifiedAddresses')) || []);
+            const [cardPayments, setCardPayments] = useState(() => JSON.parse(localStorage.getItem('cardPayments')) || {});
+
+            useEffect(() => { localStorage.setItem('youtubeOrders', JSON.stringify(orders)); }, [orders]);
+            useEffect(() => { localStorage.setItem('productHistory', JSON.stringify(productHistory)); }, [productHistory]);
+            useEffect(() => { localStorage.setItem('bankAccount', bankAccount); }, [bankAccount]);
+            useEffect(() => { localStorage.setItem('shippingOverrides', JSON.stringify(shippingOverrides)); }, [shippingOverrides]);
+            useEffect(() => { localStorage.setItem('verifiedAddresses', JSON.stringify(addresses)); }, [addresses]);
+            useEffect(() => { localStorage.setItem('cardPayments', JSON.stringify(cardPayments)); }, [cardPayments]);
+
+            const tabs = [{ id: 'live', label: '🎥 라이브관제', icon: 'monitor-play' }, { id: 'customer', label: '👥 고객관리', icon: 'address-book' }, { id: 'manage', label: '📊 주문관리(엑셀)', icon: 'file-xls' }];
+
+            // 전체 초기화
+            const resetAllStatus = () => {
+                if(confirm("모든 주문, 입금, 클릭 기록을 초기화하시겠습니까?\n(주소록과 상품 가격은 유지됩니다.)")) {
+                    setOrders([]); setCardPayments({}); setShippingOverrides({});
+                    localStorage.removeItem('youtubeOrders'); localStorage.removeItem('cardPayments'); localStorage.removeItem('shippingOverrides');
+                    alert("초기화 완료!"); window.location.reload(); 
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-screen overflow-hidden text-slate-700">
+                    <header className="h-12 bg-indigo-900 text-white flex items-center justify-between px-4 shrink-0 shadow-md z-50">
+                        <div className="font-bold text-lg flex items-center gap-2"><Icon name="lightning" className="text-yellow-400" weight="fill"/> 깔로 주문서 PRO</div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex bg-indigo-900 rounded p-1 gap-1">
+                                {tabs.map(tab => (
+                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name={tab.icon} weight="bold"/> {tab.label}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </header>
+                    <main className="flex-1 overflow-hidden bg-gray-100 p-2 relative">
+                        {activeTab === 'live' && (<LiveTab orders={orders} setOrders={setOrders} productHistory={productHistory} setProductHistory={setProductHistory} quickShipping={quickShipping} setQuickShipping={setQuickShipping} shippingOverrides={shippingOverrides} setShippingOverrides={setShippingOverrides} bankAccount={bankAccount} setBankAccount={setBankAccount} googleScriptUrl={GOOGLE_API_URL} addresses={addresses} setAddresses={setAddresses} cardPayments={cardPayments} setCardPayments={setCardPayments} resetAllStatus={resetAllStatus} />)}
+                        {activeTab === 'customer' && (<CustomerTab addresses={addresses} setAddresses={setAddresses} />)}
+                        {activeTab === 'manage' && (<OrderManagementTab orders={orders} shippingOverrides={shippingOverrides} quickShipping={quickShipping} addresses={addresses} />)}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
