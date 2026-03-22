@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>깔로 주문서</title>
+    <title>깔로 주문서 PRO (정식 버전)</title>
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -191,9 +191,11 @@
                     new window.daum.Postcode({
                         oncomplete: function(data) {
                             let fullAddr = data.address;
+                            let extraAddr = '';
                             if(data.addressType === 'R'){
-                                if(data.bname !== '') fullAddr += data.bname;
-                                if(data.buildingName !== '') fullAddr += ', ' + data.buildingName;
+                                if(data.bname !== '') extraAddr += data.bname;
+                                if(data.buildingName !== '') extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                                if(extraAddr !== '') fullAddr += ' (' + extraAddr + ')';
                             }
                             setFormData(prev => ({ ...prev, zipcode: data.zonecode, address: fullAddr }));
                             setTimeout(() => detailRef.current?.focus(), 100);
@@ -269,7 +271,12 @@
 
             useEffect(() => { if (!isProductFocused) setLocalProduct(item.product); }, [item.product, isProductFocused]);
             useEffect(() => { if (!isQtyFocused) setLocalQty(item.quantity === '' ? '' : item.quantity); }, [item.quantity, isQtyFocused]);
-            useEffect(() => { if (!isPriceFocused) setLocalPrice(item.price === '' || item.price === 0 ? '' : Number(item.price).toLocaleString()); }, [item.price, isPriceFocused]);
+            
+            useEffect(() => { 
+                if (!isPriceFocused) {
+                    setLocalPrice(item.price === '' || item.price === 0 ? '' : Number(item.price).toLocaleString()); 
+                }
+            }, [item.price, isPriceFocused]);
 
             useEffect(() => {
                 const timer = setTimeout(() => { if (localProduct !== item.product) handleProductChange(item.id, 'product', localProduct); }, 400);
@@ -448,6 +455,11 @@
             const [newDepositAmount, setNewDepositAmount] = useState('');
 
             const [quickAddrModal, setQuickAddrModal] = useState({ isOpen: false, nick: '' });
+
+            const inventoryRef = useRef(inventory);
+            const productHistoryRef = useRef(productHistory);
+            useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
+            useEffect(() => { productHistoryRef.current = productHistory; }, [productHistory]);
 
             const handleQuickAddressSubmit = (addrData) => {
                 setAddresses(prev => {
@@ -813,14 +825,18 @@
                 }
             }, [lastAddedOrderId, orders]);
 
-            const handleNicknameEdit = useCallback((old) => openModal(`${old} 닉네임 변경`, 'prompt', val => {
-                if (val) {
-                    const newN = val.replace(/@/g, '').trim();
-                    setOrders(prev => prev.map(o => o.customer === old ? { ...o, customer: newN } : o));
-                    if (shippingOverrides[old]) { setShippingOverrides(prev => { const n = {...prev, [newN]: prev[old]}; delete n[old]; return n; }); }
-                    if (selectedNick === old) setSelectedNick(newN);
-                }
-            }, null, old), [openModal, setOrders, shippingOverrides, setShippingOverrides, selectedNick, setSelectedNick]);
+            const handleNicknameEdit = useCallback((old) => {
+                openModal(`${old} 닉네임 변경`, 'prompt', (val) => {
+                    if (val) {
+                        const newN = val.replace(/@/g, '').trim();
+                        setOrders(prev => prev.map(o => o.customer === old ? { ...o, customer: newN } : o));
+                        if (shippingOverrides[old]) { 
+                            setShippingOverrides(prev => { const n = {...prev, [newN]: prev[old]}; delete n[old]; return n; }); 
+                        }
+                        if (selectedNick === old) setSelectedNick(newN);
+                    }
+                }, null, old);
+            }, [openModal, setOrders, shippingOverrides, setShippingOverrides, selectedNick, setSelectedNick]);
 
             const toggleCardPayment = useCallback((nick) => setCardPayments(prev => ({ ...prev, [nick]: !prev[nick] })), [setCardPayments]);
             
@@ -845,19 +861,25 @@
                     if (o.id === id) { 
                         const newOrder = { ...o, [field]: value, isUnmodified: false }; 
                         if(field === 'product') { 
-                            const invItem = Array.isArray(inventory) ? inventory.find(i => i.name === value) : null;
-                            const uPrice = invItem ? Number(invItem.price) : (productHistory[value] || 0);
-                            newOrder.price = newOrder.quantity * uPrice; 
+                            const cleanVal = String(value).trim();
+                            const inv = inventoryRef.current;
+                            const hist = productHistoryRef.current;
+                            const invItem = Array.isArray(inv) ? inv.find(i => String(i.name).trim() === cleanVal) : null;
+                            const uPrice = invItem ? Number(invItem.price) : (hist[cleanVal] || 0);
+                            const q = Number(newOrder.quantity) || 0;
+                            newOrder.price = q * uPrice; 
                         } 
-                        if (field === 'price' && o.product && o.product.trim() !== '') { 
-                            const uPrice = o.quantity > 0 ? Number(value) / o.quantity : 0; 
+                        if (field === 'price' && o.product && String(o.product).trim() !== '') { 
+                            const cleanProd = String(o.product).trim();
+                            const valNum = String(value).replace(/,/g, '');
+                            const uPrice = o.quantity > 0 ? Number(valNum) / o.quantity : 0; 
                             if (uPrice > 0) {
-                                setProductHistory(h => ({ ...h, [o.product]: uPrice })); 
+                                setProductHistory(h => ({ ...h, [cleanProd]: uPrice })); 
                                 setInventory(prevInv => {
                                     if (!Array.isArray(prevInv)) return prevInv;
-                                    const exists = prevInv.find(i => i.name === o.product);
-                                    if (!exists) return [...prevInv, { id: `inv_${Date.now()}_${Math.random()}`, name: o.product, stock: 100, price: uPrice }];
-                                    return prevInv.map(i => i.name === o.product ? { ...i, price: uPrice } : i);
+                                    const exists = prevInv.find(i => String(i.name).trim() === cleanProd);
+                                    if (!exists) return [...prevInv, { id: `inv_${Date.now()}_${Math.random()}`, name: cleanProd, stock: 100, price: uPrice }];
+                                    return prevInv.map(i => String(i.name).trim() === cleanProd ? { ...i, price: uPrice } : i);
                                 });
                             }
                         } 
@@ -865,21 +887,24 @@
                     } 
                     return o; 
                 })); 
-            }, [inventory, productHistory, setProductHistory, setInventory, setOrders]);
+            }, [setOrders, setProductHistory, setInventory]);
 
             const handleQuantityUpdate = useCallback((itemId, newQtyVal) => { 
                 setOrders(prev => prev.map(o => { 
                     if (o.id === itemId) { 
+                        const cleanProd = String(o.product || '').trim();
+                        const inv = inventoryRef.current;
+                        const hist = productHistoryRef.current;
+                        const invItem = Array.isArray(inv) ? inv.find(i => String(i.name).trim() === cleanProd) : null;
                         let unitPrice = 0; 
-                        const invItem = Array.isArray(inventory) ? inventory.find(i => i.name === o.product) : null;
                         if (invItem) unitPrice = Number(invItem.price);
-                        else unitPrice = productHistory[o.product] || (o.quantity > 0 ? o.price/o.quantity : 0);
+                        else unitPrice = hist[cleanProd] || (o.quantity > 0 ? o.price/o.quantity : 0);
                         const validQty = (newQtyVal === '' || isNaN(parseInt(newQtyVal))) ? '' : parseInt(newQtyVal);
                         return { ...o, quantity: validQty, price: unitPrice * (Number(validQty) || 0), isUnmodified: false }; 
                     } 
                     return o; 
                 })); 
-            }, [inventory, productHistory, setOrders]);
+            }, [setOrders]);
 
             const handleOrderCancel = useCallback((id) => setOrders(prev => prev.map(o => o.id === id ? { ...o, isCancelled: !o.isCancelled } : o)), [setOrders]);
             const handleOrderDelete = useCallback((id) => openModal("주문 삭제하시겠습니까?", 'confirm', () => setOrders(prev => prev.filter(o => o.id !== id))), [openModal, setOrders]);
@@ -933,14 +958,19 @@
 
             const addOrderLogic = useCallback((nick, content, qty = 1, force = false, afterId = null) => {
                 const cNick = String(nick).replace(/@/g, '').trim();
-                const price = inventory.find(i => i.name === content)?.price || productHistory[content] || 0;
+                const cContent = String(content || '').trim();
+                const inv = inventoryRef.current;
+                const hist = productHistoryRef.current;
+                const invItem = Array.isArray(inv) ? inv.find(i => String(i.name).trim() === cContent) : null;
+                const price = invItem ? Number(invItem.price) : (hist[cContent] || 0);
+
                 setCheckedOrders(prev => { const n = new Set(prev); n.delete(cNick); return n; });
                 setSelectedNick(cNick);
                 setOrderSearch('');
-                const newOrder = { id: Date.now(), customer: cNick, product: content, quantity: qty, price: Number(price) * qty, deposit: 0, isCancelled: false, isUnmodified: true };
+                const newOrder = { id: Date.now(), customer: cNick, product: cContent, quantity: qty, price: Number(price) * qty, deposit: 0, isCancelled: false, isUnmodified: true };
                 setOrders(prev => {
-                    if (!afterId && !force && content !== '') {
-                        const existIdx = prev.findIndex(o => o.customer === cNick && o.product === content && !o.isCancelled);
+                    if (!afterId && !force && cContent !== '') {
+                        const existIdx = prev.findIndex(o => o.customer === cNick && o.product === cContent && !o.isCancelled);
                         if (existIdx !== -1) { 
                             const next = [...prev]; 
                             next[existIdx] = { ...next[existIdx], quantity: next[existIdx].quantity + qty, price: (next[existIdx].quantity + qty) * price }; 
@@ -953,7 +983,7 @@
                     }
                     return [newOrder, ...prev];
                 });
-            }, [inventory, productHistory, setCheckedOrders, setOrders]);
+            }, [setCheckedOrders, setOrders]);
 
             const handleLoadOrders = async () => {
                 openModal("불러오시겠습니까?", 'confirm', async () => {
@@ -1497,7 +1527,7 @@
 
             const handleDelete = (nickname, phone) => { openModal(`'${nickname}'님의 주소 정보를 삭제하시겠습니까?`, 'confirm', () => { setAddresses(prev => prev.filter(a => !(a.nickname === nickname && a.phone === phone))); }); };
 
-            const handleAddressSearch = (setter) => { try { new window.daum.Postcode({ oncomplete: function(data) { let fullAddr = data.address; if(data.addressType === 'R'){ if(data.bname !== '') fullAddr += data.bname; if(data.buildingName !== '') fullAddr += ', ' + data.buildingName; } setter(prev => ({ ...prev, zipcode: data.zonecode, address: fullAddr })); } }).open(); } catch (e) { openModal("주소 검색 오류", 'alert'); } };
+            const handleAddressSearch = (setter) => { try { new window.daum.Postcode({ oncomplete: function(data) { let fullAddr = data.address; let extraAddr = ''; if(data.addressType === 'R'){ if(data.bname !== '') extraAddr += data.bname; if(data.buildingName !== '') extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName); if(extraAddr !== '') fullAddr += ' (' + extraAddr + ')'; } setter(prev => ({ ...prev, zipcode: data.zonecode, address: fullAddr })); } }).open(); } catch (e) { openModal("주소 검색 오류", 'alert'); } };
             const startInlineEdit = (addr) => { setInlineEditNick(addr.nickname); setInlineEditData({...addr}); };
             const saveInlineEdit = () => { setAddresses(prev => prev.map(a => (a.nickname === inlineEditNick && a.phone === inlineEditData.phone) ? inlineEditData : a)); setInlineEditNick(null); };
             const handleAddSpecial = () => { if (!scInput.nickname) return openModal("닉네임을 입력해주세요.", 'alert'); setSpecialCustomers(prev => ({ ...prev, [scInput.nickname]: { type: scInput.type, memo: scInput.memo } })); setScInput({ nickname: '', type: 'vip', memo: '' }); };
@@ -1962,7 +1992,7 @@
 
             return (
                 <div className="flex flex-col h-screen overflow-hidden text-slate-700 dark:text-slate-200">
-                     <header className="h-12 bg-indigo-900 dark:bg-slate-950 text-white flex items-center justify-between px-4 shrink-0 shadow-md z-50">
+                    <header className="h-12 bg-indigo-900 dark:bg-slate-950 text-white flex items-center justify-between px-4 shrink-0 shadow-md z-50">
                         <div className="font-bold text-lg flex items-center gap-2 transition-transform hover:scale-105 duration-200 cursor-pointer"><Icon name="lightning" className="text-yellow-400" weight="fill"/> 깔로 주문서 PRO</div>
                         <div className="flex items-center gap-2">
                             <div className="flex bg-indigo-800 dark:bg-slate-900 rounded p-1 gap-1">
@@ -1975,7 +2005,7 @@
                         </div>
                     </header>
                     <Modal isOpen={modalConfig.isOpen} type={modalConfig.type} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={modalConfig.onCancel} initialValue={modalConfig.initialValue} />
-                     {isSettingsOpen && (
+                    {isSettingsOpen && (
                         <div className="absolute top-12 right-4 bg-white dark:bg-slate-800 shadow-xl border dark:border-slate-700 rounded-lg p-4 w-[420px] z-50 animate-pop max-h-[85vh] overflow-y-auto">
                             <h3 className="font-bold mb-4 flex items-center gap-2 border-b dark:border-slate-700 pb-2"><Icon name="gear" weight="fill" className="text-gray-500"/> 환경설정</h3>
                             <div className="mb-4 space-y-4">
@@ -2023,15 +2053,15 @@
                             <button onClick={()=>setIsSettingsOpen(false)} className="w-full bg-indigo-600 text-white rounded py-2 text-sm font-bold hover:bg-indigo-700 transition-colors">저장 및 닫기</button>
                         </div>
                     )}
-                     <main className="flex-1 overflow-hidden bg-gray-200 dark:bg-slate-950 p-2 relative">
+                    <main className="flex-1 overflow-hidden bg-gray-200 dark:bg-slate-950 p-2 relative">
                         {activeTab === 'live' && <LiveTab {...{ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addresses, setAddresses, cardPayments, setCardPayments, resetAllStatus, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, inventory, setInventory, quickMessages, customerSheetId }} />}
                         {activeTab === 'status' && <OrderStatusTab {...{ orders, setOrders, setProductHistory, productHistory, inventory, setInventory, openModal, shippingOverrides, quickShipping, addresses, addressMapping, cardPayments, specialCustomers }} />}
                         {activeTab === 'customer' && <CustomerTab {...{ addresses, setAddresses, googleScriptUrl, customerSheetId, openModal, specialCustomers, setSpecialCustomers, orders, addressMapping }} />}
                         {activeTab === 'cs' && <CSTab {...{ csData, setCsData, openModal }} />}
                         {activeTab === 'manage' && <OrderManagementTab {...{ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers }} />}
-                     </main>
+                    </main>
                 </div>
-             );
+            );
         }
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
