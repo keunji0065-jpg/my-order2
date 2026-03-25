@@ -404,7 +404,7 @@
                     </div>
                     <div className="p-0.5 space-y-0.5 bg-white dark:bg-slate-800">
                         {items.map((item, idx) => (
-                            <OrderItem key={item.id} item={item} nick={nick} nextItemId={items[idx + 1]?.id} isLast={idx === items.length - 1} stockLookup={stockLookup} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} addOrderLogic={addOrderLogic} />
+                            <OrderItem key={item.id} item={item} nick={nick} nextItemId={items[idx + 1]?.id} isLast={idx === items.length - 1} stockLookup={stockLookup} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={addOrderLogic} />
                         ))}
                     </div>
                 </div>
@@ -2089,7 +2089,7 @@
                            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                            html, body { margin: 0; padding: 0; width: 100mm; background: #fff; color: #000; font-family: 'NanumSquareNeo', sans-serif; }
                            /* 상단 잘림 방지를 위해 안쪽 여백(padding-top)을 8mm로 주어 안전 영역 확보 */
-                           .slip { width: 100mm; height: 149mm; padding: 8mm 4mm 4mm 4mm; page-break-after: always; position: relative; overflow: hidden; }
+                           .slip { width: 100mm; padding: 8mm 4mm 4mm 4mm; page-break-after: always; position: relative; }
                            .nick { font-size: 26px; font-weight: 900; text-align: center; margin-bottom: 12px; border: 2px solid #000; padding: 8px 5px; border-radius: 8px; box-shadow: 3px 3px 0 #000; background-color: #fff; }
                            table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
                            thead { display: table-header-group; }
