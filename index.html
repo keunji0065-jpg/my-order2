@@ -529,7 +529,7 @@
                 else if (info.type === 'black') badges.push(<span key="black" className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5 cursor-help shrink-0 font-bold leading-none" title={info.memo}><Icon name="prohibit" weight="fill" />진상</span>);
                 else if (info.type === 'manager') badges.push(<span key="manager" className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5 cursor-help shrink-0 font-bold leading-none" title={info.memo}><Icon name="shield-check" weight="fill" />관리자</span>);
 
-                if (info.purchaseCount > 0 && info.type !== 'vip' && info.type !== 'manager') badges.push(<span key="purchase" className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs flex items-center justify-center shrink-0 font-extrabold leading-none min-w-[20px]" title={`단골 누적 횟수: ${info.purchaseCount}회`}>{info.purchaseCount}</span>);
+                if (info.purchaseCount > 0) badges.push(<span key="purchase" className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs flex items-center justify-center shrink-0 font-extrabold leading-none min-w-[20px]" title={`구매 누적 횟수: ${info.purchaseCount}회`}>{info.purchaseCount}</span>);
                 if (info.noShowCount > 0) badges.push(<span key="noshow" className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5 shrink-0 font-bold leading-none" title={`노쇼 누적 횟수: ${info.noShowCount}회`}><Icon name="warning-circle" weight="fill" />노쇼 {info.noShowCount}</span>);
 
                 return badges.length > 0 ? <span className="inline-flex items-center gap-1 ml-1">{badges}</span> : null;
@@ -969,10 +969,17 @@
             const handleCloseAllAndRecord = () => {
                 if (orders.length === 0) return openModal("현재 마감할 주문 내역이 없습니다.", "alert");
                 
-                openModal("현재 화면의 모든 주문을 마감 처리하시겠습니까?\n\n✅ 완납/카드: 단골(구매횟수 +1)\n❌ 미입금: 노쇼(노쇼횟수 +1)\n\n※ 등록 완료 후 화면이 초기화됩니다.", "confirm", () => {
+                openModal("전체 주문을 마감 처리하시겠습니까?\n\n✅ 완납/카드: 구매횟수 +1\n❌ 미입금: 노쇼(노쇼횟수 +1)\n\n※ 등록 완료 후 주문 화면이 초기화됩니다.", "confirm", () => {
                     setSpecialCustomers(prev => {
                         const next = { ...prev };
-                        filteredGroupedOrders.forEach(([nick, items]) => {
+                        const allGroups = {};
+                        // 화면 필터링 여부와 상관없이 전체 주문(orders)을 기준으로 집계합니다.
+                        orders.forEach(o => {
+                            if (!allGroups[o.customer]) allGroups[o.customer] = [];
+                            allGroups[o.customer].push(o);
+                        });
+
+                        Object.entries(allGroups).forEach(([nick, items]) => {
                             const ship = getCalculatedShipping(nick);
                             const activeItems = items.filter(i => !i.isCancelled);
                             if (activeItems.length === 0) return;
@@ -990,13 +997,12 @@
                             }
                             
                             if (isPaid) {
-                                if (next[nick].type !== 'vip' && next[nick].type !== 'manager') {
-                                    next[nick].purchaseCount = (next[nick].purchaseCount || 0) + 1;
-                                }
+                                // VIP 포함 모든 결제 완료자의 구매 횟수를 증가시킵니다.
+                                next[nick].purchaseCount = (next[nick].purchaseCount || 0) + 1;
                             } else {
                                 next[nick].noShowCount = (next[nick].noShowCount || 0) + 1;
                                 if (next[nick].type !== 'vip' && next[nick].type !== 'manager') {
-                                    next[nick].type = 'black';
+                                    next[nick].type = 'black'; // 일반 고객일 경우에만 진상(black) 자동 처리
                                 }
                                 const todayStr = new Date().toLocaleDateString().slice(2,-1).replace(/ /g, '');
                                 next[nick].memo = next[nick].memo ? next[nick].memo + ` (${todayStr} 자동노쇼)` : `(${todayStr} 자동노쇼)`;
@@ -1906,7 +1912,7 @@
                                                 <span className="font-bold text-sm text-gray-800 dark:text-slate-200 truncate">{nick}</span>
                                             </div>
                                             <div className="text-xs text-gray-500 dark:text-slate-400 truncate flex gap-2">
-                                                {info.purchaseCount > 0 && info.type !== 'vip' && info.type !== 'manager' && <span className="text-blue-600 font-bold">단골 {info.purchaseCount}회</span>}
+                                                {info.purchaseCount > 0 && <span className="text-blue-600 font-bold">구매 {info.purchaseCount}회</span>}
                                                 {info.noShowCount > 0 && <span className="text-red-600 font-bold">노쇼 {info.noShowCount}회</span>}
                                                 <span>{info.memo}</span>
                                             </div>
