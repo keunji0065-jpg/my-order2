@@ -178,7 +178,7 @@
             );
         };
 
-        const QuickAddressModal = ({ isOpen, nick, onClose, onSubmit }) => {
+        const QuickAddressModal = ({ isOpen, nick, onClose, onSubmit, openModal }) => {
             const [formData, setFormData] = useState({ realname: '', phone: '', zipcode: '', address: '', detailAddress: '', memo: '' });
             const detailRef = useRef(null);
 
@@ -202,16 +202,18 @@
                         }
                     }).open();
                 } catch (e) {
-                    alert("주소 검색 오류가 발생했습니다.");
+                    if (openModal) openModal("주소 검색 오류가 발생했습니다.", "alert");
                 }
             };
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                if (!formData.realname.trim()) return alert("수령인 이름을 입력해주세요.");
+                const notify = (msg) => openModal ? openModal(msg, "alert") : alert(msg);
+                
+                if (!formData.realname.trim()) return notify("수령인 이름을 입력해주세요.");
                 const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
-                if (!cleanPhone) return alert("유효한 연락처(숫자)를 입력해주세요.");
-                if (!formData.address.trim()) return alert("배송 주소를 검색해서 입력해주세요.");
+                if (!cleanPhone) return notify("유효한 연락처(숫자)를 입력해주세요.");
+                if (!formData.address.trim()) return notify("배송 주소를 검색해서 입력해주세요.");
                 
                 const zipStr = formData.zipcode ? `(${formData.zipcode}) ` : '';
                 const finalAddress = `${zipStr}${formData.address} ${formData.detailAddress}`.trim();
@@ -1179,7 +1181,7 @@
                 <div className="flex h-full gap-2 p-2 overflow-hidden bg-gray-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                     <datalist id="product-list">{Array.isArray(inventory) && inventory.map(i => <option key={i.id} value={i.name} />)}</datalist>
                     
-                    <QuickAddressModal isOpen={quickAddrModal.isOpen} nick={quickAddrModal.nick} onClose={() => setQuickAddrModal({ isOpen: false, nick: '' })} onSubmit={handleQuickAddressSubmit} />
+                    <QuickAddressModal isOpen={quickAddrModal.isOpen} nick={quickAddrModal.nick} onClose={() => setQuickAddrModal({ isOpen: false, nick: '' })} onSubmit={handleQuickAddressSubmit} openModal={openModal} />
 
                     <div className="w-[30%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-sm overflow-hidden">
                         <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 border-b dark:border-slate-700 grid grid-cols-4 gap-1">
@@ -1980,7 +1982,7 @@
             ); 
         };
 
-        const OrderManagementTab = ({ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers }) => {
+        const OrderManagementTab = ({ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers, openModal }) => {
             const findAddress = (nick) => {
                 if (addressMapping[nick]) return addresses.find(a => normalizeString(a.nickname) === normalizeString(addressMapping[nick]));
                 return addresses.find(a => normalizeString(a.nickname) === normalizeString(nick));
@@ -2061,7 +2063,7 @@
                         });
                     }
                 });
-                if (data.length === 0) { alert("미입금 내역이 없습니다."); return; }
+                if (data.length === 0) { openModal("미입금 내역이 없습니다.", "alert"); return; }
                 data.sort((a, b) => String(a['닉네임'] || '').localeCompare(String(b['닉네임'] || '')));
                 downloadExcel(data, '미입금자_상세리스트');
            };
@@ -2073,7 +2075,7 @@
                    if (!groups[o.customer]) groups[o.customer] = [];
                    groups[o.customer].push(o);
                });
-               if (Object.keys(groups).length === 0) { alert("인쇄할 주문 내역이 없습니다."); return; }
+               if (Object.keys(groups).length === 0) { openModal("인쇄할 주문 내역이 없습니다.", "alert"); return; }
                
                let printContent = `
                    <!DOCTYPE html>
@@ -2100,7 +2102,14 @@
                    </head>
                    <body>`;
 
-               Object.entries(groups).forEach(([nick, items]) => {
+               // 닉네임 기준 오름차순(가나다순) 정렬
+               const sortedCustomers = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko'));
+
+               sortedCustomers.forEach(nick => {
+                   const items = groups[nick];
+                   // 한 영수증 안에서도 상품명 오름차순 정렬
+                   items.sort((a, b) => String(a.product).localeCompare(String(b.product), 'ko'));
+
                    let totalQty = 0;
                    let itemsHtml = items.map(item => {
                        const q = Number(item.quantity) || 0;
@@ -2116,7 +2125,7 @@
                printContent += '<script>window.onload=function(){setTimeout(function(){window.print();},500);}</' + 'script></body></html>';
                const printWin = window.open('', '_blank', 'width=450,height=650');
                if (printWin) { printWin.document.open(); printWin.document.write(printContent); printWin.document.close(); } 
-               else { alert("팝업 차단이 설정되어 있습니다. 브라우저 설정에서 팝업을 허용해 주세요."); }
+               else { openModal("팝업 차단이 설정되어 있습니다. 브라우저 설정에서 팝업을 허용해 주세요.", "alert"); }
            };
 
            const fileInputRef = useRef(null); 
@@ -2140,7 +2149,7 @@
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700 text-center ring-2 ring-indigo-100 dark:ring-indigo-900/30">
                             <h2 className="text-lg font-bold mb-2 text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-2"><Icon name="printer" weight="fill"/> 포장 리스트 인쇄</h2>
-                            <p className="text-gray-500 dark:text-slate-400 mb-4 text-xs">감열지 10x15cm 세로 양식 (닉네임/상품/금액)</p>
+                            <p className="text-gray-500 dark:text-slate-400 mb-4 text-xs">감열지 10x15cm 세로 양식 (닉네임 오름차순 정렬)</p>
                             <button onClick={handlePrintPackingList} className="w-full bg-indigo-500 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2"><Icon name="printer" weight="bold"/> 10x15cm 인쇄</button>
                         </div>
                         <div className="col-span-2 bg-indigo-50 dark:bg-slate-800 p-6 rounded-xl border border-indigo-200 dark:border-indigo-900/50 flex flex-row items-center justify-between">
@@ -2235,7 +2244,30 @@
             };
 
             const handleExportBackup = () => { const backupData = { orders, productHistory, shippingOverrides, cardPayments, matchedDeposits: [...matchedDeposits], clickedChats: [...clickedChats], addressMapping, specialCustomers, inventory, templateConfig, depositorNames, keywords: [...keywords] }; downloadExcel([backupData], "kallo_backup"); };
-            const handleImportBackup = (e) => { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = (evt) => { try { const d = JSON.parse(evt.target.result); if(d.orders) setOrders(d.orders); if(d.addresses) setAddresses(d.addresses); if(d.inventory) setInventory(d.inventory); if(d.specialCustomers) setSpecialCustomers(d.specialCustomers); if(d.shippingOverrides) setShippingOverrides(d.shippingOverrides); if(d.cardPayments) setCardPayments(d.cardPayments); if(d.depositorNames) setDepositorNames(d.depositorNames); if(d.addressMapping) setAddressMapping(d.addressMapping); if(d.quickMessages) setQuickMessages(d.quickMessages); if(d.templateConfig) setTemplateConfig(d.templateConfig); alert("복구 성공"); } catch(err) { alert("파일 오류"); } }; r.readAsText(f); };
+            const handleImportBackup = (e) => { 
+                const f = e.target.files[0]; 
+                if(!f) return; 
+                const r = new FileReader(); 
+                r.onload = (evt) => { 
+                    try { 
+                        const d = JSON.parse(evt.target.result); 
+                        if(d.orders) setOrders(d.orders); 
+                        if(d.addresses) setAddresses(d.addresses); 
+                        if(d.inventory) setInventory(d.inventory); 
+                        if(d.specialCustomers) setSpecialCustomers(d.specialCustomers); 
+                        if(d.shippingOverrides) setShippingOverrides(d.shippingOverrides); 
+                        if(d.cardPayments) setCardPayments(d.cardPayments); 
+                        if(d.depositorNames) setDepositorNames(d.depositorNames); 
+                        if(d.addressMapping) setAddressMapping(d.addressMapping); 
+                        if(d.quickMessages) setQuickMessages(d.quickMessages); 
+                        if(d.templateConfig) setTemplateConfig(d.templateConfig); 
+                        openModal("백업 파일이 성공적으로 복구되었습니다.", "alert"); 
+                    } catch(err) { 
+                        openModal("파일 오류: 올바른 백업 파일이 아닙니다.", "alert"); 
+                    } 
+                }; 
+                r.readAsText(f); 
+            };
 
             useEffect(() => {
                 if (isDarkMode) document.documentElement.classList.add('dark');
@@ -2317,7 +2349,7 @@
                         {activeTab === 'status' && <OrderStatusTab {...{ orders, setOrders, setProductHistory, productHistory, inventory, setInventory, openModal, shippingOverrides, quickShipping, addresses, addressMapping, cardPayments, specialCustomers }} />}
                         {activeTab === 'customer' && <CustomerTab {...{ addresses, setAddresses, googleScriptUrl, customerSheetId, openModal, specialCustomers, setSpecialCustomers, orders, addressMapping }} />}
                         {activeTab === 'cs' && <CSTab {...{ csData, setCsData, openModal }} />}
-                        {activeTab === 'manage' && <OrderManagementTab {...{ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers }} />}
+                        {activeTab === 'manage' && <OrderManagementTab {...{ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers, openModal }} />}
                     </main>
                 </div>
             );
