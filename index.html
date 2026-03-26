@@ -404,7 +404,7 @@
                     </div>
                     <div className="p-0.5 space-y-0.5 bg-white dark:bg-slate-800">
                         {items.map((item, idx) => (
-                            <OrderItem key={item.id} item={item} nick={nick} nextItemId={items[idx + 1]?.id} isLast={idx === items.length - 1} stockLookup={stockLookup} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={addOrderLogic} />
+                            <OrderItem key={item.id} item={item} nick={nick} nextItemId={items[idx + 1]?.id} isLast={idx === items.length - 1} stockLookup={stockLookup} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} addOrderLogic={addOrderLogic} />
                         ))}
                     </div>
                 </div>
@@ -797,11 +797,12 @@
                         if (o.isCancelled) return;
                         if (!customerBalances[o.customer]) {
                             const currentShipping = getCalculatedShipping(o.customer);
-                            customerBalances[o.customer] = { productTotal: 0, depositTotal: 0, shipping: currentShipping, activeItemsCount: 0 };
+                            customerBalances[o.customer] = { productTotal: 0, depositTotal: 0, shipping: currentShipping, activeItemsCount: 0, isCloud: false };
                         }
                         customerBalances[o.customer].productTotal += Number(o.price);
                         customerBalances[o.customer].depositTotal += (o.deposit || 0);
                         customerBalances[o.customer].activeItemsCount += 1;
+                        if (o.loadedFromCloud) customerBalances[o.customer].isCloud = true;
                     });
                     Object.keys(customerBalances).forEach(nick => {
                         const cb = customerBalances[nick];
@@ -828,25 +829,37 @@
                         exactMatches = [...new Set(exactMatches)];
                         let matchedCustomer = null;
                         const depositAmount = Number(deposit.amount);
-                        if (exactMatches.length === 1) { matchedCustomer = exactMatches[0]; } 
+                        
+                        if (exactMatches.length === 1) { 
+                            matchedCustomer = exactMatches[0]; 
+                        } 
                         else if (exactMatches.length > 1) {
                             const amountMatches = exactMatches.filter(nick => customerBalances[nick].balance === depositAmount);
                             if (amountMatches.length === 1) matchedCustomer = amountMatches[0];
                         }
                         
                         if (matchedCustomer) {
-                            let applied = false;
-                            updatedOrders = updatedOrders.map(o => {
-                                if (o.customer === matchedCustomer && !applied) {
-                                    applied = true;
-                                    return { ...o, deposit: (o.deposit || 0) + depositAmount };
-                                }
-                                return o;
-                            });
-                            customerBalances[matchedCustomer].depositTotal += depositAmount;
-                            customerBalances[matchedCustomer].balance -= depositAmount;
-                            newMatchedIds.add(deposit.id);
-                            hasChanges = true;
+                            const cb = customerBalances[matchedCustomer];
+                            
+                            // 방어 로직: 클라우드에서 불러온 주문자이며, 잔액이 0 이하(완납)라면 이중 매칭(과납) 방지!
+                            if (cb.isCloud && cb.balance <= 0) {
+                                newMatchedIds.add(deposit.id);
+                                hasChanges = true;
+                            } else {
+                                let applied = false;
+                                updatedOrders = updatedOrders.map(o => {
+                                    if (o.customer === matchedCustomer && !applied) {
+                                        applied = true;
+                                        return { ...o, deposit: (o.deposit || 0) + depositAmount, loadedFromCloud: false }; 
+                                    }
+                                    return o;
+                                });
+                                cb.depositTotal += depositAmount;
+                                cb.balance -= depositAmount;
+                                cb.isCloud = false;
+                                newMatchedIds.add(deposit.id);
+                                hasChanges = true;
+                            }
                         }
                     });
                     if (hasChanges) { setOrders(updatedOrders); setMatchedDeposits(newMatchedIds); }
@@ -973,7 +986,6 @@
                     setSpecialCustomers(prev => {
                         const next = { ...prev };
                         const allGroups = {};
-                        // 화면 필터링 여부와 상관없이 전체 주문(orders)을 기준으로 집계합니다.
                         orders.forEach(o => {
                             if (!allGroups[o.customer]) allGroups[o.customer] = [];
                             allGroups[o.customer].push(o);
@@ -997,12 +1009,11 @@
                             }
                             
                             if (isPaid) {
-                                // VIP 포함 모든 결제 완료자의 구매 횟수를 증가시킵니다.
                                 next[nick].purchaseCount = (next[nick].purchaseCount || 0) + 1;
                             } else {
                                 next[nick].noShowCount = (next[nick].noShowCount || 0) + 1;
                                 if (next[nick].type !== 'vip' && next[nick].type !== 'manager') {
-                                    next[nick].type = 'black'; // 일반 고객일 경우에만 진상(black) 자동 처리
+                                    next[nick].type = 'black'; 
                                 }
                                 const todayStr = new Date().toLocaleDateString().slice(2,-1).replace(/ /g, '');
                                 next[nick].memo = next[nick].memo ? next[nick].memo + ` (${todayStr} 자동노쇼)` : `(${todayStr} 자동노쇼)`;
@@ -1099,7 +1110,7 @@
             }, [setCheckedOrders, setOrders]);
 
             const handleLoadOrders = async () => {
-                openModal("불러오시겠습니까?", 'confirm', async () => {
+                openModal("클라우드에서 불러오시겠습니까?\n(현재 화면의 주문 내역은 덮어씌워집니다)", 'confirm', async () => {
                     if (!googleScriptUrl) return;
                     try {
                         const actualSheetId = getCleanSheetId(customerSheetId);
@@ -1117,10 +1128,12 @@
                                 price: parseNum(o.price || o['가격'] || o['단가'] || o['금액']),
                                 deposit: parseNum(o.deposit || o['입금액'] || o['입금']),
                                 isCancelled: false,
-                                isUnmodified: true
+                                isUnmodified: true,
+                                loadedFromCloud: true // 스마트 매칭용 표식 달기
                             }));
+                            
                             setOrders(loadedOrders);
-                            openModal("로드 완료", 'alert');
+                            openModal("성공적으로 불러왔습니다!\n(이중 매칭 방지를 위해 기존 입금 리스트가 스마트하게 정리됩니다.)", 'alert');
                         }
                     } catch(e) { openModal("로드 실패", 'alert'); }
                 });
@@ -2232,9 +2245,9 @@
                                 const data = await res.json();
                                 if (data.error) { setTimeout(() => openModal(`서버 접속 실패: ${data.error}\n(환경설정에서 시트 ID를 다시 확인해주세요!)`, 'alert'), 500); return; }
                                 if (data && data.orders && data.orders.length > 0) {
-                                    const loadedOrders = data.orders.map((o, idx) => ({ id: Date.now() + idx, customer: o.nickname || o.customer, product: o.product, quantity: Number(o.qty || o.quantity), price: Number(o.price), deposit: Number(o.deposit), isCancelled: false, isUnmodified: true }));
+                                    const loadedOrders = data.orders.map((o, idx) => ({ id: Date.now() + idx, customer: o.nickname || o.customer, product: o.product, quantity: Number(o.qty || o.quantity), price: Number(o.price), deposit: Number(o.deposit), isCancelled: false, isUnmodified: true, loadedFromCloud: true }));
                                     setOrders(loadedOrders);
-                                    setTimeout(() => openModal(`${loadedOrders.length}건의 주문을 성공적으로 복구했습니다!`, 'alert'), 500);
+                                    setTimeout(() => openModal(`${loadedOrders.length}건의 주문을 성공적으로 복구했습니다!\n(이중 매칭을 방지하기 위해 스마트 입금 정리가 적용됩니다.)`, 'alert'), 500);
                                 } else { setTimeout(() => openModal("클라우드 시트에 저장된 데이터가 없습니다.", 'alert'), 500); }
                             } catch(e) { setTimeout(() => openModal("불러오기 실패. 설정의 URL을 확인해주세요.", 'alert'), 500); }
                         });
