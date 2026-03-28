@@ -469,6 +469,15 @@
             });
             useEffect(() => { localStorage.setItem('ignoredAutoMatch', JSON.stringify([...ignoredAutoMatch])); }, [ignoredAutoMatch]);
 
+            const handleRematchAll = useCallback(() => {
+                openModal("모든 입금 매칭을 초기화하고 처음부터 다시 자동 매칭하시겠습니까?\n\n(수동으로 매칭/해제했던 내역과 현재 주문서에 강제로 입력된 입금액이 모두 0으로 초기화된 후, 현재 입금 리스트를 바탕으로 재계산됩니다.)", 'confirm', () => {
+                    setOrders(prev => prev.map(o => ({ ...o, deposit: 0, loadedFromCloud: false })));
+                    setMatchedDeposits(new Set());
+                    setIgnoredAutoMatch(new Set());
+                    openModal("입금 매칭이 초기화되었습니다!\n잠시 후 순차적으로 자동 재매칭됩니다.", 'alert');
+                });
+            }, [openModal, setOrders, setMatchedDeposits]);
+
             const inventoryRef = useRef(inventory);
             const productHistoryRef = useRef(productHistory);
             useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
@@ -1212,6 +1221,21 @@
             const handleChatClick = (chat) => { setClickedChats(prev => new Set(prev).add(chat.id)); addOrderLogic(chat.nickname, String(chat.content || ''), 1, true); };
             const handleAddManualDeposit = (e) => { e.preventDefault(); if (!newDepositName.trim() || !newDepositAmount) return openModal("입금자명/금액 필수", 'alert'); const newDep = { id: `manual_${Date.now()}`, name: newDepositName, amount: newDepositAmount, source: 'manual' }; setManualDeposits(prev => [newDep, ...prev]); setNewDepositName(''); setNewDepositAmount(''); };
 
+            const visibleDeposits = useMemo(() => {
+                // 검색 중일 때는 숨김 없이 모든 내역을 보여줌
+                if (depositSearch) return filteredDeposits;
+                
+                const unmatched = [];
+                const matched = [];
+                filteredDeposits.forEach(d => {
+                    if (matchedDeposits?.has(d.id)) matched.push(d);
+                    else unmatched.push(d);
+                });
+                
+                // 미매칭은 100% 전부 보여주고, 매칭 완료된 것만 최근 1000개로 제한
+                return [...unmatched, ...matched.slice(0, 1000)];
+            }, [filteredDeposits, depositSearch, matchedDeposits]);
+
             return (
                 <div className="flex h-full gap-2 p-2 overflow-hidden bg-gray-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                     <datalist id="product-list">{Array.isArray(inventory) && inventory.map(i => <option key={i.id} value={i.name} />)}</datalist>
@@ -1304,7 +1328,13 @@
 
                     <div className="w-[20%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm">
                         <div className="p-2 bg-yellow-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2">
-                            <div className="font-bold text-yellow-700 dark:text-yellow-300 flex items-center justify-between"><span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span><span className="text-xs text-gray-500 dark:text-slate-400">{filteredDeposits.length}건</span></div>
+                            <div className="font-bold text-yellow-700 dark:text-yellow-300 flex items-center justify-between">
+                                <span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 dark:text-slate-400">{filteredDeposits.length}건</span>
+                                    <button onClick={handleRematchAll} className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5"><Icon name="arrows-clockwise" weight="bold"/> 재매칭</button>
+                                </div>
+                            </div>
                             <form onSubmit={handleAddManualDeposit} className="flex flex-col gap-1 bg-white dark:bg-slate-800 p-1 rounded border border-yellow-200 dark:border-slate-600">
                                 <div className="flex gap-1"><input type="text" value={newDepositName} onChange={(e)=>setNewDepositName(e.target.value)} placeholder="입금자명" className="w-[60%] text-xs border dark:border-slate-600 rounded px-1 py-1.5 bg-transparent outline-none focus:ring-1 focus:ring-yellow-400" /><input type="text" value={newDepositAmount ? Number(newDepositAmount).toLocaleString() : ''} onChange={(e)=>{ const val = e.target.value.replace(/,/g, ''); if(!isNaN(val)) setNewDepositAmount(val); }} placeholder="금액" className="w-[40%] text-xs border dark:border-slate-600 rounded px-1 py-1.5 bg-transparent text-right font-bold outline-none focus:ring-1 focus:ring-yellow-400" /></div>
                                 <button type="submit" className="bg-yellow-500 text-white text-xs font-bold py-1.5 rounded hover:bg-yellow-600 transition-colors shadow-sm">수동 입금 추가</button>
@@ -1313,7 +1343,7 @@
                             {selectedNick && <div className="text-[11px] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 p-1 rounded text-center font-bold animate-pulse border border-blue-200 dark:border-blue-800">👇 '{selectedNick}' 님께 매칭 대기 중</div>}
                         </div>
                         <div className="flex-1 overflow-y-auto p-1.5 space-y-1 bg-gray-100 dark:bg-slate-900">
-                            {filteredDeposits.slice(0, 150).map(d => {
+                            {visibleDeposits.map(d => {
                                 const isUsed = matchedDeposits?.has(d.id);
                                 return (
                                     <div key={d.id} onClick={() => handleDepositClick(d)} className={`relative flex items-center justify-between py-1.5 px-2 border rounded cursor-pointer transition-all group ${isUsed ? 'opacity-80 bg-gray-100 dark:bg-slate-800/80 border-transparent' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'}`}>
@@ -1333,9 +1363,9 @@
                                     </div>
                                 );
                             })}
-                            {filteredDeposits.length > 150 && (
+                            {filteredDeposits.length > visibleDeposits.length && !depositSearch && (
                                 <div className="text-center text-[10px] text-gray-500 py-3 font-bold border border-dashed border-gray-300 dark:border-slate-700 rounded bg-gray-50 dark:bg-slate-800 mt-2">
-                                    렉 방지를 위해 최근 150건만 표시됩니다.<br/>(숨겨진 내역은 검색으로 찾을 수 있습니다)
+                                    렉 방지를 위해 <b>매칭 완료된 내역</b>은 최근 1000건만 표시됩니다.<br/>(숨겨진 내역은 위 검색창으로 찾을 수 있습니다)
                                 </div>
                             )}
                         </div>
