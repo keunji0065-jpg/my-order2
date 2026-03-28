@@ -593,29 +593,32 @@
                 let result = [...allDeposits]; 
                 result = result.filter(d => !deletedDepositIds.has(d.id)); 
                 if (depositSearch) result = result.filter(d => (d.name||'').includes(depositSearch) || String(d.amount).includes(depositSearch)); 
+                
+                let targetNick = '', targetReal = '', addressRealName = '';
+                if (selectedNick) { 
+                    targetNick = cleanForMatch(selectedNick); 
+                    targetReal = depositorNames[selectedNick] ? cleanForMatch(depositorNames[selectedNick]) : ''; 
+                    const addrRes = findAddress(selectedNick);
+                    addressRealName = addrRes && addrRes.data ? cleanForMatch(addrRes.data.realname) : '';
+                }
+
                 result.sort((a, b) => { 
                     const aUsed = matchedDeposits?.has(a.id) || false; 
                     const bUsed = matchedDeposits?.has(b.id) || false; 
                     if (aUsed && !bUsed) return 1; 
                     if (!aUsed && bUsed) return -1; 
                     if (selectedNick) { 
-                        const targetNick = cleanForMatch(selectedNick); 
-                        const depositorName = depositorNames[selectedNick] && cleanForMatch(depositorNames[selectedNick]); 
-                        const targetReal = depositorName || ''; 
-                        const addrRes = findAddress(selectedNick);
-                        const addressRealName = addrRes && addrRes.data ? cleanForMatch(addrRes.data.realname) : '';
-
                         const nameA = cleanForMatch(a.name); 
                         const nameB = cleanForMatch(b.name); 
-                        const getScore = (val, target) => { 
-                            if (!target || !val) return 10; 
-                            if (val === target) return 0; 
-                            if (val.startsWith(target) || target.startsWith(val)) return 1; 
-                            if (val.includes(target) || target.includes(val)) return 2; 
+                        const getScore = (val) => { 
+                            if (!val) return 10; 
+                            if (val === targetNick || val === targetReal || val === addressRealName) return 0; 
+                            if ((targetNick && val.startsWith(targetNick)) || (targetReal && val.startsWith(targetReal)) || (addressRealName && val.startsWith(addressRealName))) return 1; 
+                            if ((targetNick && val.includes(targetNick)) || (targetReal && val.includes(targetReal)) || (addressRealName && val.includes(addressRealName))) return 2; 
                             return 10; 
                         }; 
-                        const scoreA = Math.min(getScore(nameA, targetNick), getScore(nameA, targetReal), getScore(nameA, addressRealName)); 
-                        const scoreB = Math.min(getScore(nameB, targetNick), getScore(nameB, targetReal), getScore(nameB, addressRealName)); 
+                        const scoreA = getScore(nameA); 
+                        const scoreB = getScore(nameB); 
                         if (scoreA !== scoreB) return scoreA - scoreB; 
                     } 
                     return 0; 
@@ -810,6 +813,15 @@
                         cb.balance = cb.grandTotal - cb.depositTotal;
                     });
 
+                    const precalcCustomerMatches = {};
+                    Object.keys(customerBalances).forEach(nick => {
+                        const savedRealName = depositorNames[nick] ? cleanForMatch(depositorNames[nick]) : '';
+                        const addrRes = findAddress(nick);
+                        const addressRealName = addrRes && addrRes.data ? cleanForMatch(addrRes.data.realname) : '';
+                        const nickClean = cleanForMatch(nick);
+                        precalcCustomerMatches[nick] = { savedRealName, addressRealName, nickClean };
+                    });
+
                     allDeposits.forEach(deposit => {
                         if (newMatchedIds.has(deposit.id) || deletedDepositIds.has(deposit.id) || ignoredAutoMatch.has(deposit.id)) return;
                         const depositNameClean = cleanForMatch(deposit.name);
@@ -817,11 +829,10 @@
                         
                         let exactMatches = [];
                         Object.keys(customerBalances).forEach(nick => {
-                            const savedRealName = depositorNames[nick] ? cleanForMatch(depositorNames[nick]) : '';
-                            const addrRes = findAddress(nick);
-                            const addressRealName = addrRes && addrRes.data ? cleanForMatch(addrRes.data.realname) : '';
-                            const nickClean = cleanForMatch(nick);
-                            if ((savedRealName && savedRealName === depositNameClean) || (addressRealName && addressRealName === depositNameClean) || (nickClean && nickClean === depositNameClean)) {
+                            const matchData = precalcCustomerMatches[nick];
+                            if ((matchData.savedRealName && matchData.savedRealName === depositNameClean) || 
+                                (matchData.addressRealName && matchData.addressRealName === depositNameClean) || 
+                                (matchData.nickClean && matchData.nickClean === depositNameClean)) {
                                 exactMatches.push(nick);
                             }
                         });
@@ -841,7 +852,6 @@
                         if (matchedCustomer) {
                             const cb = customerBalances[matchedCustomer];
                             
-                            // 방어 로직: 클라우드에서 불러온 주문자이며, 잔액이 0 이하(완납)라면 이중 매칭(과납) 방지!
                             if (cb.isCloud && cb.balance <= 0) {
                                 newMatchedIds.add(deposit.id);
                                 hasChanges = true;
@@ -878,7 +888,12 @@
                 }); 
                 try { 
                     const actualSheetId = getCleanSheetId(customerSheetId);
-                    await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify({ action: 'save_orders', sheet_id: actualSheetId, data: saveList }), mode: 'no-cors' }); 
+                    await fetch(googleScriptUrl, { 
+                        method: 'POST', 
+                        body: JSON.stringify({ action: 'save_orders', sheet_id: actualSheetId, data: saveList }), 
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    }); 
                 } catch(e) { } finally { setIsSaving(false); } 
             };
             
@@ -986,6 +1001,7 @@
                     setSpecialCustomers(prev => {
                         const next = { ...prev };
                         const allGroups = {};
+                        // 화면 필터링 여부와 상관없이 전체 주문(orders)을 기준으로 집계합니다.
                         orders.forEach(o => {
                             if (!allGroups[o.customer]) allGroups[o.customer] = [];
                             allGroups[o.customer].push(o);
@@ -1297,7 +1313,7 @@
                             {selectedNick && <div className="text-[11px] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 p-1 rounded text-center font-bold animate-pulse border border-blue-200 dark:border-blue-800">👇 '{selectedNick}' 님께 매칭 대기 중</div>}
                         </div>
                         <div className="flex-1 overflow-y-auto p-1.5 space-y-1 bg-gray-100 dark:bg-slate-900">
-                            {filteredDeposits.map(d => {
+                            {filteredDeposits.slice(0, 150).map(d => {
                                 const isUsed = matchedDeposits?.has(d.id);
                                 return (
                                     <div key={d.id} onClick={() => handleDepositClick(d)} className={`relative flex items-center justify-between py-1.5 px-2 border rounded cursor-pointer transition-all group ${isUsed ? 'opacity-80 bg-gray-100 dark:bg-slate-800/80 border-transparent' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'}`}>
@@ -1317,6 +1333,11 @@
                                     </div>
                                 );
                             })}
+                            {filteredDeposits.length > 150 && (
+                                <div className="text-center text-[10px] text-gray-500 py-3 font-bold border border-dashed border-gray-300 dark:border-slate-700 rounded bg-gray-50 dark:bg-slate-800 mt-2">
+                                    렉 방지를 위해 최근 150건만 표시됩니다.<br/>(숨겨진 내역은 검색으로 찾을 수 있습니다)
+                                </div>
+                            )}
                         </div>
                         <div className="p-2 bg-white dark:bg-slate-800 text-center font-bold text-xs border-t dark:border-slate-700 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">총: <span className="text-green-600 dark:text-green-400 text-sm">{totalDepositAmount.toLocaleString()}</span>원</div>
                     </div>
@@ -1712,8 +1733,26 @@
                 openModal("단골/노쇼 명단을 구글 시트에 백업하시겠습니까?\n\n(시트 이름: '단골_노쇼관리')", 'confirm', async () => {
                     if (!googleScriptUrl) return;
                     const actualSheetId = getCleanSheetId(customerSheetId);
-                    await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify({ action: 'save_special_customers', data: specialCustomers, sheet_id: actualSheetId }), mode: 'no-cors' });
-                    openModal("시트 백업이 완료되었습니다!", 'alert');
+                    
+                    const dataArray = Object.entries(specialCustomers).map(([nick, info]) => ({
+                        nickname: nick,
+                        type: info.type || 'normal',
+                        purchaseCount: Number(info.purchaseCount) || 0,
+                        noShowCount: Number(info.noShowCount) || 0,
+                        memo: info.memo || ''
+                    }));
+
+                    try {
+                        await fetch(googleScriptUrl, { 
+                            method: 'POST', 
+                            body: JSON.stringify({ action: 'save_special_customers', data: dataArray, sheet_id: actualSheetId }), 
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                        });
+                        openModal("시트 백업이 완료되었습니다!", 'alert');
+                    } catch (e) {
+                        openModal("백업 중 오류가 발생했습니다.", 'alert');
+                    }
                 });
             };
             
@@ -1721,13 +1760,32 @@
                 openModal("구글 시트에서 단골/노쇼 명단을 불러오시겠습니까?\n\n(현재 로컬에 저장된 명단은 덮어씌워집니다)", 'confirm', async () => {
                     if (!googleScriptUrl) return;
                     const actualSheetId = getCleanSheetId(customerSheetId);
-                    const res = await fetch(`${googleScriptUrl}?action=get_special_customers&t=${Date.now()}&sheet_id=${actualSheetId}`);
-                    const data = await res.json();
-                    if (data && data.specialCustomers) {
-                        setSpecialCustomers(data.specialCustomers);
-                        openModal("명단을 성공적으로 불러왔습니다!", 'alert');
-                    } else {
-                        openModal("불러올 단골 명단이 없습니다.", 'alert');
+                    try {
+                        const res = await fetch(`${googleScriptUrl}?action=get_special_customers&t=${Date.now()}&sheet_id=${actualSheetId}`);
+                        const data = await res.json();
+                        if (data && data.specialCustomers) {
+                            let newSpecials = {};
+                            if (Array.isArray(data.specialCustomers)) {
+                                data.specialCustomers.forEach(item => {
+                                    if(item.nickname) {
+                                        newSpecials[item.nickname] = {
+                                            type: item.type || 'normal',
+                                            purchaseCount: Number(item.purchaseCount) || 0,
+                                            noShowCount: Number(item.noShowCount) || 0,
+                                            memo: item.memo || ''
+                                        };
+                                    }
+                                });
+                            } else {
+                                newSpecials = data.specialCustomers; 
+                            }
+                            setSpecialCustomers(newSpecials);
+                            openModal("명단을 성공적으로 불러왔습니다!", 'alert');
+                        } else {
+                            openModal("불러올 단골 명단이 없습니다.", 'alert');
+                        }
+                    } catch (e) {
+                        openModal("불러오기 실패: 서버와 연결할 수 없습니다.", 'alert');
                     }
                 });
             };
@@ -1736,8 +1794,17 @@
                 openModal("현재 화면의 주소를 구글 시트 맨 아래에 '누적 추가' 하시겠습니까?\n(기존 데이터는 절대 지워지지 않고 아래에 안전하게 쌓입니다.)", 'confirm', async () => { 
                     if (!googleScriptUrl) return; 
                     const actualSheetId = getCleanSheetId(customerSheetId);
-                    await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify({ action: 'append_address', data: addresses, sheet_id: actualSheetId }), mode: 'no-cors', headers: {'Content-Type': 'text/plain;charset=utf-8'} }); 
-                    openModal("시트 하단에 누적 저장이 완료되었습니다!", 'alert'); 
+                    try {
+                        await fetch(googleScriptUrl, { 
+                            method: 'POST', 
+                            body: JSON.stringify({ action: 'append_address', data: addresses, sheet_id: actualSheetId }), 
+                            mode: 'no-cors', 
+                            headers: {'Content-Type': 'text/plain;charset=utf-8'} 
+                        }); 
+                        openModal("시트 하단에 누적 저장이 완료되었습니다!", 'alert'); 
+                    } catch (e) {
+                        openModal("저장 중 오류가 발생했습니다.", 'alert');
+                    }
                 }); 
             };
             
