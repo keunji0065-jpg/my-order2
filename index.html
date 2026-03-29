@@ -60,7 +60,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, useCallback, memo } = React;
 
-        const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZJP8M_KUd4acpDCXePpw1J8DhmC9YumhWB_NXif4SMMZlCv-9WgtZ8T1rw0gVTQ_PEA/exec";
+        const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbq1D97fTcJOtPnVE2cDHsVQKiOWcX_SbHAvBMdPGlnlvCeO57LhrFcF_3EBraOQGBoQ/exec";
         const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
         const DEFAULT_CUSTOMER_SHEET_ID = "1zlL6R8iCy-6ZRMqj6dbefhkwSyRzHibDYBNJLmE35bM";
         
@@ -336,7 +336,7 @@
             return true;
         });
 
-        const CustomerBlock = memo(({ nick, items, isSelected, currentShipping, isCard, isPaidState, grandTotal, depositTotal, balance, addr, addrType, addressMapping, suggestions, autoDepositorName, displayDepositorName, isAutoDepositor, depositorNames, copyStatus, isOrderConfirmed, isEditingShipping, stockLookup, setSelectedNick, addOrderLogic, handleNicknameEdit, toggleCardPayment, handleShippingChange, setEditingShippingNick, openModal, setDepositorNames, handleFullDepositToggle, copyOrderSheet, handleOrderCheckToggle, handleAddressUnmapping, handleAddressMapping, handleProductChange, handleQuantityUpdate, handleOrderCancel, handleOrderDelete, renderSpecialBadge, onOpenQuickAddress }) => {
+        const CustomerBlock = memo(({ nick, items, isSelected, currentShipping, isCard, isPaidState, grandTotal, depositTotal, balance, baseGrandTotal, baseBalance, addr, addrType, addressMapping, suggestions, autoDepositorName, displayDepositorName, isAutoDepositor, depositorNames, copyStatus, isOrderConfirmed, isEditingShipping, stockLookup, setSelectedNick, addOrderLogic, handleNicknameEdit, toggleCardPayment, handleShippingChange, setEditingShippingNick, openModal, setDepositorNames, handleFullDepositToggle, copyOrderSheet, handleOrderCheckToggle, handleAddressUnmapping, handleAddressMapping, handleProductChange, handleQuantityUpdate, handleOrderCancel, handleOrderDelete, renderSpecialBadge, onOpenQuickAddress }) => {
             let borderClass = 'border-transparent', headerBgClass = 'bg-white dark:bg-slate-800';
             if (isCard) { borderClass = 'border-purple-200 dark:border-purple-900 ring-1 ring-purple-200 dark:ring-purple-900'; headerBgClass = 'bg-purple-50 dark:bg-purple-900/10'; } 
             else if (!isPaidState && balance > 0) { borderClass = 'border-red-200 dark:border-red-900 ring-1 ring-red-200 dark:ring-red-900'; headerBgClass = 'bg-red-50 dark:bg-red-900/10'; } 
@@ -369,8 +369,8 @@
                                 </div>
                                 
                                 <div onClick={(e) => { e.stopPropagation(); openModal(`'${nick}'님의 입금자명(실명)을 입력하세요.`, 'prompt', (newName) => { if(newName !== null) setDepositorNames(prev => ({...prev, [nick]: newName})); }, null, depositorNames[nick] || ''); }} className={`cursor-pointer flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors ml-1 shrink-0 ${depositorNames[nick] ? 'bg-indigo-50 dark:bg-slate-900 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' : (isAutoDepositor ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-white dark:bg-slate-700 text-gray-400 dark:text-slate-400 border-gray-200 dark:border-slate-600')}`} title={isAutoDepositor ? "주소록 실명 연동됨 (클릭하여 수정)" : "실명 입금자 등록"}><Icon name="user" weight={depositorNames[nick] || isAutoDepositor ? "fill" : "regular"}/> <span>{displayDepositorName}</span></div>
-                                <div onClick={(e) => { e.stopPropagation(); handleFullDepositToggle(nick, grandTotal, depositTotal); }} className={`cursor-pointer ml-1 flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors shrink-0 ${isPaidState ? 'bg-green-500 border-green-600 text-white shadow-inner' : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-600'}`} title={isPaidState ? "입금 완료됨 (클릭시 취소)" : "클릭시 전액 입금 처리"}><Icon name={isPaidState ? "toggle-right" : "toggle-left"} weight="fill" size={16} /><span className="text-[10px] font-bold">{isPaidState ? "완납" : "미납"}</span></div>
-                                <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, grandTotal, depositTotal, balance, isCard); }} className={`ml-1 flex items-center gap-1 px-2 py-0.5 rounded border transition-colors shrink-0 ${copyStatus[nick] ? 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-800 text-green-700 dark:text-green-300' : 'bg-yellow-300 dark:bg-yellow-600 border-yellow-400 dark:border-yellow-700 text-yellow-900 dark:text-yellow-50 hover:bg-yellow-400 active:scale-95'}`} title="주문서 카톡 복사"><Icon name={copyStatus[nick] ? "check" : "chat-circle-dots"} weight="fill" size={16}/><span className="text-[10px] font-bold">카톡</span></button>
+                                <div onClick={(e) => { e.stopPropagation(); handleFullDepositToggle(nick, baseGrandTotal, depositTotal); }} className={`cursor-pointer ml-1 flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors shrink-0 ${isPaidState ? 'bg-green-500 border-green-600 text-white shadow-inner' : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-600'}`} title={isPaidState ? "입금 완료됨 (클릭시 취소)" : "클릭시 전액 입금 처리"}><Icon name={isPaidState ? "toggle-right" : "toggle-left"} weight="fill" size={16} /><span className="text-[10px] font-bold">{isPaidState ? "완납" : "미납"}</span></div>
+                                <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, baseGrandTotal, depositTotal, baseBalance, isCard); }} className={`ml-1 flex items-center gap-1 px-2 py-0.5 rounded border transition-colors shrink-0 ${copyStatus[nick] ? 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-800 text-green-700 dark:text-green-300' : 'bg-yellow-300 dark:bg-yellow-600 border-yellow-400 dark:border-yellow-700 text-yellow-900 dark:text-yellow-50 hover:bg-yellow-400 active:scale-95'}`} title="주문서 카톡 복사"><Icon name={copyStatus[nick] ? "check" : "chat-circle-dots"} weight="fill" size={16}/><span className="text-[10px] font-bold">카톡</span></button>
                                 <div onClick={(e) => { e.stopPropagation(); handleOrderCheckToggle(nick); }} className="ml-1 cursor-pointer flex items-center shrink-0" title="주문 확인 체크"><input type="checkbox" checked={isOrderConfirmed} readOnly className="custom-checkbox" /></div>
                             </div>
                             <div className="flex flex-col items-start gap-1 text-xs mt-1 w-full overflow-hidden">
@@ -416,6 +416,8 @@
             if (prev.isCard !== next.isCard) return false;
             if (prev.isPaidState !== next.isPaidState) return false;
             if (prev.grandTotal !== next.grandTotal) return false;
+            if (prev.baseGrandTotal !== next.baseGrandTotal) return false;
+            if (prev.baseBalance !== next.baseBalance) return false;
             if (prev.depositTotal !== next.depositTotal) return false;
             if (prev.balance !== next.balance) return false;
             if (prev.isOrderConfirmed !== next.isOrderConfirmed) return false;
@@ -443,7 +445,7 @@
             const [manualNick, setManualNick] = useState('');
             const [manualProduct, setManualProduct] = useState('');
             const [manualPrice, setManualPrice] = useState('');
-            const [isFixedProductMode, setIsFixedProductMode] = useState(false); // 상품명 고정 모드 상태 추가
+            const [isFixedProductMode, setIsFixedProductMode] = useState(false);
             const [chatSearch, setChatSearch] = useState('');
             const [depositSearch, setDepositSearch] = useState('');
             const [orderSearch, setOrderSearch] = useState('');
@@ -651,10 +653,18 @@
                     const isCard = cardPayments[nick];
                     const shipping = getCalculatedShipping(nick);
                     const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
-                    const grandTotal = productTotal + shipping;
-                    const balance = grandTotal - depositTotal;
-                    totalSales += grandTotal; 
-                    if (balance > 0) { if (isCard) totalCardExpected += balance; else totalUnpaid += balance; }
+                    const baseGrandTotal = productTotal + shipping;
+                    const baseBalance = baseGrandTotal - depositTotal;
+                    
+                    const cardFee = (isCard && baseBalance > 0) ? baseBalance * 0.1 : 0;
+                    const finalGrandTotal = baseGrandTotal + cardFee;
+                    const finalBalance = baseBalance + cardFee;
+
+                    totalSales += finalGrandTotal; 
+                    if (finalBalance > 0) { 
+                        if (isCard) totalCardExpected += finalBalance; 
+                        else totalUnpaid += finalBalance; 
+                    }
                 });
                 return { totalSales, totalDeposit, totalUnpaid, totalCardExpected, missingAddressCount };
             }, [orders, cardPayments, getCalculatedShipping, findAddress]);
@@ -662,6 +672,12 @@
             const filteredGroupedOrders = useMemo(() => {
                 const groups = {};
                 orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
+                
+                // 💡 주문서 내 아이템을 상품명 내림차순(15번 -> 1번)으로 정렬 (숫자 인식)
+                Object.values(groups).forEach(items => {
+                    items.sort((a, b) => String(b.product || '').localeCompare(String(a.product || ''), 'ko', { numeric: true }));
+                });
+
                 let entries = Object.entries(groups).filter(([nick, items]) => {
                     if (filterStatus === 'no-address') {
                         const addrRes = findAddress(nick);
@@ -696,9 +712,13 @@
                     const activeProd = activeItems.reduce((s,i) => s + Number(i.price), 0);
                     const currentDep = items.reduce((s,i) => s + (i.deposit || 0), 0);
                     const currentShip = getCalculatedShipping(nick);
-                    const bal = activeProd + (activeItems.length > 0 ? currentShip : 0) - currentDep;
-                    if (filterStatus === 'unpaid') return !cardPayments[nick] && bal > 0 && activeProd > 0;
-                    if (filterStatus === 'paid') return !cardPayments[nick] && bal <= 0 && activeProd > 0;
+                    const baseBal = activeProd + (activeItems.length > 0 ? currentShip : 0) - currentDep;
+                    const isCard = cardPayments[nick];
+                    
+                    const finalBal = baseBal + (isCard && baseBal > 0 ? baseBal * 0.1 : 0);
+                    
+                    if (filterStatus === 'unpaid') return !isCard && finalBal > 0 && activeProd > 0;
+                    if (filterStatus === 'paid') return !isCard && finalBal <= 0 && activeProd > 0;
                     return true;
                 });
                 return entries.sort((a, b) => {
@@ -902,7 +922,8 @@
                     let addrRes = findAddress(o.customer); 
                     let addr = addrRes.data || {}; 
                     const currentShipping = getCalculatedShipping(o.customer); 
-                    return { nickname: o.customer, product: o.product, qty: o.quantity, price: o.price, deposit: o.deposit, shipping: currentShipping, grandTotal: 0, address: addr.address || '', zipcode: addr.zipcode || '', phone: addr.phone || '', realname: addr.realname || '', memo: addr.memo || '' }; 
+                    const isCard = cardPayments[o.customer] ? true : false;
+                    return { nickname: o.customer, product: o.product, qty: o.quantity, price: o.price, deposit: o.deposit, shipping: currentShipping, grandTotal: 0, address: addr.address || '', zipcode: addr.zipcode || '', phone: addr.phone || '', realname: addr.realname || '', memo: addr.memo || '', isCard: isCard }; 
                 }); 
                 try { 
                     const actualSheetId = getCleanSheetId(customerSheetId);
@@ -918,7 +939,7 @@
             useEffect(() => { 
                 const saveInterval = setInterval(autoSaveToGoogleSheet, 60000); 
                 return () => clearInterval(saveInterval); 
-            }, [orders, getCalculatedShipping, googleScriptUrl, findAddress, customerSheetId]); 
+            }, [orders, cardPayments, getCalculatedShipping, googleScriptUrl, findAddress, customerSheetId]); 
 
             useEffect(() => {
                 if (lastAddedOrderId) {
@@ -1019,7 +1040,6 @@
                     setSpecialCustomers(prev => {
                         const next = { ...prev };
                         const allGroups = {};
-                        // 화면 필터링 여부와 상관없이 전체 주문(orders)을 기준으로 집계합니다.
                         orders.forEach(o => {
                             if (!allGroups[o.customer]) allGroups[o.customer] = [];
                             allGroups[o.customer].push(o);
@@ -1158,7 +1178,6 @@
                         const data = await res.json();
                         if (data.error) { openModal(`서버 거부: ${data.error}\n환경설정에서 시트 ID를 다시 확인해주세요.`, 'alert'); return; }
                         
-                        // 다양한 응답 키(orders, data, orderList 등)에 모두 대응할 수 있도록 유연한 추출
                         let fetchedOrders = [];
                         if (data && Array.isArray(data.orders)) fetchedOrders = data.orders;
                         else if (data && Array.isArray(data.data)) fetchedOrders = data.data;
@@ -1176,11 +1195,22 @@
                                 deposit: parseNum(o.deposit || o['입금액'] || o['입금']),
                                 isCancelled: false,
                                 isUnmodified: true,
-                                loadedFromCloud: true // 스마트 매칭용 표식 달기
+                                loadedFromCloud: true 
                             }));
                             
+                            const newCardPayments = {};
+                            fetchedOrders.forEach(o => {
+                                const nick = o.nickname || o.customer || o['닉네임'] || o['주문자'] || '';
+                                const isCardVal = o.isCard || o['카드결제'];
+                                if (nick && (isCardVal === true || isCardVal === 'true' || isCardVal === 'O' || isCardVal === 'TRUE')) {
+                                    newCardPayments[nick] = true;
+                                }
+                            });
+
                             setOrders(loadedOrders);
-                            openModal("성공적으로 불러왔습니다!\n(이중 매칭 방지를 위해 기존 입금 리스트가 스마트하게 정리됩니다.)", 'alert');
+                            setCardPayments(prev => ({ ...prev, ...newCardPayments })); 
+                            
+                            setTimeout(() => openModal("성공적으로 불러왔습니다!\n(이중 매칭 방지를 위해 기존 입금 리스트가 스마트하게 정리됩니다.)", 'alert'), 100);
                         } else { 
                             openModal("클라우드 시트에 저장된 데이터가 없거나, 구글 스크립트가 데이터를 정상적으로 보내주지 않고 있습니다.\n(시트 탭 이름 불일치 혹은 스크립트 응답 누락이 원인일 수 있습니다.)", 'alert'); 
                         }
@@ -1260,17 +1290,13 @@
             const handleAddManualDeposit = (e) => { e.preventDefault(); if (!newDepositName.trim() || !newDepositAmount) return openModal("입금자명/금액 필수", 'alert'); const newDep = { id: `manual_${Date.now()}`, name: newDepositName, amount: newDepositAmount, source: 'manual' }; setManualDeposits(prev => [newDep, ...prev]); setNewDepositName(''); setNewDepositAmount(''); };
 
             const visibleDeposits = useMemo(() => {
-                // 검색 중일 때는 숨김 없이 모든 내역을 보여줌
                 if (depositSearch) return filteredDeposits;
-                
                 const unmatched = [];
                 const matched = [];
                 filteredDeposits.forEach(d => {
                     if (matchedDeposits?.has(d.id)) matched.push(d);
                     else unmatched.push(d);
                 });
-                
-                // 미매칭은 100% 전부 보여주고, 매칭 완료된 것만 최근 2000개로 제한
                 return [...unmatched, ...matched.slice(0, 2000)];
             }, [filteredDeposits, depositSearch, matchedDeposits]);
 
@@ -1361,10 +1387,15 @@
                                 const activeItems = items.filter(i => !i.isCancelled);
                                 const prodSum = activeItems.reduce((s, i) => s + Number(i.price), 0);
                                 const depSum = items.reduce((s, i) => s + (i.deposit || 0), 0);
-                                const grand = prodSum + (activeItems.length > 0 ? ship : 0);
-                                const bal = grand - depSum;
+                                const baseGrand = prodSum + (activeItems.length > 0 ? ship : 0);
+                                const baseBal = baseGrand - depSum;
+                                const isCard = cardPayments[nick];
                                 
-                                return (<CustomerBlock key={nick} nick={nick} items={items} isSelected={selectedNick === nick} currentShipping={ship} isCard={cardPayments[nick]} isPaidState={bal <= 0 && activeItems.length > 0} grandTotal={grand} depositTotal={depSum} balance={bal} addr={findAddress(nick)?.data} addrType={findAddress(nick)?.type} addressMapping={addressMapping} suggestions={findAddressSuggestions(nick)} autoDepositorName={findAddress(nick)?.data?.realname || ''} displayDepositorName={depositorNames[nick] || findAddress(nick)?.data?.realname || '입금자'} isAutoDepositor={!depositorNames[nick] && findAddress(nick)?.data?.realname} depositorNames={depositorNames} copyStatus={copyStatus} isOrderConfirmed={checkedOrders.has(nick)} isEditingShipping={editingShippingNick === nick} stockLookup={stockLookup} setSelectedNick={setSelectedNick} addOrderLogic={addOrderLogic} handleNicknameEdit={handleNicknameEdit} toggleCardPayment={toggleCardPayment} handleShippingChange={handleShippingChange} setEditingShippingNick={setEditingShippingNick} openModal={openModal} setDepositorNames={setDepositorNames} handleFullDepositToggle={handleFullDepositToggle} copyOrderSheet={copyOrderSheet} handleOrderCheckToggle={handleOrderCheckToggle} handleAddressUnmapping={handleAddressUnmapping} handleAddressMapping={handleAddressMapping} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} renderSpecialBadge={renderSpecialBadge} onOpenQuickAddress={(nick) => setQuickAddrModal({ isOpen: true, nick })} />);
+                                const cardFee = (isCard && baseBal > 0) ? baseBal * 0.1 : 0;
+                                const grand = baseGrand + cardFee;
+                                const bal = baseBal + cardFee;
+                                
+                                return (<CustomerBlock key={nick} nick={nick} items={items} isSelected={selectedNick === nick} currentShipping={ship} isCard={isCard} isPaidState={bal <= 0 && activeItems.length > 0} grandTotal={grand} depositTotal={depSum} balance={bal} baseGrandTotal={baseGrand} baseBalance={baseBal} addr={findAddress(nick)?.data} addrType={findAddress(nick)?.type} addressMapping={addressMapping} suggestions={findAddressSuggestions(nick)} autoDepositorName={findAddress(nick)?.data?.realname || ''} displayDepositorName={depositorNames[nick] || findAddress(nick)?.data?.realname || '입금자'} isAutoDepositor={!depositorNames[nick] && findAddress(nick)?.data?.realname} depositorNames={depositorNames} copyStatus={copyStatus} isOrderConfirmed={checkedOrders.has(nick)} isEditingShipping={editingShippingNick === nick} stockLookup={stockLookup} setSelectedNick={setSelectedNick} addOrderLogic={addOrderLogic} handleNicknameEdit={handleNicknameEdit} toggleCardPayment={toggleCardPayment} handleShippingChange={handleShippingChange} setEditingShippingNick={setEditingShippingNick} openModal={openModal} setDepositorNames={setDepositorNames} handleFullDepositToggle={handleFullDepositToggle} copyOrderSheet={copyOrderSheet} handleOrderCheckToggle={handleOrderCheckToggle} handleAddressUnmapping={handleAddressUnmapping} handleAddressMapping={handleAddressMapping} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} renderSpecialBadge={renderSpecialBadge} onOpenQuickAddress={(nick) => setQuickAddrModal({ isOpen: true, nick })} />);
                             })}
                         </div>
                     </div>
@@ -2261,8 +2292,8 @@
 
                sortedCustomers.forEach(nick => {
                    const items = groups[nick];
-                   // 한 영수증 안에서도 상품명 오름차순 정렬
-                   items.sort((a, b) => String(a.product).localeCompare(String(b.product), 'ko'));
+                   // 💡 한 영수증 안에서도 상품명 내림차순 정렬 (15번 -> 1번)
+                   items.sort((a, b) => String(b.product || '').localeCompare(String(a.product || ''), 'ko', { numeric: true }));
 
                    let totalQty = 0;
                    let itemsHtml = items.map(item => {
@@ -2377,7 +2408,6 @@
                                 const data = await res.json();
                                 if (data.error) { setTimeout(() => openModal(`서버 접속 실패: ${data.error}\n(환경설정에서 시트 ID를 다시 확인해주세요!)`, 'alert'), 500); return; }
                                 
-                                // 초기 자동 불러오기에서도 유연한 데이터 추출 로직 적용
                                 let fetchedOrders = [];
                                 if (data && Array.isArray(data.orders)) fetchedOrders = data.orders;
                                 else if (data && Array.isArray(data.data)) fetchedOrders = data.data;
@@ -2387,7 +2417,7 @@
                                 if (fetchedOrders && fetchedOrders.length > 0) {
                                     const loadedOrders = fetchedOrders.map((o, idx) => ({ id: Date.now() + idx, customer: o.nickname || o.customer || o['닉네임'] || o['주문자'] || '', product: o.product || o['상품명'] || o['상품'] || '', quantity: Number(o.qty || o.quantity || o['수량']) || 1, price: Number(o.price || o['가격'] || o['금액']), deposit: Number(o.deposit || o['입금액'] || o['입금']), isCancelled: false, isUnmodified: true, loadedFromCloud: true }));
                                     setOrders(loadedOrders);
-                                    setTimeout(() => openModal(`${loadedOrders.length}건의 주문을 성공적으로 복구했습니다!\n(이중 매칭을 방지하기 위해 스마트 입금 정리가 적용됩니다.)`, 'alert'), 500);
+                                    setTimeout(() => openModal(`${loadedOrders.length}건의 주문을 성공적으로 복구했습니다!\n(이중 매칭 방지를 위해 스마트 입금 정리가 적용됩니다.)`, 'alert'), 500);
                                 } else { setTimeout(() => openModal("클라우드 시트에 저장된 데이터가 없거나, 구글 스크립트가 데이터를 정상적으로 보내주지 않고 있습니다.", 'alert'), 500); }
                             } catch(e) { setTimeout(() => openModal("불러오기 실패. 설정의 URL을 확인해주세요.", 'alert'), 500); }
                         });
