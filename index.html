@@ -60,7 +60,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, useCallback, memo } = React;
 
-        const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzWZ-hfeUalSPThiMW5-RWDHTDdiBzBtCUy9-1gOaRN6gTD1lsxKzS6in8N_2w-xnJ3zg/exec";
+        const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZJP8M_KUd4acpDCXePpw1J8DhmC9YumhWB_NXif4SMMZlCv-9WgtZ8T1rw0gVTQ_PEA/exec";
         const FIXED_BANK_ACCOUNT = "카카오뱅크 김선정\n7942 18 01611";
         const DEFAULT_CUSTOMER_SHEET_ID = "1zlL6R8iCy-6ZRMqj6dbefhkwSyRzHibDYBNJLmE35bM";
         
@@ -785,7 +785,14 @@
                         setConnectionStatus({ code: 'success', msg: '🟢 연결됨' });
                     }
                     if (data.deposits) {
-                        const stableDeposits = data.deposits.map((d, i) => ({ ...d, id: d.uid || `dep_${d.name}_${d.amount}_${i}`, source: 'server' }));
+                        const depCounts = {};
+                        const stableDeposits = data.deposits.map((d, i) => {
+                            if (d.uid) return { ...d, id: d.uid, source: 'server' };
+                            const safeTime = String(d.time || d.date || '').replace(/[^0-9]/g, '');
+                            const baseKey = `dep_${d.name}_${d.amount}_${safeTime}`;
+                            depCounts[baseKey] = (depCounts[baseKey] || 0) + 1;
+                            return { ...d, id: `${baseKey}_${depCounts[baseKey]}`, source: 'server' };
+                        });
                         setServerDeposits(prev => JSON.stringify(prev) !== JSON.stringify(stableDeposits) ? stableDeposits : prev);
                     }
                 } catch (e) { setConnectionStatus({ code: 'error_fetch', msg: '재연결중' }); }
