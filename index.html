@@ -95,13 +95,6 @@
             return match ? match[1] : idOrUrl.trim();
         };
 
-        const generateChatId = (chat) => {
-            const safeNick = String(chat.nickname || '').replace(/\s/g, '');
-            const safeContent = String(chat.content || '').replace(/\s/g, '').substring(0, 20);
-            const safeTime = String(chat.time || '').replace(/[^0-9]/g, ''); 
-            return `chat_${safeTime}_${safeNick}_${safeContent}`;
-        };
-
         const useLocalStorage = (key, initialValue) => {
             const [storedValue, setStoredValue] = useState(() => {
                 try {
@@ -551,7 +544,8 @@
             const formatTimeOnly = useCallback((val) => { 
                 if (!val) return ''; 
                 const strVal = String(val);
-                const dt = new Date(strVal);
+                // 🚨 애플 기기(아이폰/사파리)에서도 시간 인식이 고장나지 않도록 포맷 안전 처리
+                const dt = new Date(strVal.replace(/-/g, '/'));
                 if (!isNaN(dt) && strVal.length > 8) {
                     return dt.toLocaleTimeString('ko-KR', {hour12: false, hour:'2-digit', minute:'2-digit'});
                 }
@@ -786,24 +780,30 @@
                     const data = JSON.parse(text);
                     if (data.error) { setConnectionStatus({ code: 'error_auth', msg: '시트오류(ID확인)' }); return; }
                     if (data.chats) {
-                        const rawChats = data.chats.length > 2000 ? data.chats.slice(-2000) : data.chats;
+                        const rawChats = data.chats.length > 5000 ? data.chats.slice(-5000) : data.chats;
                         const counts = {};
-                        const incoming = rawChats.map((chat) => {
+                        const incoming = rawChats.map((chat, idx) => {
                             const safeNick = String(chat.nickname || '').replace(/\s/g, '');
                             const safeContent = String(chat.content || '').replace(/\s/g, '').substring(0, 20);
                             const safeTime = String(chat.time || '').replace(/[^0-9]/g, '');
                             const baseKey = `c_${safeTime}_${safeNick}_${safeContent}`;
                             counts[baseKey] = (counts[baseKey] || 0) + 1;
-                            return { ...chat, id: `${baseKey}_${counts[baseKey]}`, nickname: String(chat.nickname).replace(/@/g, '').trim() };
+                            // 🚨 데이터가 들어온 엑셀 원본 고유 순서표(idx)를 함께 저장
+                            return { ...chat, id: `${baseKey}_${counts[baseKey]}`, nickname: String(chat.nickname).replace(/@/g, '').trim(), _originalIndex: idx };
                         });
-                        setChats(prev => {
-                            const all = [...incoming, ...prev];
-                            const uniqueMap = new Map();
-                            all.forEach(c => { if (!uniqueMap.has(c.id)) uniqueMap.set(c.id, c); });
-                            const uniqueArr = Array.from(uniqueMap.values());
-                            uniqueArr.sort((a, b) => String(b.id).localeCompare(String(a.id)));
-                            return uniqueArr.slice(0, 2000); 
+                        
+                        // 🚨 [핵심 해결] 엑셀 순서를 믿지 않고, 오직 '시간(초 단위)'를 기준으로 무조건 내림차순(최신이 맨 위) 강제 정렬!
+                        incoming.sort((a, b) => {
+                            const timeA = new Date(String(a.time).replace(/-/g, '/')).getTime();
+                            const timeB = new Date(String(b.time).replace(/-/g, '/')).getTime();
+                            if (!isNaN(timeA) && !isNaN(timeB)) {
+                                if (timeA === timeB) return b._originalIndex - a._originalIndex; // 1초 내에 달린 동일한 시간이면 엑셀 아랫줄을 더 최신으로 간주
+                                return timeB - timeA; // 무조건 시간이 더 큰(최신) 데이터가 위로 오도록 정렬
+                            }
+                            return b._originalIndex - a._originalIndex;
                         });
+                        
+                        setChats(incoming);
                         setConnectionStatus({ code: 'success', msg: '🟢 연결됨' });
                     }
                     if (data.deposits) {
@@ -1134,7 +1134,7 @@
                 }
             }, [orders, findAddress, openModal]);
 
-            const addOrderLogic = useCallback((nick, content, qty = 1, force = false, afterId = null, customPrice = null) => {
+            const addOrderLogic = useCallback((nick, content, qty = 1, force = false, afterId = null, customPrice = null, markAsModified = false) => {
                 const cNick = String(nick).replace(/@/g, '').trim();
                 const cContent = String(content || '').trim();
                 const inv = inventoryRef.current;
@@ -1142,22 +1142,42 @@
                 const invItem = Array.isArray(inv) ? inv.find(i => String(i.name).trim() === cContent) : null;
                 
                 let price = 0;
-                if (customPrice !== null && customPrice !== '') {
+                // 🚨 재고 등록 방어를 위한 금액 입력 여부 확인
+                const isCustomPriceValid = customPrice !== null && customPrice !== '';
+                
+                if (isCustomPriceValid) {
                     price = Number(String(customPrice).replace(/,/g, ''));
                 } else {
                     price = invItem ? Number(invItem.price) : (hist[cContent] || 0);
                 }
 
+                // 🚨 [재고 등록 수정] 단순히 댓글을 클릭했을 때(단가가 없는 상태)는 재고에 무작위로 등록되지 않도록 방어.
+                // 수동으로 금액을 입력했거나(isCustomPriceValid), 기존 재고/내역에 있어 단가가 1원 이상일 때만 등록!
+                if (cContent !== '' && (isCustomPriceValid || price > 0)) {
+                    const priceToSave = price || 0;
+                    setInventory(prevInv => {
+                        const invArr = Array.isArray(prevInv) ? prevInv : [];
+                        const exists = invArr.find(i => String(i.name).trim() === cContent);
+                        if (!exists) {
+                            return [...invArr, { id: `inv_${Date.now()}_${Math.random()}`, name: cContent, stock: 100, price: priceToSave }];
+                        }
+                        return invArr;
+                    });
+                    if (priceToSave > 0) {
+                        setProductHistory(h => ({ ...h, [cContent]: priceToSave }));
+                    }
+                }
+
                 setCheckedOrders(prev => { const n = new Set(prev); n.delete(cNick); return n; });
                 setSelectedNick(cNick);
                 setOrderSearch('');
-                const newOrder = { id: Date.now(), customer: cNick, product: cContent, quantity: qty, price: Number(price) * qty, deposit: 0, isCancelled: false, isUnmodified: true };
+                const newOrder = { id: Date.now(), customer: cNick, product: cContent, quantity: qty, price: Number(price) * qty, deposit: 0, isCancelled: false, isUnmodified: !markAsModified };
                 setOrders(prev => {
                     if (!afterId && !force && cContent !== '') {
                         const existIdx = prev.findIndex(o => o.customer === cNick && o.product === cContent && !o.isCancelled);
                         if (existIdx !== -1) { 
                             const next = [...prev]; 
-                            next[existIdx] = { ...next[existIdx], quantity: next[existIdx].quantity + qty, price: (next[existIdx].quantity + qty) * price }; 
+                            next[existIdx] = { ...next[existIdx], quantity: next[existIdx].quantity + qty, price: (next[existIdx].quantity + qty) * price, isUnmodified: !markAsModified }; 
                             return next; 
                         }
                     }
@@ -1167,7 +1187,7 @@
                     }
                     return [newOrder, ...prev];
                 });
-            }, [setCheckedOrders, setOrders]);
+            }, [setCheckedOrders, setOrders, setInventory, setProductHistory]);
 
             const handleLoadOrders = async () => {
                 openModal("클라우드에서 불러오시겠습니까?\n(현재 화면의 주문 내역은 덮어씌워집니다)", 'confirm', async () => {
@@ -1194,7 +1214,7 @@
                                 price: parseNum(o.price || o['가격'] || o['단가'] || o['금액']),
                                 deposit: parseNum(o.deposit || o['입금액'] || o['입금']),
                                 isCancelled: false,
-                                isUnmodified: true,
+                                isUnmodified: false,
                                 loadedFromCloud: true 
                             }));
                             
@@ -1221,7 +1241,7 @@
             const handleManualSubmit = (e) => { 
                 e.preventDefault(); 
                 if(!manualNick.trim()) return openModal("닉네임을 입력해주세요.", 'alert'); 
-                addOrderLogic(manualNick, manualProduct, 1, false, null, manualPrice); 
+                addOrderLogic(manualNick, manualProduct, 1, false, null, manualPrice, true); 
                 setManualNick(''); 
                 if (!isFixedProductMode) {
                     setManualProduct(''); 
@@ -1285,7 +1305,7 @@
                 setClickedChats(prev => new Set(prev).add(chat.id)); 
                 const finalProduct = (isFixedProductMode && manualProduct.trim() !== '') ? manualProduct.trim() : String(chat.content || '');
                 const finalPrice = isFixedProductMode ? manualPrice : null;
-                addOrderLogic(chat.nickname, finalProduct, 1, true, null, finalPrice); 
+                addOrderLogic(chat.nickname, finalProduct, 1, true, null, finalPrice, isFixedProductMode); 
             };
             const handleAddManualDeposit = (e) => { e.preventDefault(); if (!newDepositName.trim() || !newDepositAmount) return openModal("입금자명/금액 필수", 'alert'); const newDep = { id: `manual_${Date.now()}`, name: newDepositName, amount: newDepositAmount, source: 'manual' }; setManualDeposits(prev => [newDep, ...prev]); setNewDepositName(''); setNewDepositAmount(''); };
 
@@ -1332,8 +1352,8 @@
                                 const chatClasses = isProcessed ? 'opacity-80 bg-gray-100 dark:bg-slate-800/80 border-transparent' : (isMatched ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 ring-1 ring-blue-300 dark:ring-blue-700 shadow-sm' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700');
                                 return (
                                     <div key={c.id} onClick={() => handleChatClick(c)} className={`py-1 px-1.5 border rounded cursor-pointer transition-all flex flex-col gap-0.5 ${chatClasses}`}>
-                                        <div className="flex justify-between items-center text-xs font-bold"><span className="flex items-center">{c.nickname} {renderSpecialBadge(c.nickname)}</span><span className="text-[10px] text-gray-400 shrink-0">{formatTimeOnly(c.time)}</span></div>
-                                        <div className={`text-sm leading-tight ${isProcessed ? 'text-gray-500 dark:text-slate-400' : 'dark:text-slate-300'}`}>{renderChatContent(safeContent, keywords)}</div>
+                                        <div className="flex justify-between items-center text-xs font-bold"><span className="flex items-center break-all">{c.nickname} {renderSpecialBadge(c.nickname)}</span><span className="text-[10px] text-gray-400 shrink-0">{formatTimeOnly(c.time)}</span></div>
+                                        <div className={`text-sm leading-tight break-all ${isProcessed ? 'text-gray-500 dark:text-slate-400' : 'dark:text-slate-300'}`}>{renderChatContent(safeContent, keywords)}</div>
                                     </div>
                                 );
                             })}
@@ -2415,7 +2435,7 @@
                                 else if (Array.isArray(data)) fetchedOrders = data;
 
                                 if (fetchedOrders && fetchedOrders.length > 0) {
-                                    const loadedOrders = fetchedOrders.map((o, idx) => ({ id: Date.now() + idx, customer: o.nickname || o.customer || o['닉네임'] || o['주문자'] || '', product: o.product || o['상품명'] || o['상품'] || '', quantity: Number(o.qty || o.quantity || o['수량']) || 1, price: Number(o.price || o['가격'] || o['금액']), deposit: Number(o.deposit || o['입금액'] || o['입금']), isCancelled: false, isUnmodified: true, loadedFromCloud: true }));
+                                    const loadedOrders = fetchedOrders.map((o, idx) => ({ id: Date.now() + idx, customer: o.nickname || o.customer || o['닉네임'] || o['주문자'] || '', product: o.product || o['상품명'] || o['상품'] || '', quantity: Number(o.qty || o.quantity || o['수량']) || 1, price: Number(o.price || o['가격'] || o['금액']), deposit: Number(o.deposit || o['입금액'] || o['입금']), isCancelled: false, isUnmodified: false, loadedFromCloud: true }));
                                     setOrders(loadedOrders);
                                     setTimeout(() => openModal(`${loadedOrders.length}건의 주문을 성공적으로 복구했습니다!\n(이중 매칭 방지를 위해 스마트 입금 정리가 적용됩니다.)`, 'alert'), 500);
                                 } else { setTimeout(() => openModal("클라우드 시트에 저장된 데이터가 없거나, 구글 스크립트가 데이터를 정상적으로 보내주지 않고 있습니다.", 'alert'), 500); }
