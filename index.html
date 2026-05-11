@@ -538,6 +538,20 @@
 
             useEffect(() => { localStorage.setItem('hiddenChatIds', JSON.stringify([...hiddenChatIds])); }, [hiddenChatIds]);
 
+            useEffect(() => {
+                const onReset = () => {
+                    setHiddenChatIds([]);
+                    setIgnoredAutoMatch(new Set());
+                    setChats([]);
+                    setServerDeposits([]);
+                    setManualDeposits([]);
+                    setChatSearch('');
+                    setDepositSearch('');
+                };
+                window.addEventListener('appResetEvent', onReset);
+                return () => window.removeEventListener('appResetEvent', onReset);
+            }, [setHiddenChatIds]);
+
             const bringToTop = useCallback((rawNick) => {
                 if (!rawNick) return;
                 const cNick = String(rawNick).replace(/@/g, '').trim();
@@ -1993,9 +2007,24 @@
                 openModal("방송 데이터를 완전히 초기화하시겠습니까?\n(채팅, 입금내역, 주문서, 재고 및 단가 기록이 모두 영구 삭제됩니다!)", 'confirm', () => {
                     const keysToRemove = ['youtubeOrders', 'cardPayments', 'shippingOverrides', 'matchedDeposits', 'clickedChats', 'sentAddressRequests', 'deletedDepositIds', 'checkedOrders', 'productInventory', 'productHistory', 'hiddenChatIds', 'ignoredAutoMatch'];
                     keysToRemove.forEach(k => localStorage.removeItem(k));
-                    window.location.reload();
+                    
+                    setOrders([]);
+                    setCardPayments({});
+                    setShippingOverrides({});
+                    setMatchedDeposits(new Set());
+                    setClickedChats(new Set());
+                    setSentAddressRequests(new Set());
+                    setDeletedDepositIds(new Set());
+                    setCheckedOrders(new Set());
+                    setInventory([]);
+                    setProductHistory({});
+                    setDepositorNames({});
+                    setAddressMapping({});
+                    
+                    window.dispatchEvent(new Event('appResetEvent'));
+                    setTimeout(() => openModal("모든 데이터가 완벽하게 초기화되었습니다.", 'alert'), 300);
                 });
-            }, [openModal]);
+            }, [openModal, setOrders, setCardPayments, setShippingOverrides, setInventory, setProductHistory, setDepositorNames, setAddressMapping]);
 
             const handleExportBackup = () => downloadExcel([{ orders, productHistory, shippingOverrides, cardPayments, matchedDeposits: [...matchedDeposits], clickedChats: [...clickedChats], addressMapping, specialCustomers, inventory, templateConfig, depositorNames, keywords: [...keywords] }], "kallo_backup");
             
