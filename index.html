@@ -511,6 +511,7 @@
             const [addressSearch, setAddressSearch] = useState(''); 
             const [orderSearch, setOrderSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('all');
+            const [expandedInventoryItem, setExpandedInventoryItem] = useState(null);
             
             const deferredOrderSearch = React.useDeferredValue(orderSearch);
             const deferredChatSearch = React.useDeferredValue(chatSearch);
@@ -915,7 +916,7 @@
                     const data = JSON.parse(text);
                     if (data.error) { setConnectionStatus({ code: 'error_auth', msg: '시트오류(ID확인)' }); return; }
                     if (data.chats) {
-                        const rawChats = data.chats.length > 5000 ? data.chats.slice(-5000) : data.chats;
+                        const rawChats = data.chats; // 5000개 제한 해제
                         const seen = new Set(); const incoming = [];
                         rawChats.forEach((chat, idx) => {
                             const uniqueKey = `c_${String(chat.time || '').replace(/[^0-9]/g, '')}_${String(chat.nickname || '').replace(/\s/g, '')}_${String(chat.content || '').replace(/\s/g, '').substring(0, 20)}`;
@@ -1140,11 +1141,11 @@
             const handleOrderCheckToggle = useCallback((nick) => setCheckedOrders(prev => { const next = new Set(prev); if (next.has(nick)) next.delete(nick); else next.add(nick); return next; }), [setCheckedOrders]);
             
             const handleAddressMapping = useCallback((orderNick, addressNick) => { 
-                openModal(`주소록에 등록된 '${addressNick}' 님의 닉네임을\n주문서와 동일하게 '${orderNick}' (으)로\n완전히 변경하고 연결하시겠습니까?`, 'confirm', () => {
-                    setAddresses(prev => prev.map(addr => normalizeString(addr.nickname) === normalizeString(addressNick) ? { ...addr, nickname: orderNick } : addr));
-                    setAddressMapping(prev => ({ ...prev, [orderNick]: orderNick })); 
+                openModal(`'${orderNick}' 주문자에게 '${addressNick}' 님의 주소를 연결하시겠습니까?\n(이후 이 주문자에게 해당 주소가 자동으로 표시됩니다)`, 'confirm', () => {
+                    // 주소록 원본은 건드리지 않고, 브라우저가 매핑 정보만 기억하게 수정
+                    setAddressMapping(prev => ({ ...prev, [orderNick]: addressNick })); 
                 }); 
-            }, [openModal, setAddresses, setAddressMapping]);
+            }, [openModal, setAddressMapping]);
             
             const handleAddressUnmapping = useCallback((orderNick) => { openModal(`주소 연결을 해제하시겠습니까?`, 'confirm', () => setAddressMapping(prev => { const next = { ...prev }; delete next[orderNick]; return next; })); }, [openModal, setAddressMapping]);
 
@@ -1317,10 +1318,11 @@
             const handleChatClick = (chat) => { bringToTop(chat.nickname); setClickedChats(prev => new Set(prev).add(chat.id)); const finalProduct = (isFixedProductMode && manualProduct.trim() !== '') ? manualProduct.trim() : String(chat.content || ''); const finalPrice = isFixedProductMode ? manualPrice : null; addOrderLogic(chat.nickname, finalProduct, 1, true, null, finalPrice, isFixedProductMode); };
             const handleAddManualDeposit = (e) => { e.preventDefault(); if (!newDepositName.trim() || !newDepositAmount) return openModal("입금자명/금액 필수", 'alert'); const newDep = { id: `manual_${Date.now()}`, name: newDepositName, amount: newDepositAmount, source: 'manual' }; setManualDeposits(prev => [newDep, ...prev]); setNewDepositName(''); setNewDepositAmount(''); };
 
+            // 제한 해제 적용
             const visibleDeposits = useMemo(() => {
                 if (depositSearch) return filteredDeposits; const unmatched = []; const matched = [];
                 filteredDeposits.forEach(d => { if (matchedDeposits?.has(d.id)) matched.push(d); else unmatched.push(d); });
-                return [...unmatched, ...matched.slice(0, 2000)];
+                return [...unmatched, ...matched]; // slice 제한 제거
             }, [filteredDeposits, depositSearch, matchedDeposits]);
 
             const usedAddressNicks = useMemo(() => {
@@ -1329,10 +1331,18 @@
                 return set;
             }, [orders, addressMapping]);
 
+            // 주소록 최신순(내림차순) 정렬 적용
             const visibleAddresses = useMemo(() => {
                 let res = [...addresses];
                 if (addressSearch) { const term = addressSearch.toLowerCase(); res = res.filter(a => String(a.nickname).toLowerCase().includes(term) || String(a.realname).toLowerCase().includes(term) || String(a.phone).includes(term) || (a.linkedNicks && a.linkedNicks.some(ln => String(ln).toLowerCase().includes(term)))); }
-                res.reverse(); 
+                
+                // 타임스탬프 기준으로 최신순 내림차순 정렬
+                res.sort((a, b) => {
+                    const tA = new Date(a.timestamp || 0).getTime();
+                    const tB = new Date(b.timestamp || 0).getTime();
+                    return tB - tA;
+                });
+
                 if (selectedNick) {
                     const targetClean = normalizeString(selectedNick);
                     res.sort((a, b) => {
@@ -1345,11 +1355,11 @@
             }, [addresses, addressSearch, selectedNick]);
 
             return (
-                <div className="flex h-full gap-2 p-2 overflow-hidden bg-gray-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                <div className="flex h-full gap-2 p-2 overflow-x-auto bg-gray-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                     <datalist id="product-list">{Array.isArray(inventory) && inventory.map(i => <option key={i.id} value={i.name} />)}</datalist>
                     <QuickAddressModal isOpen={quickAddrModal.isOpen} nick={quickAddrModal.nick} initialData={quickAddrModal.editData} onClose={() => setQuickAddrModal({ isOpen: false, nick: '', editData: null })} onSubmit={handleQuickAddressSubmit} openModal={openModal} />
 
-                    <div className="w-[22%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-sm overflow-hidden min-w-[200px]">
+                    <div className="w-[16%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-sm overflow-hidden min-w-[160px]">
                         <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 border-b dark:border-slate-700 grid grid-cols-4 gap-1">
                             {quickMessages.map((msg, idx) => (
                                 <button key={idx} onClick={() => handleCopyQuickMessage(msg, idx)} className={`text-[10px] border rounded py-1 truncate transition-colors shadow-sm ${quickMsgCopyStatus[idx] ? 'bg-green-500 text-white font-bold' : 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300'}`}>{quickMsgCopyStatus[idx] ? '✅ 복사완료' : (msg || "빈 메시지")}</button>
@@ -1383,7 +1393,7 @@
                         </div>
                     </div>
 
-                    <div className="w-[40%] bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg flex flex-col overflow-hidden shadow-sm min-w-[400px]">
+                    <div className="w-[43%] bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg flex flex-col overflow-hidden shadow-sm min-w-[400px]">
                         <div className="grid grid-cols-5 gap-1 p-2 bg-indigo-50 dark:bg-slate-700/50 border-b dark:border-slate-700 text-center text-[10px]">
                             {[{id:'all', label:'총매출', val:dashboardStats.totalSales}, {id:'paid', label:'입금액', val:dashboardStats.totalDeposit}, {id:'unpaid', label:'미수금', val:dashboardStats.totalUnpaid}, {id:'card', label:'카드예정', val:dashboardStats.totalCardExpected}, {id:'no-address', label:'주소미입력', val:dashboardStats.missingAddressCount, onClick:handleNoAddressClick}].map(s => (
                                 <div key={s.id} onClick={s.onClick || (()=>setFilterStatus(s.id))} className={`bg-white dark:bg-slate-800 p-1 rounded border-2 cursor-pointer shadow-sm transition-colors ${filterStatus===s.id ? 'border-indigo-500' : 'border-transparent hover:border-indigo-200 dark:hover:border-indigo-800'}`}><div>{s.label}</div><div className={`font-bold text-[12px] ${s.id==='paid'?'text-green-600':s.id==='unpaid'?'text-red-500':s.id==='card'?'text-purple-600':s.id==='no-address'?'text-orange-500':'text-indigo-700 dark:text-indigo-400'}`}>{s.val.toLocaleString()}{s.id==='no-address'?'명':''}</div></div>
@@ -1437,7 +1447,7 @@
                         </div>
                     </div>
 
-                    <div className="w-[15%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[130px]">
+                    <div className="w-[12%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[120px]">
                         <div className="p-2 bg-yellow-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2">
                             <div className="font-bold text-yellow-700 dark:text-yellow-300 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span>
@@ -1471,7 +1481,7 @@
                         <div className="p-1 bg-white dark:bg-slate-800 text-center font-bold text-[10px] border-t dark:border-slate-700">총: <span className="text-green-600 dark:text-green-400 text-xs">{totalDepositAmount.toLocaleString()}</span>원</div>
                     </div>
 
-                    <div className="w-[23%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[180px]">
+                    <div className="w-[13%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[130px]">
                         <div className="p-2 bg-emerald-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2">
                             <div className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="address-book" weight="fill"/> 실시간 주소록</span>
@@ -1510,6 +1520,85 @@
                                 );
                             })}
                             {visibleAddresses.length === 0 && <div className="text-center text-[10px] text-gray-400 py-4">주소록이 비어있습니다.</div>}
+                        </div>
+                    </div>
+
+                    <div className="w-[16%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[160px]">
+                        <div className="p-2 bg-blue-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2 shrink-0">
+                            <div className="font-bold text-blue-700 dark:text-blue-400 flex items-center justify-between">
+                                <span className="flex items-center gap-1"><Icon name="package" weight="fill"/> 실시간 재고</span>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-gray-500 dark:text-slate-400">{inventory.length}종</span>
+                                    <button onClick={() => openModal("재고 목록을 모두 비우시겠습니까?\n(주문 내역은 유지됩니다)", "confirm", () => setInventory([]))} className="bg-red-500 hover:bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="재고 비우기"><Icon name="trash" weight="bold"/></button>
+                                </div>
+                            </div>
+                            <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 text-[10px]"/><input type="text" placeholder="상품명 검색" value={currentSearchTerm} onChange={e => setCurrentSearchTerm(e.target.value)} className="w-full text-[10px] pl-6 pr-6 py-1.5 border dark:border-slate-600 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800" />{currentSearchTerm && <button onClick={()=>setCurrentSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
+                        </div>
+                        <div className="flex w-full bg-gray-100 dark:bg-slate-700/50 p-1.5 border-b border-gray-200 dark:border-slate-700 text-[10px] font-bold text-gray-600 dark:text-slate-400 items-center text-center shrink-0">
+                            <div className="flex-1 text-left pl-1">상품명</div>
+                            <div className="w-10 shrink-0">주문</div>
+                            <div className="w-10 shrink-0 pr-4">잔여</div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 bg-gray-100 dark:bg-slate-900">
+                            {inventory.filter(i => !currentSearchTerm || String(i.name).toLowerCase().includes(currentSearchTerm.toLowerCase())).map(item => {
+                                const activeOrders = orders.filter(o => o.product === item.name && !o.isCancelled);
+                                const orderedCount = activeOrders.reduce((sum, o) => sum + Number(o.quantity || 0), 0);
+                                const remaining = (Number(item.stock) || 0) - orderedCount;
+                                const isExpanded = expandedInventoryItem === item.name;
+                                
+                                return (
+                                    <div key={item.id} className="flex flex-col bg-white dark:bg-slate-800 rounded border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                                        <div onClick={() => { setManualProduct(item.name); setCurrentSearchTerm(item.name); setManualPrice(item.price ? Number(item.price).toLocaleString() : ''); document.getElementById('manual-prod-input')?.focus(); }} className="flex items-center justify-between p-1.5 text-[11px] cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors">
+                                            <div className="flex-1 font-bold text-gray-800 dark:text-slate-200 truncate pr-1" title={item.name}>{item.name}</div>
+                                            <div className="w-10 text-center text-blue-600 dark:text-blue-400 font-bold shrink-0">{orderedCount}</div>
+                                            <div className={`w-10 text-center font-bold shrink-0 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{remaining}</div>
+                                            <button onClick={(e) => { e.stopPropagation(); setExpandedInventoryItem(isExpanded ? null : item.name); }} className={`ml-1 p-0.5 rounded text-gray-400 hover:text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shrink-0 ${isExpanded ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600' : ''}`} title="주문자 명단 보기"><Icon name="caret-down" weight="bold" className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></button>
+                                        </div>
+                                        {isExpanded && (
+                                            <div className="bg-blue-50/50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-700 p-1.5 flex flex-col gap-1">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1"><Icon name="users" weight="fill" /> 주문 고객 ({activeOrders.length}명)</span>
+                                                    <button onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const uniqueNicks = [...new Set(activeOrders.map(o => o.customer))];
+                                                        if(uniqueNicks.length === 0) return;
+                                                        const text = `${item.name}(${uniqueNicks.length}명) ${uniqueNicks.join(', ')}`;
+                                                        const textArea = document.createElement("textarea");
+                                                        textArea.value = text; document.body.appendChild(textArea); textArea.select();
+                                                        try { document.execCommand('copy'); openModal('명단이 복사되었습니다!', 'alert'); } catch (err) {}
+                                                        document.body.removeChild(textArea);
+                                                    }} className="text-[9px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 px-1.5 py-0.5 rounded font-bold transition-colors">명단 복사</button>
+                                                </div>
+                                                {activeOrders.length === 0 ? (
+                                                    <div className="text-center text-[10px] text-gray-400 py-2">주문 내역이 없습니다.</div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto pr-1">
+                                                        {activeOrders.map(o => (
+                                                            <div key={o.id} className="flex justify-between items-center bg-white dark:bg-slate-800 p-1 rounded border border-gray-100 dark:border-slate-700 shadow-sm text-[10px] group hover:border-blue-200 dark:hover:border-blue-800">
+                                                                <span className="font-bold text-gray-700 dark:text-slate-200 cursor-pointer hover:text-blue-500 transition-colors truncate flex-1" onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const textArea = document.createElement("textarea"); textArea.value = o.customer; document.body.appendChild(textArea); textArea.select();
+                                                                    try { document.execCommand('copy'); openModal(`'${o.customer}' 닉네임 복사 완료!`, 'alert'); } catch (err) {}
+                                                                    document.body.removeChild(textArea);
+                                                                }} title="클릭하여 닉네임 복사">
+                                                                    {o.customer} {o.quantity > 1 && <span className="text-blue-500">({o.quantity}개)</span>}
+                                                                </span>
+                                                                <button onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openModal(`'${o.customer}'님의 '${item.name}' 주문을 삭제하시겠습니까?`, 'confirm', () => {
+                                                                        setOrders(prev => prev.filter(order => order.id !== o.id));
+                                                                    });
+                                                                }} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 px-1.5 py-0.5 rounded font-bold transition-colors shrink-0 ml-1 opacity-0 group-hover:opacity-100">삭제</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {inventory.length === 0 && <div className="text-center text-[10px] text-gray-400 py-4">등록된 상품이 없습니다.</div>}
                         </div>
                     </div>
                 </div>
@@ -2008,23 +2097,10 @@
                     const keysToRemove = ['youtubeOrders', 'cardPayments', 'shippingOverrides', 'matchedDeposits', 'clickedChats', 'sentAddressRequests', 'deletedDepositIds', 'checkedOrders', 'productInventory', 'productHistory', 'hiddenChatIds', 'ignoredAutoMatch'];
                     keysToRemove.forEach(k => localStorage.removeItem(k));
                     
-                    setOrders([]);
-                    setCardPayments({});
-                    setShippingOverrides({});
-                    setMatchedDeposits(new Set());
-                    setClickedChats(new Set());
-                    setSentAddressRequests(new Set());
-                    setDeletedDepositIds(new Set());
-                    setCheckedOrders(new Set());
-                    setInventory([]);
-                    setProductHistory({});
-                    setDepositorNames({});
-                    setAddressMapping({});
-                    
-                    window.dispatchEvent(new Event('appResetEvent'));
-                    setTimeout(() => openModal("모든 데이터가 완벽하게 초기화되었습니다.", 'alert'), 300);
+                    // 로컬스토리지 삭제 후 브라우저 새로고침으로 깔끔하게 초기화
+                    window.location.reload();
                 });
-            }, [openModal, setOrders, setCardPayments, setShippingOverrides, setInventory, setProductHistory, setDepositorNames, setAddressMapping]);
+            }, [openModal]);
 
             const handleExportBackup = () => downloadExcel([{ orders, productHistory, shippingOverrides, cardPayments, matchedDeposits: [...matchedDeposits], clickedChats: [...clickedChats], addressMapping, specialCustomers, inventory, templateConfig, depositorNames, keywords: [...keywords] }], "kallo_backup");
             
@@ -2098,7 +2174,7 @@
                         <div className="flex items-center gap-2">
                             <div className="flex bg-indigo-800 dark:bg-slate-900 rounded p-1 gap-1">
                                 {[{ id: 'live', label: '라이브관제', icon: 'monitor-play' }, { id: 'status', label: '재고/발주', icon: 'clipboard-text' }, { id: 'manage', label: '주문관리', icon: 'file-xls' }].map(tab => (
-                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name={tab.icon} weight="bold"/> {tab.label}</button>
+                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name="hit-the-play" weight="bold"/> {tab.label}</button>
                                 ))}
                             </div>
                             <button onClick={()=>setIsVipModalOpen(true)} className="p-2 hover:bg-indigo-800 dark:bg-slate-800 rounded transition-colors text-yellow-400 ml-1" title="VIP 관리"><Icon name="crown" weight="fill" size={20}/></button>
