@@ -497,7 +497,7 @@
         // ============================================
         // 컴포넌트: 탭 (LiveTab)
         // ============================================
-        const LiveTab = ({ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }) => {
+        const LiveTab = ({ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, inventorySheetId, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }) => {
             const [chats, setChats] = useState([]);
             const [serverDeposits, setServerDeposits] = useState([]);
             const [manualDeposits, setManualDeposits] = useState([]);
@@ -536,6 +536,22 @@
             
             const sortOrderCache = useRef([]);
             const [hiddenChatIds, setHiddenChatIds] = useLocalStorage('hiddenChatIds', []);
+
+            // ESC 키 동작 핸들러
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        setSelectedNick(null);
+                        setIsFixedProductMode(false);
+                        setManualNick('');
+                        setManualProduct('');
+                        setManualPrice('');
+                        setCurrentSearchTerm('');
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, []);
 
             useEffect(() => { localStorage.setItem('hiddenChatIds', JSON.stringify([...hiddenChatIds])); }, [hiddenChatIds]);
 
@@ -1124,6 +1140,24 @@
             const autoSaveRef = useRef(); useEffect(() => { autoSaveRef.current = autoSaveToGoogleSheet; }, [autoSaveToGoogleSheet]);
             useEffect(() => { const saveInterval = setInterval(() => { if (autoSaveRef.current) autoSaveRef.current(); }, 60000); return () => clearInterval(saveInterval); }, []); 
 
+            // --- 상품 자동 저장 (디바운싱 5초) ---
+            useEffect(() => {
+                if (!googleScriptUrl || inventory.length === 0) return;
+                const timer = setTimeout(async () => {
+                    try {
+                        const targetSheetId = getCleanSheetId(inventorySheetId) || getCleanSheetId(customerSheetId);
+                        const payload = { action: 'save_inventory', sheet_id: targetSheetId, data: inventory.map(i => ({ name: i.name, price: i.price })) };
+                        await fetch(googleScriptUrl, { 
+                            method: 'POST', 
+                            body: JSON.stringify(payload), 
+                            mode: 'no-cors', 
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+                        });
+                    } catch(e) {}
+                }, 5000); 
+                return () => clearTimeout(timer);
+            }, [inventory, googleScriptUrl, inventorySheetId, customerSheetId]);
+
             useEffect(() => { if (lastAddedOrderId) { const input = document.getElementById(`prod-input-${lastAddedOrderId}`); if (input) input.focus(); setLastAddedOrderId(null); } }, [lastAddedOrderId, orders]);
 
             const handleNicknameEdit = useCallback((old) => {
@@ -1142,7 +1176,6 @@
             
             const handleAddressMapping = useCallback((orderNick, addressNick) => { 
                 openModal(`'${orderNick}' 주문자에게 '${addressNick}' 님의 주소를 연결하시겠습니까?\n(이후 이 주문자에게 해당 주소가 자동으로 표시됩니다)`, 'confirm', () => {
-                    // 주소록 원본은 건드리지 않고, 브라우저가 매핑 정보만 기억하게 수정
                     setAddressMapping(prev => ({ ...prev, [orderNick]: addressNick })); 
                 }); 
             }, [openModal, setAddressMapping]);
@@ -1359,7 +1392,7 @@
                     <datalist id="product-list">{Array.isArray(inventory) && inventory.map(i => <option key={i.id} value={i.name} />)}</datalist>
                     <QuickAddressModal isOpen={quickAddrModal.isOpen} nick={quickAddrModal.nick} initialData={quickAddrModal.editData} onClose={() => setQuickAddrModal({ isOpen: false, nick: '', editData: null })} onSubmit={handleQuickAddressSubmit} openModal={openModal} />
 
-                    <div className="w-[16%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-sm overflow-hidden min-w-[160px]">
+                    <div className="w-[18%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-sm overflow-hidden min-w-[180px]">
                         <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 border-b dark:border-slate-700 grid grid-cols-4 gap-1">
                             {quickMessages.map((msg, idx) => (
                                 <button key={idx} onClick={() => handleCopyQuickMessage(msg, idx)} className={`text-[10px] border rounded py-1 truncate transition-colors shadow-sm ${quickMsgCopyStatus[idx] ? 'bg-green-500 text-white font-bold' : 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300'}`}>{quickMsgCopyStatus[idx] ? '✅ 복사완료' : (msg || "빈 메시지")}</button>
@@ -1393,7 +1426,7 @@
                         </div>
                     </div>
 
-                    <div className="w-[43%] bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg flex flex-col overflow-hidden shadow-sm min-w-[400px]">
+                    <div className="w-[35%] bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg flex flex-col overflow-hidden shadow-sm min-w-[350px]">
                         <div className="grid grid-cols-5 gap-1 p-2 bg-indigo-50 dark:bg-slate-700/50 border-b dark:border-slate-700 text-center text-[10px]">
                             {[{id:'all', label:'총매출', val:dashboardStats.totalSales}, {id:'paid', label:'입금액', val:dashboardStats.totalDeposit}, {id:'unpaid', label:'미수금', val:dashboardStats.totalUnpaid}, {id:'card', label:'카드예정', val:dashboardStats.totalCardExpected}, {id:'no-address', label:'주소미입력', val:dashboardStats.missingAddressCount, onClick:handleNoAddressClick}].map(s => (
                                 <div key={s.id} onClick={s.onClick || (()=>setFilterStatus(s.id))} className={`bg-white dark:bg-slate-800 p-1 rounded border-2 cursor-pointer shadow-sm transition-colors ${filterStatus===s.id ? 'border-indigo-500' : 'border-transparent hover:border-indigo-200 dark:hover:border-indigo-800'}`}><div>{s.label}</div><div className={`font-bold text-[12px] ${s.id==='paid'?'text-green-600':s.id==='unpaid'?'text-red-500':s.id==='card'?'text-purple-600':s.id==='no-address'?'text-orange-500':'text-indigo-700 dark:text-indigo-400'}`}>{s.val.toLocaleString()}{s.id==='no-address'?'명':''}</div></div>
@@ -1447,7 +1480,7 @@
                         </div>
                     </div>
 
-                    <div className="w-[12%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[120px]">
+                    <div className="w-[14%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[120px]">
                         <div className="p-2 bg-yellow-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2">
                             <div className="font-bold text-yellow-700 dark:text-yellow-300 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span>
@@ -1523,7 +1556,7 @@
                         </div>
                     </div>
 
-                    <div className="w-[16%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[160px]">
+                    <div className="w-[20%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[200px]">
                         <div className="p-2 bg-blue-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2 shrink-0">
                             <div className="font-bold text-blue-700 dark:text-blue-400 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="package" weight="fill"/> 실시간 재고</span>
@@ -1548,7 +1581,30 @@
                                 
                                 return (
                                     <div key={item.id} className="flex flex-col bg-white dark:bg-slate-800 rounded border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                                        <div onClick={() => { setManualProduct(item.name); setCurrentSearchTerm(item.name); setManualPrice(item.price ? Number(item.price).toLocaleString() : ''); document.getElementById('manual-prod-input')?.focus(); }} className="flex items-center justify-between p-1.5 text-[11px] cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors">
+                                        <div 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const textArea = document.createElement("textarea");
+                                                textArea.value = item.name;
+                                                document.body.appendChild(textArea);
+                                                textArea.select();
+                                                try { document.execCommand('copy'); } catch (err) {}
+                                                document.body.removeChild(textArea);
+                                                const el = e.currentTarget;
+                                                el.classList.add('bg-green-100', 'dark:bg-green-900/50');
+                                                setTimeout(() => el.classList.remove('bg-green-100', 'dark:bg-green-900/50'), 300);
+                                            }}
+                                            onDoubleClick={(e) => {
+                                                e.stopPropagation();
+                                                setManualProduct(item.name);
+                                                setCurrentSearchTerm(item.name);
+                                                setManualPrice(item.price ? Number(item.price).toLocaleString() : '');
+                                                setIsFixedProductMode(true);
+                                                document.getElementById('manual-prod-input')?.focus();
+                                            }}
+                                            className="flex items-center justify-between p-1.5 text-[11px] cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
+                                            title="클릭: 복사 / 더블클릭: 자동 고정 입력"
+                                        >
                                             <div className="flex-1 font-bold text-gray-800 dark:text-slate-200 truncate pr-1" title={item.name}>{item.name}</div>
                                             <div className="w-10 text-center text-blue-600 dark:text-blue-400 font-bold shrink-0">{orderedCount}</div>
                                             <div className={`w-10 text-center font-bold shrink-0 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{remaining}</div>
@@ -1605,272 +1661,6 @@
             );
         };
 
-        const OrderStatusTab = ({ orders, setOrders, inventory, setInventory, downloadExcel, openModal, setProductHistory, productHistory, addresses, addressMapping, shippingOverrides, specialCustomers, quickShipping, cardPayments }) => {
-            const [searchTerm, setSearchTerm] = useState('');
-            const [buyersModalProduct, setBuyersModalProduct] = useState(null); 
-            const [showBulkAdd, setShowBulkAdd] = useState(false);
-            const [bulkBaseName, setBulkBaseName] = useState('');
-            const [bulkColors, setBulkColors] = useState('');
-            const [bulkSizes, setBulkSizes] = useState('');
-            const [bulkPrice, setBulkPrice] = useState('');
-            const [bulkStock, setBulkStock] = useState('100');
-            
-            const addressLookup = useMemo(() => {
-                const nickMap = {};
-                addresses.forEach(a => {
-                    const clean = normalizeString(a.nickname);
-                    if (!nickMap[clean]) nickMap[clean] = [];
-                    nickMap[clean].push(a);
-                    if (a.linkedNicks && Array.isArray(a.linkedNicks)) {
-                        a.linkedNicks.forEach(ln => {
-                            const cleanLn = normalizeString(ln);
-                            if (!nickMap[cleanLn]) nickMap[cleanLn] = [];
-                            nickMap[cleanLn].push(a);
-                        });
-                    }
-                });
-                return {
-                    get: (nick) => {
-                        if (!nick) return { data: null, type: 'none' };
-                        const mappedTarget = addressMapping[nick];
-                        if (mappedTarget) {
-                            const mappedAddrs = nickMap[normalizeString(mappedTarget)];
-                            if (mappedAddrs && mappedAddrs.length > 0) return { data: mappedAddrs[0], type: 'mapped' };
-                        }
-                        const cleanNick = normalizeString(nick);
-                        const matches = nickMap[cleanNick];
-                        if (matches && matches.length === 1) return { data: matches[0], type: 'single' };
-                        if (matches && matches.length > 1) return { data: null, type: 'multiple' };
-                        return { data: null, type: 'none' };
-                    }
-                };
-            }, [addresses, addressMapping]);
-
-            const getCalculatedShipping = useCallback((nick) => {
-                if (shippingOverrides[nick] !== undefined) return Number(shippingOverrides[nick]);
-                const nickNorm = normalizeString(nick);
-                const specialKey = Object.keys(specialCustomers || {}).find(k => normalizeString(k) === nickNorm && specialCustomers[k].type === 'vip');
-                if (specialKey) return 0;
-                const addrRes = addressLookup.get(nick);
-                if (addrRes && addrRes.data && addrRes.data.address && addrRes.data.address.includes('제주')) return 8000;
-                return Number(quickShipping);
-            }, [shippingOverrides, specialCustomers, addressLookup, quickShipping]);
-
-            const updateInventory = (id, field, val) => {
-                const itemToUpdate = inventory.find(i => i.id === id);
-                if (!itemToUpdate) return;
-                const oldName = itemToUpdate.name;
-
-                setInventory(prev => prev.map(item => {
-                    if (item.id === id) {
-                        const next = { ...item, [field]: val };
-                        if (field === 'price' && val !== '') setProductHistory(h => ({ ...h, [item.name]: Number(val) }));
-                        return next;
-                    }
-                    return item;
-                }));
-
-                if (field === 'name' && oldName !== val && oldName.trim() !== '') {
-                    setOrders(prevOrders => prevOrders.map(o => {
-                        if (o.product === oldName) { return { ...o, product: val }; }
-                        return o;
-                    }));
-                    setProductHistory(prevHist => {
-                        const nextHist = { ...prevHist };
-                        if (nextHist[oldName] !== undefined) { nextHist[val] = nextHist[oldName]; }
-                        return nextHist;
-                    });
-                }
-
-                if (field === 'price' && val !== '') {
-                    const newPriceNum = Number(val);
-                    if (!isNaN(newPriceNum)) {
-                        setOrders(prevOrders => prevOrders.map(o => {
-                            if (o.product === oldName && !o.isCancelled) {
-                                const q = Number(o.quantity) || 0; return { ...o, price: q * newPriceNum };
-                            }
-                            return o;
-                        }));
-                    }
-                }
-            };
-
-            const handleBulkAdd = (e) => {
-                e.preventDefault();
-                if (!bulkBaseName.trim()) { openModal("기본 상품명을 입력해주세요.", "alert"); return; }
-                const colorList = bulkColors.split(',').map(s => s.trim()).filter(Boolean);
-                const sizeList = bulkSizes.split(',').map(s => s.trim()).filter(Boolean);
-                const price = Number(bulkPrice) || 0; const stock = Number(bulkStock) || 0;
-                let combinations = [];
-                if (colorList.length > 0 && sizeList.length > 0) { colorList.forEach(c => { sizeList.forEach(s => { combinations.push(`${bulkBaseName.trim()} ${c} ${s}`); }); }); } 
-                else if (colorList.length > 0) { colorList.forEach(c => combinations.push(`${bulkBaseName.trim()} ${c}`)); } 
-                else if (sizeList.length > 0) { sizeList.forEach(s => combinations.push(`${bulkBaseName.trim()} ${s}`)); } 
-                else { combinations.push(bulkBaseName.trim()); }
-
-                setInventory(prev => {
-                    const next = [...prev]; let addedCount = 0;
-                    combinations.forEach(combo => {
-                        if (!next.find(i => String(i.name).trim() === combo)) { next.push({ id: `inv_${Date.now()}_${Math.random()}`, name: combo, stock: stock, price: price }); addedCount++; }
-                    });
-                    if (addedCount > 0) { openModal(`${addedCount}개의 상품 옵션이 한 번에 등록되었습니다.`, "alert"); setBulkBaseName(''); setBulkColors(''); setBulkSizes(''); setBulkPrice(''); setBulkStock('100'); setShowBulkAdd(false); } 
-                    else { openModal("새로 추가할 상품이 없습니다. (이미 동일한 이름이 존재함)", "alert"); }
-                    return next;
-                });
-                if (price > 0) { setProductHistory(prev => { const next = { ...prev }; combinations.forEach(c => next[c] = price); return next; }); }
-            };
-
-            const customerPaidStatus = useMemo(() => {
-                const status = {}; const customerGroups = {};
-                orders.forEach(o => { if(!customerGroups[o.customer]) customerGroups[o.customer] = []; customerGroups[o.customer].push(o); });
-                Object.entries(customerGroups).forEach(([nick, items]) => {
-                    const activeItems = items.filter(i => !i.isCancelled);
-                    if (activeItems.length === 0) { status[nick] = false; return; }
-                    const shipping = getCalculatedShipping(nick);
-                    const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
-                    const grandTotal = productTotal + shipping;
-                    const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
-                    status[nick] = (depositTotal >= grandTotal) || cardPayments[nick];
-                });
-                return status;
-            }, [orders, cardPayments, getCalculatedShipping]);
-
-            const filteredInventory = useMemo(() => {
-                if (!searchTerm) return inventory; return inventory.filter(i => String(i.name).toLowerCase().includes(searchTerm.toLowerCase()));
-            }, [inventory, searchTerm]);
-
-            return (
-                <div className="flex flex-col h-full overflow-hidden dark:bg-slate-950 p-2 relative">
-                    <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-sm border dark:border-slate-700 flex flex-col shrink-0 mb-2">
-                        <div className="flex justify-between items-center mb-3">
-                            <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="clipboard-text" weight="fill" className="text-blue-500"/> 재고/발주 현황 <span className="text-sm font-normal text-gray-500">({inventory.length}종)</span></h2>
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => { openModal("재고 목록을 모두 비우시겠습니까?\n(주문 내역은 삭제되지 않습니다)", "confirm", () => setInventory([])); }} className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1"><Icon name="trash" weight="bold"/> 초기화</button>
-                                <button onClick={() => setShowBulkAdd(!showBulkAdd)} className={`text-xs px-3 py-1.5 rounded font-bold flex items-center gap-1 transition-colors shadow-sm ${showBulkAdd ? 'bg-indigo-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}><Icon name="squares-four" weight="bold"/> 옵션 일괄 생성</button>
-                                <button onClick={() => { setInventory(prev => [{id: `inv_${Date.now()}`, name: '', stock: 100, price: 0}, ...prev]); }} className="bg-white hover:bg-gray-50 border border-gray-300 dark:bg-slate-700 dark:border-slate-600 text-gray-700 dark:text-white text-xs font-bold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1">+ 단일 추가</button>
-                                <button onClick={() => {
-                                    const data = inventory.map(i => {
-                                        const totalOrders = orders.filter(o => o.product === i.name && !o.isCancelled);
-                                        const orderedCount = totalOrders.reduce((sum, o) => sum + Number(o.quantity || 0), 0);
-                                        let paidCount = 0; let unpaidCount = 0;
-                                        totalOrders.forEach(o => { if (customerPaidStatus[o.customer]) paidCount += Number(o.quantity || 0); else unpaidCount += Number(o.quantity || 0); });
-                                        const remaining = (Number(i.stock) || 0) - orderedCount;
-                                        return { '상품명': i.name, '단가': i.price, '주문(전체)': orderedCount, '입금완료': paidCount, '미입금': unpaidCount, '총재고': i.stock, '잔여': remaining };
-                                    });
-                                    downloadExcel(data, '재고_단가_리스트');
-                                }} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1"><Icon name="download-simple" weight="bold"/> 엑셀 다운로드</button>
-                            </div>
-                        </div>
-
-                        {showBulkAdd && (
-                            <form onSubmit={handleBulkAdd} className="mb-3 bg-indigo-50 dark:bg-slate-700/30 p-4 rounded-lg border border-indigo-100 dark:border-slate-600 flex flex-col gap-3 animate-pop shadow-inner">
-                                <div className="grid grid-cols-12 gap-3 items-start">
-                                    <div className="col-span-3"><label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">기본 상품명 <span className="text-red-500">*</span></label><input type="text" value={bulkBaseName} onChange={e => setBulkBaseName(e.target.value)} placeholder="예: 01 밴딩 바지" className="w-full border border-gray-300 dark:border-slate-600 rounded px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-white" required autoFocus/></div>
-                                    <div className="col-span-3"><label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">옵션 1: 색상 등 (쉼표로 구분)</label><input type="text" value={bulkColors} onChange={e => setBulkColors(e.target.value)} placeholder="예: 검정, 크림, 카키" className="w-full border border-gray-300 dark:border-slate-600 rounded px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-white" /></div>
-                                    <div className="col-span-4">
-                                        <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">옵션 2: 사이즈 등 (쉼표로 구분)</label>
-                                        <input type="text" value={bulkSizes} onChange={e => setBulkSizes(e.target.value)} placeholder="예: S, M, L, XL" className="w-full border border-gray-300 dark:border-slate-600 rounded px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-white mb-1" />
-                                        <div className="flex gap-1 flex-wrap mt-1">
-                                            <button type="button" onClick={()=>setBulkSizes('XS, S, M, L, XL, XXL')} className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors">XS~XXL</button>
-                                            <button type="button" onClick={()=>setBulkSizes('44, 55, 66, 77, 88, 99')} className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors">44~99</button>
-                                            <button type="button" onClick={()=>setBulkSizes('225, 230, 235, 240, 245, 250, 255')} className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors">225~255</button>
-                                            <button type="button" onClick={()=>setBulkSizes('90, 95, 100, 105, 110, 115')} className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors">90~115</button>
-                                        </div>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">일괄 등록 단가 / 초기 재고</label>
-                                        <div className="flex gap-1">
-                                            <input type="number" value={bulkPrice} onChange={e => setBulkPrice(e.target.value)} placeholder="0" className="w-full border border-gray-300 dark:border-slate-600 rounded px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-white" />
-                                            <input type="number" value={bulkStock} onChange={e => setBulkStock(e.target.value)} placeholder="100" className="w-16 border border-gray-300 dark:border-slate-600 rounded px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 dark:text-white" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-indigo-200 dark:border-slate-600">
-                                    <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">💡 입력 예시 결과: <span className="font-normal text-gray-600 dark:text-gray-400">01 밴딩 바지 검정 S, 01 밴딩 바지 검정 M ...</span></div>
-                                    <div className="flex gap-2">
-                                        <button type="button" onClick={() => setShowBulkAdd(false)} className="px-6 py-2 rounded bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-slate-200 font-bold text-sm hover:bg-gray-300 transition-colors">취소</button>
-                                        <button type="submit" className="px-6 py-2 rounded bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors shadow-sm">일괄 생성</button>
-                                    </div>
-                                </div>
-                            </form>
-                        )}
-
-                        <div className="relative">
-                            <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input type="text" placeholder="상품명 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-slate-900 dark:text-white shadow-sm" />
-                        </div>
-                    </div>
-
-                    <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col min-h-0">
-                        <div className="flex w-full bg-gray-100 dark:bg-slate-700/50 p-2 border-b border-gray-200 dark:border-slate-700 text-xs font-bold text-gray-600 dark:text-slate-400 items-center">
-                            <div className="flex-1 pl-2">상품명</div><div className="w-24 text-center">단가</div><div className="w-20 text-center">주문</div><div className="w-20 text-center text-green-600">입금</div><div className="w-20 text-center text-red-500">미입금</div><div className="w-24 text-center">총재고</div><div className="w-20 text-center">잔여</div><div className="w-16 text-center">명단</div><div className="w-12 text-center">삭제</div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {filteredInventory.map(item => {
-                                const totalOrders = orders.filter(o => o.product === item.name && !o.isCancelled);
-                                const orderedCount = totalOrders.reduce((sum, o) => sum + Number(o.quantity || 0), 0);
-                                let paidCount = 0; let unpaidCount = 0;
-                                totalOrders.forEach(o => { if (customerPaidStatus[o.customer]) paidCount += Number(o.quantity || 0); else unpaidCount += Number(o.quantity || 0); });
-                                const remaining = (Number(item.stock) || 0) - orderedCount;
-                                const isSelected = buyersModalProduct === item.name;
-
-                                return (
-                                    <div key={item.id} className={`flex items-center text-sm p-2 border-b border-gray-100 dark:border-slate-700/50 transition-colors cursor-pointer ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>
-                                        <div className="flex-1 pr-2"><input type="text" value={item.name} onChange={e => updateInventory(item.id, 'name', e.target.value)} onClick={e=>e.stopPropagation()} className="w-full border border-transparent hover:border-gray-200 focus:border-blue-500 bg-transparent font-medium outline-none rounded px-2 py-1 transition-all text-gray-800 dark:text-slate-200" placeholder="상품명" /></div>
-                                        <div className="w-24 px-1"><input type="text" value={Number(item.price).toLocaleString()} onChange={e => { const val = e.target.value.replace(/,/g, ''); if (!isNaN(val)) updateInventory(item.id, 'price', val); }} onClick={e=>e.stopPropagation()} onFocus={e=>e.target.select()} className="w-full border border-gray-200 dark:border-slate-600 rounded px-1 py-1 text-center outline-none focus:border-blue-500 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 text-[13px]" placeholder="0" /></div>
-                                        <div className="w-20 text-center font-bold text-blue-600 dark:text-blue-400">{orderedCount}</div>
-                                        <div className="w-20 text-center font-bold text-green-600 dark:text-green-400">{paidCount}</div>
-                                        <div className="w-20 text-center font-bold text-red-500 dark:text-red-400">{unpaidCount}</div>
-                                        <div className="w-24 px-1"><input type="number" value={item.stock} onChange={e => updateInventory(item.id, 'stock', e.target.value)} onClick={e=>e.stopPropagation()} onFocus={e=>e.target.select()} className="w-full border border-gray-200 dark:border-slate-600 rounded px-1 py-1 text-center outline-none focus:border-blue-500 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 text-[13px]" placeholder="0" /></div>
-                                        <div className={`w-20 text-center font-bold ${remaining < 0 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>{remaining}</div>
-                                        <div className="w-16 text-center"><button onClick={(e) => { e.stopPropagation(); setBuyersModalProduct(item.name); }} className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-800 transition-colors shadow-sm flex items-center gap-1 font-bold mx-auto"><Icon name="list" weight="bold"/> 명단</button></div>
-                                        <div className="w-12 text-center"><button onClick={(e) => { e.stopPropagation(); if (window.confirm('해당 상품을 재고 목록에서 삭제하시겠습니까? (기존 주문서는 유지됩니다)')) { setInventory(prev => prev.filter(i => i.id !== item.id)); } }} className="text-gray-300 dark:text-slate-600 hover:text-red-500 transition-colors p-1"><Icon name="trash" weight="bold" size={16}/></button></div>
-                                    </div>
-                                );
-                            })}
-                            {filteredInventory.length === 0 && <div className="text-center text-gray-500 py-12 text-sm">등록된 상품이 없습니다.</div>}
-                        </div>
-                    </div>
-
-                    {buyersModalProduct && (
-                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-indigo-200 dark:border-indigo-800 flex flex-col shrink-0 animate-pop overflow-hidden h-64 mt-2">
-                            <div className="flex justify-between items-center p-3 bg-indigo-50 dark:bg-slate-900 border-b border-indigo-100 dark:border-slate-700">
-                                <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-2">
-                                    <Icon name="users" weight="fill" /> '{buyersModalProduct}' 주문 고객 명단 <span className="text-gray-500 font-normal">({orders.filter(o => o.product === buyersModalProduct && !o.isCancelled).reduce((acc, o)=>acc+1,0)}명)</span>
-                                </h3>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => {
-                                        const activeOrders = orders.filter(o => o.product === buyersModalProduct && !o.isCancelled);
-                                        const uniqueNicks = [...new Set(activeOrders.map(o => o.customer))];
-                                        if(uniqueNicks.length === 0) return;
-                                        const text = `${buyersModalProduct}(${uniqueNicks.length}명) ${uniqueNicks.join(', ')}`;
-                                        const textArea = document.createElement("textarea");
-                                        textArea.value = text; document.body.appendChild(textArea); textArea.select();
-                                        try { document.execCommand('copy'); openModal('명단이 복사되었습니다!\n유튜브 댓글에 바로 붙여넣기 하세요.', 'alert'); } catch (err) {}
-                                        document.body.removeChild(textArea);
-                                    }} className="text-[11px] bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:border-slate-600 dark:text-indigo-400 dark:hover:bg-slate-700 px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1 font-bold">
-                                        <Icon name="copy" weight="bold" /> 가로 복사
-                                    </button>
-                                    <button onClick={() => setBuyersModalProduct(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><Icon name="x" weight="bold" size={16}/></button>
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-50 dark:bg-slate-900/50">
-                                {orders.filter(o => o.product === buyersModalProduct && !o.isCancelled).map(order => (
-                                    <div key={order.id} className="flex justify-between items-center bg-white dark:bg-slate-800 p-2.5 rounded shadow-sm border border-gray-100 dark:border-slate-700 transition-colors hover:border-indigo-200">
-                                        <span className="text-[12px] font-bold text-gray-800 dark:text-slate-100">{order.customer} {order.quantity > 1 && <span className="text-blue-500 font-bold ml-1">({order.quantity}개)</span>}</span>
-                                        <button onClick={() => { if(window.confirm(`'${order.customer}'님의 주문을 삭제하시겠습니까?\n(메인 주문서에서도 해당 품목이 즉시 삭제됩니다)`)) { setOrders(prev => prev.filter(o => o.id !== order.id)); } }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 px-2 py-1 rounded transition-colors text-[10px] font-bold flex items-center gap-1 border border-transparent hover:border-red-200 dark:hover:border-red-800"><Icon name="trash" weight="bold" /> 삭제</button>
-                                    </div>
-                                ))}
-                                {orders.filter(o => o.product === buyersModalProduct && !o.isCancelled).length === 0 && <div className="text-center text-gray-500 dark:text-slate-400 text-[12px] py-10">해당 상품을 주문한 고객이 아직 없습니다.</div>}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        // ============================================
-        // 컴포넌트: 탭 (OrderManagementTab)
-        // ============================================
         const OrderManagementTab = ({ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers, openModal }) => {
             const findAddress = (nick) => {
                 if (addressMapping[nick]) return addresses.find(a => normalizeString(a.nickname) === normalizeString(addressMapping[nick]));
@@ -2086,6 +1876,7 @@
             const [googleScriptUrl, setGoogleScriptUrl] = useLocalStorage('googleScriptUrl', DEFAULT_GOOGLE_SCRIPT_URL);
             const [customerSheetId, setCustomerSheetId] = useLocalStorage('customerSheetId', DEFAULT_CUSTOMER_SHEET_ID);
             const [addressScriptUrl, setAddressScriptUrl] = useLocalStorage('addressScriptUrl', '');
+            const [inventorySheetId, setInventorySheetId] = useLocalStorage('inventorySheetId', '');
             const [modalConfig, setModalConfig] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null, initialValue: '' });
 
             const openModal = useCallback((m, t = 'alert', oc = null, ocan = null, iv = '') => { 
@@ -2096,8 +1887,6 @@
                 openModal("방송 데이터를 완전히 초기화하시겠습니까?\n(채팅, 입금내역, 주문서, 재고 및 단가 기록이 모두 영구 삭제됩니다!)", 'confirm', () => {
                     const keysToRemove = ['youtubeOrders', 'cardPayments', 'shippingOverrides', 'matchedDeposits', 'clickedChats', 'sentAddressRequests', 'deletedDepositIds', 'checkedOrders', 'productInventory', 'productHistory', 'hiddenChatIds', 'ignoredAutoMatch'];
                     keysToRemove.forEach(k => localStorage.removeItem(k));
-                    
-                    // 로컬스토리지 삭제 후 브라우저 새로고침으로 깔끔하게 초기화
                     window.location.reload();
                 });
             }, [openModal]);
@@ -2173,7 +1962,7 @@
                         <div className="font-bold text-lg flex items-center gap-2 transition-transform hover:scale-105 duration-200 cursor-pointer"><Icon name="lightning" className="text-yellow-400" weight="fill"/> 깔로 주문서 PRO</div>
                         <div className="flex items-center gap-2">
                             <div className="flex bg-indigo-800 dark:bg-slate-900 rounded p-1 gap-1">
-                                {[{ id: 'live', label: '라이브관제', icon: 'monitor-play' }, { id: 'status', label: '재고/발주', icon: 'clipboard-text' }, { id: 'manage', label: '주문관리', icon: 'file-xls' }].map(tab => (
+                                {[{ id: 'live', label: '라이브관제', icon: 'monitor-play' }, { id: 'manage', label: '주문관리', icon: 'file-xls' }].map(tab => (
                                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name="hit-the-play" weight="bold"/> {tab.label}</button>
                                 ))}
                             </div>
@@ -2190,6 +1979,10 @@
                             <h3 className="font-bold mb-4 flex items-center gap-2 border-b dark:border-slate-700 pb-2"><Icon name="gear" weight="fill" className="text-gray-500"/> 환경설정</h3>
                             <div className="mb-4 space-y-4">
                                 <div><label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">메인 구글 앱스 스크립트 URL</label><input type="text" value={googleScriptUrl} onChange={(e)=>{const v = e.target.value; setGoogleScriptUrl(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white" /></div>
+                                <div>
+                                    <label className="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">고객용 상품목록 시트 ID (선택/자동저장용)</label>
+                                    <input type="text" value={inventorySheetId} onChange={(e)=>{const v = e.target.value; setInventorySheetId(() => v);}} placeholder="입력 시, 재고 상품명/단가가 이 시트로 실시간 전송됩니다." className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white border-blue-300 dark:border-blue-700" />
+                                </div>
                                 <div>
                                     <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">주소록 전용 앱스 스크립트 URL (선택)</label>
                                     <input type="text" value={addressScriptUrl} onChange={(e)=>{const v = e.target.value; setAddressScriptUrl(() => v);}} placeholder="입력 시, 주소록은 이곳에서만 동기화됩니다." className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white border-emerald-300 dark:border-emerald-700" />
@@ -2239,8 +2032,7 @@
                         </div>
                     )}
                     <main className="flex-1 overflow-hidden bg-gray-200 dark:bg-slate-950 p-2 relative">
-                        {activeTab === 'live' && <LiveTab {...{ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }} />}
-                        {activeTab === 'status' && <OrderStatusTab {...{ orders, setOrders, setProductHistory, productHistory, inventory, setInventory, openModal, shippingOverrides, quickShipping, addresses, addressMapping, cardPayments, specialCustomers }} />}
+                        {activeTab === 'live' && <LiveTab {...{ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, inventorySheetId, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }} />}
                         {activeTab === 'manage' && <OrderManagementTab {...{ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers, openModal }} />}
                     </main>
                 </div>
