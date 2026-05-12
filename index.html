@@ -497,7 +497,7 @@
         // ============================================
         // 컴포넌트: 탭 (LiveTab)
         // ============================================
-        const LiveTab = ({ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, inventorySheetId, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }) => {
+        const LiveTab = ({ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, inventoryScriptUrl, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }) => {
             const [chats, setChats] = useState([]);
             const [serverDeposits, setServerDeposits] = useState([]);
             const [manualDeposits, setManualDeposits] = useState([]);
@@ -1142,12 +1142,12 @@
 
             // --- 상품 자동 저장 (디바운싱 5초) ---
             useEffect(() => {
-                if (!googleScriptUrl || inventory.length === 0) return;
+                const targetUrl = inventoryScriptUrl || googleScriptUrl;
+                if (!targetUrl || inventory.length === 0) return;
                 const timer = setTimeout(async () => {
                     try {
-                        const targetSheetId = getCleanSheetId(inventorySheetId) || getCleanSheetId(customerSheetId);
-                        const payload = { action: 'save_inventory', sheet_id: targetSheetId, data: inventory.map(i => ({ name: i.name, price: i.price })) };
-                        await fetch(googleScriptUrl, { 
+                        const payload = { action: 'save_inventory', data: inventory.map(i => ({ name: i.name, price: i.price })) };
+                        await fetch(targetUrl, { 
                             method: 'POST', 
                             body: JSON.stringify(payload), 
                             mode: 'no-cors', 
@@ -1156,7 +1156,7 @@
                     } catch(e) {}
                 }, 5000); 
                 return () => clearTimeout(timer);
-            }, [inventory, googleScriptUrl, inventorySheetId, customerSheetId]);
+            }, [inventory, googleScriptUrl, inventoryScriptUrl, customerSheetId]);
 
             useEffect(() => { if (lastAddedOrderId) { const input = document.getElementById(`prod-input-${lastAddedOrderId}`); if (input) input.focus(); setLastAddedOrderId(null); } }, [lastAddedOrderId, orders]);
 
@@ -1556,12 +1556,29 @@
                         </div>
                     </div>
 
-                    <div className="w-[20%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[200px]">
+                    <div className="w-[23%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[240px]">
                         <div className="p-2 bg-blue-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2 shrink-0">
                             <div className="font-bold text-blue-700 dark:text-blue-400 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="package" weight="fill"/> 실시간 재고</span>
                                 <div className="flex items-center gap-1.5">
                                     <span className="text-xs text-gray-500 dark:text-slate-400">{inventory.length}종</span>
+                                    <button onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const targetUrl = inventoryScriptUrl || googleScriptUrl;
+                                        if (!targetUrl) return openModal("설정에서 구글 스크립트 URL을 먼저 등록해주세요.", "alert");
+                                        try {
+                                            const payload = { action: 'save_inventory', data: inventory.map(i => ({ name: i.name, price: i.price })) };
+                                            await fetch(targetUrl, { 
+                                                method: 'POST', 
+                                                body: JSON.stringify(payload), 
+                                                mode: 'no-cors', 
+                                                headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+                                            });
+                                            openModal("고객용 시트로 즉시 전송 완료!", 'alert');
+                                        } catch(err) {
+                                            openModal("전송 실패: " + err.message, 'alert');
+                                        }
+                                    }} className="bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="시트에 즉시 저장"><Icon name="cloud-arrow-up" weight="bold"/></button>
                                     <button onClick={() => openModal("재고 목록을 모두 비우시겠습니까?\n(주문 내역은 유지됩니다)", "confirm", () => setInventory([]))} className="bg-red-500 hover:bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="재고 비우기"><Icon name="trash" weight="bold"/></button>
                                 </div>
                             </div>
@@ -1569,8 +1586,9 @@
                         </div>
                         <div className="flex w-full bg-gray-100 dark:bg-slate-700/50 p-1.5 border-b border-gray-200 dark:border-slate-700 text-[10px] font-bold text-gray-600 dark:text-slate-400 items-center text-center shrink-0">
                             <div className="flex-1 text-left pl-1">상품명</div>
-                            <div className="w-10 shrink-0">주문</div>
-                            <div className="w-10 shrink-0 pr-4">잔여</div>
+                            <div className="w-12 shrink-0">단가</div>
+                            <div className="w-8 shrink-0">주문</div>
+                            <div className="w-8 shrink-0 pr-4">잔여</div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 bg-gray-100 dark:bg-slate-900">
                             {inventory.filter(i => !currentSearchTerm || String(i.name).toLowerCase().includes(currentSearchTerm.toLowerCase())).map(item => {
@@ -1606,8 +1624,9 @@
                                             title="클릭: 복사 / 더블클릭: 자동 고정 입력"
                                         >
                                             <div className="flex-1 font-bold text-gray-800 dark:text-slate-200 truncate pr-1" title={item.name}>{item.name}</div>
-                                            <div className="w-10 text-center text-blue-600 dark:text-blue-400 font-bold shrink-0">{orderedCount}</div>
-                                            <div className={`w-10 text-center font-bold shrink-0 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{remaining}</div>
+                                            <div className="w-12 text-center text-[11px] text-gray-800 dark:text-slate-300 font-bold shrink-0">{item.price ? Number(item.price).toLocaleString() : '0'}</div>
+                                            <div className="w-8 text-center text-blue-600 dark:text-blue-400 font-bold shrink-0">{orderedCount}</div>
+                                            <div className={`w-8 text-center font-bold shrink-0 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{remaining}</div>
                                             <button onClick={(e) => { e.stopPropagation(); setExpandedInventoryItem(isExpanded ? null : item.name); }} className={`ml-1 p-0.5 rounded text-gray-400 hover:text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shrink-0 ${isExpanded ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600' : ''}`} title="주문자 명단 보기"><Icon name="caret-down" weight="bold" className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></button>
                                         </div>
                                         {isExpanded && (
@@ -1618,19 +1637,25 @@
                                                         e.stopPropagation();
                                                         const uniqueNicks = [...new Set(activeOrders.map(o => o.customer))];
                                                         if(uniqueNicks.length === 0) return;
-                                                        const text = `${item.name}(${uniqueNicks.length}명) ${uniqueNicks.join(', ')}`;
+                                                        
+                                                        let text = `[${item.name} / ${uniqueNicks.length}명]\n`;
+                                                        for(let k=0; k<uniqueNicks.length; k+=2) {
+                                                            if(uniqueNicks[k+1]) text += `${uniqueNicks[k]} / ${uniqueNicks[k+1]}\n`;
+                                                            else text += `${uniqueNicks[k]}\n`;
+                                                        }
+                                                        
                                                         const textArea = document.createElement("textarea");
                                                         textArea.value = text; document.body.appendChild(textArea); textArea.select();
-                                                        try { document.execCommand('copy'); openModal('명단이 복사되었습니다!', 'alert'); } catch (err) {}
+                                                        try { document.execCommand('copy'); openModal('명단이 2열로 복사되었습니다!', 'alert'); } catch (err) {}
                                                         document.body.removeChild(textArea);
                                                     }} className="text-[9px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 px-1.5 py-0.5 rounded font-bold transition-colors">명단 복사</button>
                                                 </div>
                                                 {activeOrders.length === 0 ? (
                                                     <div className="text-center text-[10px] text-gray-400 py-2">주문 내역이 없습니다.</div>
                                                 ) : (
-                                                    <div className="flex flex-col gap-1 max-h-[120px] overflow-y-auto pr-1">
+                                                    <div className="grid grid-cols-2 gap-1 max-h-[160px] overflow-y-auto pr-1">
                                                         {activeOrders.map(o => (
-                                                            <div key={o.id} className="flex justify-between items-center bg-white dark:bg-slate-800 p-1 rounded border border-gray-100 dark:border-slate-700 shadow-sm text-[10px] group hover:border-blue-200 dark:hover:border-blue-800">
+                                                            <div key={o.id} className="flex justify-between items-center bg-white dark:bg-slate-800 p-1 rounded border border-gray-100 dark:border-slate-700 shadow-sm text-[10px] group hover:border-blue-200 dark:hover:border-blue-800 min-w-0">
                                                                 <span className="font-bold text-gray-700 dark:text-slate-200 cursor-pointer hover:text-blue-500 transition-colors truncate flex-1" onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     const textArea = document.createElement("textarea"); textArea.value = o.customer; document.body.appendChild(textArea); textArea.select();
@@ -1876,7 +1901,7 @@
             const [googleScriptUrl, setGoogleScriptUrl] = useLocalStorage('googleScriptUrl', DEFAULT_GOOGLE_SCRIPT_URL);
             const [customerSheetId, setCustomerSheetId] = useLocalStorage('customerSheetId', DEFAULT_CUSTOMER_SHEET_ID);
             const [addressScriptUrl, setAddressScriptUrl] = useLocalStorage('addressScriptUrl', '');
-            const [inventorySheetId, setInventorySheetId] = useLocalStorage('inventorySheetId', '');
+            const [inventoryScriptUrl, setInventoryScriptUrl] = useLocalStorage('inventoryScriptUrl', 'https://script.google.com/macros/s/AKfycbyA7HUf-OCVY9hPZiu_YXvl4OUFvLyNU26vFj1dOi3URd3Tet9DrLVCz5nnk7UI2ZA/exec');
             const [modalConfig, setModalConfig] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null, initialValue: '' });
 
             const openModal = useCallback((m, t = 'alert', oc = null, ocan = null, iv = '') => { 
@@ -1980,8 +2005,8 @@
                             <div className="mb-4 space-y-4">
                                 <div><label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">메인 구글 앱스 스크립트 URL</label><input type="text" value={googleScriptUrl} onChange={(e)=>{const v = e.target.value; setGoogleScriptUrl(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white" /></div>
                                 <div>
-                                    <label className="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">고객용 상품목록 시트 ID (선택/자동저장용)</label>
-                                    <input type="text" value={inventorySheetId} onChange={(e)=>{const v = e.target.value; setInventorySheetId(() => v);}} placeholder="입력 시, 재고 상품명/단가가 이 시트로 실시간 전송됩니다." className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white border-blue-300 dark:border-blue-700" />
+                                    <label className="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">고객용 상품 스크립트 URL (선택/자동저장용)</label>
+                                    <input type="text" value={inventoryScriptUrl} onChange={(e)=>{const v = e.target.value; setInventoryScriptUrl(() => v);}} placeholder="고객용 시트에서 배포한 앱스 스크립트 주소 입력" className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white border-blue-300 dark:border-blue-700" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">주소록 전용 앱스 스크립트 URL (선택)</label>
@@ -2032,7 +2057,7 @@
                         </div>
                     )}
                     <main className="flex-1 overflow-hidden bg-gray-200 dark:bg-slate-950 p-2 relative">
-                        {activeTab === 'live' && <LiveTab {...{ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, inventorySheetId, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }} />}
+                        {activeTab === 'live' && <LiveTab {...{ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, inventoryScriptUrl, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }} />}
                         {activeTab === 'manage' && <OrderManagementTab {...{ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers, openModal }} />}
                     </main>
                 </div>
