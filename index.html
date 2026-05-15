@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>깔로 주문서 모노</title>
+    <title>깔로 주문서 PRO - 완전판</title>
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -475,7 +475,7 @@
                                     e.stopPropagation();
                                     if(aggregatedOrders.length === 0) return;
                                     
-                                    let text = `[${item.name} / ${aggregatedOrders.length}명]\n`;
+                                    let text = `[${item.name} ${Number(item.price).toLocaleString()}원 / ${aggregatedOrders.length}명]\n`;
                                     for(let k=0; k<aggregatedOrders.length; k+=2) {
                                         const name1 = aggregatedOrders[k].quantity > 1 ? `${aggregatedOrders[k].customer}(${aggregatedOrders[k].quantity})` : aggregatedOrders[k].customer;
                                         if(aggregatedOrders[k+1]) {
