@@ -17,11 +17,11 @@
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     
     <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['NanumSquareNeo', 'Pretendard', 'sans-serif'] }, colors: { brand: { 50: '#f0f4f8', 500: '#627d98', 600: '#486581', 700: '#334e68' }, kakao: '#FEE500' } } } }
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['NanumSquareNeo', 'Pretendard', 'sans-serif'] }, colors: { brand: { 50: '#f8fafc', 500: '#64748b', 600: '#475569', 700: '#334155' }, kakao: '#FEE500' } } } }
     </script>
     <style>
         @import url("https://cdn.jsdelivr.net/gh/moonspam/NanumSquareNeo/nanumsquareneo.css");
-        body { font-family: 'NanumSquareNeo', sans-serif; background-color: #f8fafc; transition: background-color 0.3s, color 0.3s; }
+        body { font-family: 'NanumSquareNeo', sans-serif; background-color: #f1f5f9; transition: background-color 0.3s, color 0.3s; }
         body.dark { background-color: #0f172a; color: #f1f5f9; }
         ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
@@ -29,16 +29,16 @@
         input[type="number"] { -moz-appearance: textfield; }
         .processed-chat { text-decoration: line-through; background-color: #f1f5f9 !important; color: #94a3b8 !important; opacity: 0.6; }
         .dark .processed-chat { background-color: #1e293b !important; color: #64748b !important; }
-        .selected-chat-active { border-left: 3px solid #3b82f6; background-color: #eff6ff; }
-        .dark .selected-chat-active { border-left-color: #60a5fa; background-color: #1e293b; }
-        .keyword-detected { border: 2px solid #60a5fa; background-color: #eff6ff; }
-        .dark .keyword-detected { border-color: #3b82f6; background-color: #1e293b; }
+        .selected-chat-active { border-left: 3px solid #64748b; background-color: #f8fafc; }
+        .dark .selected-chat-active { border-left-color: #94a3b8; background-color: #1e293b; }
+        .keyword-detected { border: 2px solid #94a3b8; background-color: #f8fafc; }
+        .dark .keyword-detected { border-color: #64748b; background-color: #1e293b; }
         .animate-pop { animation: pop 0.2s ease-out; }
         @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         .custom-checkbox { appearance: none; background-color: #fff; margin: 0; width: 1.4em; height: 1.4em; border: 2px solid #cbd5e1; border-radius: 4px; display: grid; place-content: center; cursor: pointer; transition: all 0.2s; }
         .dark .custom-checkbox { background-color: #1e293b; border-color: #475569; }
         .custom-checkbox::before { content: ""; width: 0.8em; height: 0.8em; transform: scale(0); transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em white; background-color: white; transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); }
-        .custom-checkbox:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        .custom-checkbox:checked { background-color: #475569; border-color: #475569; }
         .custom-checkbox:checked::before { transform: scale(1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -142,7 +142,6 @@
                         return Object.entries(parsed).map(([name, info]) => ({
                             id: `inv_${Date.now()}_${Math.random()}`,
                             name,
-                            stock: info.stock || 0,
                             price: info.price || 0
                         }));
                     }
@@ -203,20 +202,20 @@
             
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] animate-pop" onClick={type === 'alert' ? () => onConfirm() : undefined}>
+                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[9999] animate-pop" onClick={type === 'alert' ? () => onConfirm() : undefined}>
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-80 max-w-sm" onClick={e => e.stopPropagation()}>
                         <div className="mb-4">
-                            <h3 className="text-lg font-bold text-center text-gray-800 dark:text-slate-100 mb-2">{type === 'confirm' ? '확인' : type === 'prompt' ? '입력' : '알림'}</h3>
-                            <p className="text-sm text-gray-600 dark:text-slate-400 text-center whitespace-pre-wrap leading-relaxed">{message}</p>
+                            <h3 className="text-lg font-bold text-center text-slate-800 dark:text-slate-100 mb-2">{type === 'confirm' ? '확인' : type === 'prompt' ? '입력' : '알림'}</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 text-center whitespace-pre-wrap leading-relaxed">{message}</p>
                         </div>
                         {type === 'prompt' && (
-                            <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="w-full border dark:border-slate-600 rounded-lg px-3 py-2 mb-5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50 dark:bg-slate-900 dark:text-slate-100"/>
+                            <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="w-full border dark:border-slate-600 rounded-lg px-3 py-2 mb-5 text-sm focus:ring-2 focus:ring-slate-500 outline-none bg-slate-50 dark:bg-slate-900 dark:text-slate-100"/>
                         )}
                         <div className="flex gap-2">
                             {type !== 'alert' && (
-                                <button onClick={onCancel} className="flex-1 py-2.5 rounded-lg text-sm font-bold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">취소</button>
+                                <button onClick={onCancel} className="flex-1 py-2.5 rounded-lg text-sm font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">취소</button>
                             )}
-                            <button onClick={() => type === 'prompt' ? onConfirm(inputValue) : onConfirm()} className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm">확인</button>
+                            <button onClick={() => type === 'prompt' ? onConfirm(inputValue) : onConfirm()} className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white bg-slate-700 hover:bg-slate-800 transition-colors shadow-sm">확인</button>
                         </div>
                     </div>
                 </div>
@@ -279,27 +278,27 @@
 
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] animate-pop" onClick={onClose}>
+                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[9999] animate-pop" onClick={onClose}>
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
                         <div className="mb-4 border-b dark:border-slate-700 pb-3 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-2"><Icon name="pencil-line" weight="fill" /> '{initialData ? initialData.nickname : nick}' 배송지 {initialData ? '수정' : '빠른 입력'}</h3>
-                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><Icon name="x" weight="bold" size={20}/></button>
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2"><Icon name="pencil-line" weight="fill" /> '{initialData ? initialData.nickname : nick}' 배송지 {initialData ? '수정' : '빠른 입력'}</h3>
+                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><Icon name="x" weight="bold" size={20}/></button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-3">
                             <div className="grid grid-cols-2 gap-3">
-                                <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">수령인 이름 (필수)</label><input type="text" value={formData.realname} onChange={e=>setFormData({...formData, realname: e.target.value})} className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="이름 입력" autoFocus /></div>
-                                <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">연락처 (자동 숫자 추출)</label><input type="text" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value.replace(/[^0-9]/g, '')})} className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="연락처 (숫자만)" /></div>
+                                <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">수령인 이름 (필수)</label><input type="text" value={formData.realname} onChange={e=>setFormData({...formData, realname: e.target.value})} className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-slate-500 outline-none" placeholder="이름 입력" autoFocus /></div>
+                                <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">연락처 (자동 숫자 추출)</label><input type="text" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value.replace(/[^0-9]/g, '')})} className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-slate-500 outline-none" placeholder="연락처 (숫자만)" /></div>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">배송 주소 (필수)</label>
-                                <div className="flex gap-2 mb-2"><input type="text" value={formData.zipcode} readOnly placeholder="우편번호" className="w-24 border dark:border-slate-600 rounded px-3 py-2 text-sm bg-gray-50 dark:bg-slate-700 dark:text-slate-400 outline-none cursor-not-allowed" /><button type="button" onClick={handleSearch} className="bg-slate-500 hover:bg-slate-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm transition-colors">주소 검색</button></div>
-                                <input type="text" value={formData.address} readOnly placeholder="검색 버튼을 눌러 기본 주소를 찾아주세요" className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-gray-50 dark:bg-slate-700 dark:text-slate-400 outline-none cursor-not-allowed mb-2" />
-                                <input ref={detailRef} type="text" value={formData.detailAddress} onChange={e=>setFormData({...formData, detailAddress: e.target.value})} placeholder="상세 주소 (동, 호수 등)" className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">배송 주소 (필수)</label>
+                                <div className="flex gap-2 mb-2"><input type="text" value={formData.zipcode} readOnly placeholder="우편번호" className="w-24 border dark:border-slate-600 rounded px-3 py-2 text-sm bg-slate-50 dark:bg-slate-700 dark:text-slate-400 outline-none cursor-not-allowed" /><button type="button" onClick={handleSearch} className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded text-sm font-bold shadow-sm transition-colors">주소 검색</button></div>
+                                <input type="text" value={formData.address} readOnly placeholder="검색 버튼을 눌러 기본 주소를 찾아주세요" className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-slate-50 dark:bg-slate-700 dark:text-slate-400 outline-none cursor-not-allowed mb-2" />
+                                <input ref={detailRef} type="text" value={formData.detailAddress} onChange={e=>setFormData({...formData, detailAddress: e.target.value})} placeholder="상세 주소 (동, 호수 등)" className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-slate-500 outline-none" />
                             </div>
-                            <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">배송 메모 (선택)</label><input type="text" value={formData.memo} onChange={e=>setFormData({...formData, memo: e.target.value})} className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="배송 요청사항" /></div>
+                            <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">배송 메모 (선택)</label><input type="text" value={formData.memo} onChange={e=>setFormData({...formData, memo: e.target.value})} className="w-full border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-slate-100 focus:ring-2 focus:ring-slate-500 outline-none" placeholder="배송 요청사항" /></div>
                             <div className="pt-3 flex gap-2">
-                                <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded font-bold text-sm bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 transition-colors">취소</button>
-                                <button type="submit" className="flex-1 py-2.5 rounded font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm">저장 및 즉시 적용</button>
+                                <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded font-bold text-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">취소</button>
+                                <button type="submit" className="flex-1 py-2.5 rounded font-bold text-sm bg-slate-700 text-white hover:bg-slate-800 transition-colors shadow-sm">저장 및 즉시 적용</button>
                             </div>
                         </form>
                     </div>
@@ -334,36 +333,204 @@
             };
             
             return (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] animate-pop" onClick={onClose}>
+                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[9999] animate-pop" onClick={onClose}>
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
                         <div className="mb-4 border-b dark:border-slate-700 pb-3 flex justify-between items-center shrink-0">
-                            <h3 className="text-lg font-bold text-yellow-600 dark:text-yellow-400 flex items-center gap-2"><Icon name="crown" weight="fill" /> VIP 특별 관리 대장</h3>
-                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><Icon name="x" weight="bold" size={20}/></button>
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2"><Icon name="crown" weight="fill" /> VIP 특별 관리 대장</h3>
+                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><Icon name="x" weight="bold" size={20}/></button>
                         </div>
                         <form onSubmit={handleAddVip} className="flex gap-2 mb-4 shrink-0">
-                            <input type="text" value={newVipNick} onChange={e=>setNewVipNick(e.target.value)} placeholder="추가할 VIP 닉네임" className="flex-1 border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-white focus:ring-2 focus:ring-yellow-500 outline-none" />
-                            <button type="submit" className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-sm">추가</button>
+                            <input type="text" value={newVipNick} onChange={e=>setNewVipNick(e.target.value)} placeholder="추가할 VIP 닉네임" className="flex-1 border dark:border-slate-600 rounded px-3 py-2 text-sm bg-transparent dark:text-white focus:ring-2 focus:ring-slate-500 outline-none" />
+                            <button type="submit" className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-sm">추가</button>
                         </form>
                         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                            {vipList.length === 0 ? (<div className="text-center text-gray-500 dark:text-slate-400 py-8 text-sm">등록된 VIP가 없습니다.</div>) : (
+                            {vipList.length === 0 ? (<div className="text-center text-slate-500 dark:text-slate-400 py-8 text-sm">등록된 VIP가 없습니다.</div>) : (
                                 vipList.map(([nick, data]) => (
-                                    <div key={nick} className="flex justify-between items-center p-2.5 border dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-slate-700/50 transition-colors hover:bg-gray-100 dark:hover:bg-slate-700">
-                                        <span className="font-bold text-gray-800 dark:text-slate-100">{nick}</span>
+                                    <div key={nick} className="flex justify-between items-center p-2.5 border dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-700/50 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700">
+                                        <span className="font-bold text-slate-800 dark:text-slate-100">{nick}</span>
                                         <button onClick={() => handleRemoveVip(nick)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded transition-colors text-xs font-bold flex items-center gap-1"><Icon name="trash" weight="bold" /> 해제</button>
                                     </div>
                                 ))
                             )}
                         </div>
-                        <div className="mt-4 pt-3 border-t dark:border-slate-700 text-[10px] text-gray-500 dark:text-slate-400 text-center">💡 VIP로 등록된 고객은 주문 시 자동으로 배송비가 0원 처리됩니다.</div>
+                        <div className="mt-4 pt-3 border-t dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400 text-center">💡 VIP로 등록된 고객은 주문 시 자동으로 배송비가 0원 처리됩니다.</div>
                     </div>
                 </div>
             );
         };
 
         // ============================================
-        // 컴포넌트: 주문 항목
+        // 컴포넌트: 재고 개별 행
         // ============================================
-        const OrderItem = memo(({ item, nick, nextItemId, isLast, stockLookup, handleProductChange, handleQuantityUpdate, handleOrderCancel, handleOrderDelete, addOrderLogic, setSelectedNick }) => {
+        const InventoryItemRow = memo(({ item, orders, setOrders, inventory, setInventory, setProductHistory, openModal, expandedInventoryItem, setExpandedInventoryItem, setManualProduct, setCurrentSearchTerm, setManualPrice, setIsFixedProductMode, customerPaidStatus }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [localName, setLocalName] = useState(item.name);
+            const [localPrice, setLocalPrice] = useState(item.price === 0 || item.price === '' ? '' : Number(item.price).toLocaleString());
+
+            useEffect(() => { setLocalName(item.name); }, [item.name]);
+            useEffect(() => { setLocalPrice(item.price === 0 || item.price === '' ? '' : Number(item.price).toLocaleString()); }, [item.price]);
+
+            const activeOrders = useMemo(() => orders.filter(o => o.product === item.name && !o.isCancelled), [orders, item.name]);
+            const orderedCount = activeOrders.reduce((sum, o) => sum + Number(o.quantity || 0), 0);
+            
+            // 🔥 한 고객이 같은 상품을 여러 번 샀을 경우 수량을 하나로 합치고 정리하는 로직
+            const aggregatedOrders = useMemo(() => {
+                const groups = {};
+                activeOrders.forEach(o => {
+                    if(!groups[o.customer]) {
+                        groups[o.customer] = { customer: o.customer, quantity: 0, orderIds: [] };
+                    }
+                    groups[o.customer].quantity += Number(o.quantity || 0);
+                    groups[o.customer].orderIds.push(o.id);
+                });
+                return Object.values(groups).sort((a, b) => a.customer.localeCompare(b.customer, 'ko'));
+            }, [activeOrders]);
+
+            const isExpanded = expandedInventoryItem === item.name;
+
+            const handleSave = () => {
+                const newName = localName.trim();
+                const newPrice = Number(String(localPrice).replace(/,/g, ''));
+                if (!newName) { openModal('상품명을 입력해주세요.', 'alert'); return; }
+                if (newName !== item.name && inventory.some(i => i.name === newName && i.id !== item.id)) {
+                    openModal('이미 동일한 이름의 상품이 있습니다.', 'alert');
+                    setLocalName(item.name);
+                    return;
+                }
+
+                setInventory(prev => prev.map(i => i.id === item.id ? { ...i, name: newName, price: newPrice } : i));
+                
+                if (newName !== item.name || newPrice !== item.price) {
+                    setOrders(prev => prev.map(o => {
+                        if (o.product === item.name) {
+                            return { ...o, product: newName, price: (Number(o.quantity) || 0) * newPrice };
+                        }
+                        return o;
+                    }));
+                    setProductHistory(prev => {
+                        const next = {...prev};
+                        if (newName !== item.name) { next[newName] = newPrice; } 
+                        else { next[item.name] = newPrice; }
+                        return next;
+                    });
+                }
+                setIsEditing(false);
+            };
+
+            const handleDelete = () => {
+                openModal(`'${item.name}' 항목을 재고 목록에서 삭제하시겠습니까?\n(기존 주문 내역은 유지됩니다)`, 'confirm', () => {
+                    setInventory(prev => prev.filter(i => i.id !== item.id));
+                });
+            };
+
+            return (
+                <div className="flex flex-col bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between p-1.5 text-[11px] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        {isEditing ? (
+                            <div className="flex-1 flex gap-1 items-center min-w-0 pr-1">
+                                <input autoFocus type="text" value={localName} onChange={e=>setLocalName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')handleSave();}} className="w-full border dark:border-slate-600 bg-transparent dark:text-white px-1 py-0.5 rounded text-[10px] outline-none focus:ring-1 focus:ring-slate-500" placeholder="상품명" />
+                                <input type="text" value={localPrice} onChange={e=>{const v = e.target.value.replace(/,/g, ''); if(!isNaN(v)) setLocalPrice(v ? Number(v).toLocaleString() : '');}} onKeyDown={e=>{if(e.key==='Enter')handleSave();}} className="w-14 border dark:border-slate-600 bg-transparent dark:text-white px-1 py-0.5 rounded text-[10px] text-right outline-none focus:ring-1 focus:ring-slate-500" placeholder="단가" />
+                                <button onClick={handleSave} className="bg-slate-600 hover:bg-slate-700 text-white px-1.5 py-0.5 rounded shadow-sm"><Icon name="check" weight="bold"/></button>
+                                <button onClick={()=>setIsEditing(false)} className="bg-slate-400 hover:bg-slate-500 text-white px-1.5 py-0.5 rounded shadow-sm"><Icon name="x" weight="bold"/></button>
+                                <button onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white px-1.5 py-0.5 rounded shadow-sm ml-1"><Icon name="trash" weight="bold"/></button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex-1 font-bold text-slate-800 dark:text-slate-200 truncate pr-1 cursor-pointer select-none" title="클릭: 복사 / 더블클릭: 자동 고정 입력"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const textArea = document.createElement("textarea");
+                                        textArea.value = item.name;
+                                        document.body.appendChild(textArea);
+                                        textArea.select();
+                                        try { document.execCommand('copy'); } catch (err) {}
+                                        document.body.removeChild(textArea);
+                                        const el = e.currentTarget;
+                                        el.classList.add('text-green-600', 'dark:text-green-400');
+                                        setTimeout(() => el.classList.remove('text-green-600', 'dark:text-green-400'), 300);
+                                    }}
+                                    onDoubleClick={(e) => {
+                                        e.stopPropagation();
+                                        setManualProduct(item.name);
+                                        setCurrentSearchTerm(item.name);
+                                        setManualPrice(item.price ? Number(item.price).toLocaleString() : '');
+                                        setIsFixedProductMode(true);
+                                        document.getElementById('manual-prod-input')?.focus();
+                                    }}
+                                >
+                                    {item.name}
+                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-5 flex justify-center shrink-0"><Icon name="pencil-simple" weight="bold"/></button>
+                                <div className="w-12 text-center text-[11px] text-slate-800 dark:text-slate-300 font-bold shrink-0">{item.price ? Number(item.price).toLocaleString() : '0'}</div>
+                                <div className="w-10 text-center text-slate-600 dark:text-slate-400 font-bold shrink-0">{orderedCount}</div>
+                                <button onClick={(e) => { e.stopPropagation(); setExpandedInventoryItem(isExpanded ? null : item.name); }} className={`ml-1 p-0.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors shrink-0 w-5 flex justify-center ${isExpanded ? 'bg-slate-200 dark:bg-slate-600 text-slate-700' : ''}`}><Icon name="caret-down" weight="bold" className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></button>
+                            </>
+                        )}
+                    </div>
+                    {isExpanded && !isEditing && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 p-1.5 flex flex-col gap-1">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1"><Icon name="users" weight="fill" /> 주문 고객 ({aggregatedOrders.length}명)</span>
+                                <button onClick={(e) => {
+                                    e.stopPropagation();
+                                    if(aggregatedOrders.length === 0) return;
+                                    
+                                    let text = `[${item.name} / ${aggregatedOrders.length}명]\n`;
+                                    for(let k=0; k<aggregatedOrders.length; k+=2) {
+                                        const name1 = aggregatedOrders[k].quantity > 1 ? `${aggregatedOrders[k].customer}(${aggregatedOrders[k].quantity})` : aggregatedOrders[k].customer;
+                                        if(aggregatedOrders[k+1]) {
+                                            const name2 = aggregatedOrders[k+1].quantity > 1 ? `${aggregatedOrders[k+1].customer}(${aggregatedOrders[k+1].quantity})` : aggregatedOrders[k+1].customer;
+                                            text += `${name1} / ${name2}\n`;
+                                        } else {
+                                            text += `${name1}\n`;
+                                        }
+                                    }
+                                    
+                                    const textArea = document.createElement("textarea");
+                                    textArea.value = text; document.body.appendChild(textArea); textArea.select();
+                                    try { document.execCommand('copy'); openModal('명단이 2열로 복사되었습니다!', 'alert'); } catch (err) {}
+                                    document.body.removeChild(textArea);
+                                }} className="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600 px-1.5 py-0.5 rounded font-bold transition-colors shadow-sm">2열 복사</button>
+                            </div>
+                            {aggregatedOrders.length === 0 ? (
+                                <div className="text-center text-[10px] text-slate-400 py-2">주문 내역이 없습니다.</div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-1 max-h-[160px] overflow-y-auto pr-1">
+                                    {aggregatedOrders.map(agg => {
+                                        const isPaid = customerPaidStatus && customerPaidStatus[agg.customer];
+                                        const textColor = isPaid ? "text-slate-700 dark:text-slate-300" : "text-red-500 font-bold dark:text-red-400";
+                                        
+                                        return (
+                                            <div key={agg.customer} className="flex justify-between items-center bg-white dark:bg-slate-800 p-1 rounded border border-slate-200 dark:border-slate-700 shadow-sm text-[10px] group hover:border-slate-300 dark:hover:border-slate-600 min-w-0">
+                                                <span className={`cursor-pointer hover:underline transition-colors truncate flex-1 ${textColor}`} onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const textArea = document.createElement("textarea"); textArea.value = agg.customer; document.body.appendChild(textArea); textArea.select();
+                                                    try { document.execCommand('copy'); openModal(`'${agg.customer}' 닉네임 복사 완료!`, 'alert'); } catch (err) {}
+                                                    document.body.removeChild(textArea);
+                                                }} title="클릭하여 닉네임 복사">
+                                                    {agg.customer} {agg.quantity > 1 && <span className="text-slate-500 ml-0.5">({agg.quantity}개)</span>}
+                                                </span>
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openModal(`'${agg.customer}'님의 '${item.name}' 주문을 전부 삭제하시겠습니까?`, 'confirm', () => {
+                                                        setOrders(prev => prev.filter(order => !agg.orderIds.includes(order.id)));
+                                                    });
+                                                }} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 px-1.5 py-0.5 rounded font-bold transition-colors shrink-0 ml-1 opacity-0 group-hover:opacity-100">삭제</button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        });
+
+        // ============================================
+        // 컴포넌트: 주문 항목 (기본 블록)
+        // ============================================
+        const OrderItem = memo(({ item, nick, nextItemId, isLast, handleProductChange, handleQuantityUpdate, handleOrderCancel, handleOrderDelete, addOrderLogic, setSelectedNick }) => {
             const [localProduct, setLocalProduct] = useState(item.product); 
             const [localQty, setLocalQty] = useState(item.quantity === '' ? '' : item.quantity); 
             const [localPrice, setLocalPrice] = useState(item.price === '' || item.price === 0 ? '' : Number(item.price).toLocaleString());
@@ -375,45 +542,39 @@
             useEffect(() => { if (!isQtyFocused) setLocalQty(item.quantity === '' ? '' : item.quantity); }, [item.quantity, isQtyFocused]); 
             useEffect(() => { if (!isPriceFocused) setLocalPrice(item.price === '' || item.price === 0 ? '' : Number(item.price).toLocaleString()); }, [item.price, isPriceFocused]);
             
-            const remaining = stockLookup[localProduct]; 
-            let stockBadge = null; 
-            if (remaining !== undefined) { 
-                if (remaining < 0) stockBadge = <span className="text-red-500 dark:text-red-400 font-bold text-[10px] ml-1 animate-pulse">(재고초과 {remaining})</span>; 
-                else if (remaining === 0) stockBadge = <span className="text-red-500 dark:text-red-400 font-bold text-[10px] ml-1">(품절)</span>; 
-                else if (remaining <= 2) stockBadge = <span className="text-orange-500 dark:text-orange-400 font-bold text-[10px] ml-1">(마감임박 {remaining})</span>; 
-            } 
-            
             return (
-                <div className={`flex justify-between items-center text-xs px-1 py-0.5 rounded group transition-colors ${item.isCancelled ? 'bg-red-50/80 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30' : 'hover:bg-gray-50 dark:hover:bg-slate-700'}`}>
+                <div className={`flex justify-between items-center text-xs px-1 py-0.5 rounded group transition-colors ${item.isCancelled ? 'bg-red-50/80 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
                     <div className="flex-1 flex gap-1 items-center">
                         {item.isCancelled && <span className="text-[9px] text-red-500 dark:text-red-400 font-bold shrink-0">[취소]</span>}
-                        <input id={`prod-input-${item.id}`} type="text" list={isProductFocused ? "product-list" : undefined} value={localProduct} onChange={(e) => setLocalProduct(e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={(e) => { e.target.select(); setIsProductFocused(true); setSelectedNick(nick); }} onBlur={() => { setIsProductFocused(false); if (localProduct !== item.product) handleProductChange(item.id, 'product', localProduct); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById(`qty-input-${item.id}`)?.focus(); } }} className={`w-full outline-none px-1 rounded transition-colors bg-transparent font-bold ${item.isCancelled ? 'text-gray-400 dark:text-slate-500 line-through bg-transparent' : (item.isUnmodified ? 'text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 focus:bg-white dark:focus:bg-slate-700 focus:ring-1 focus:ring-blue-300' : 'focus:bg-white dark:focus:bg-slate-700 focus:ring-1 focus:ring-indigo-100 dark:text-slate-200')}`} placeholder="상품명" disabled={item.isCancelled} />
-                        {stockBadge}
+                        <input id={`prod-input-${item.id}`} type="text" list={isProductFocused ? "product-list" : undefined} value={localProduct} onChange={(e) => setLocalProduct(e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={(e) => { e.target.select(); setIsProductFocused(true); setSelectedNick(nick); }} onBlur={() => { setIsProductFocused(false); if (localProduct !== item.product) handleProductChange(item.id, 'product', localProduct); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById(`qty-input-${item.id}`)?.focus(); } }} className={`w-full outline-none px-1 rounded transition-colors bg-transparent font-bold ${item.isCancelled ? 'text-slate-400 dark:text-slate-500 line-through bg-transparent' : (item.isUnmodified ? 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/50 focus:bg-white dark:focus:bg-slate-600 focus:ring-1 focus:ring-slate-400' : 'focus:bg-white dark:focus:bg-slate-600 focus:ring-1 focus:ring-slate-300 dark:text-slate-200')}`} placeholder="상품명" disabled={item.isCancelled} />
                     </div>
                     <div className="flex items-center gap-1 group shrink-0">
                         <div className="relative flex items-center">
-                            <input id={`qty-input-${item.id}`} type="number" value={localQty} onChange={(e) => setLocalQty(e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={(e) => { e.target.select(); setIsQtyFocused(true); setSelectedNick(nick); }} onBlur={() => { setIsQtyFocused(false); const q = localQty === '' || isNaN(parseInt(localQty)) ? '' : parseInt(localQty); if (q !== item.quantity) handleQuantityUpdate(item.id, q); }} onKeyDown={(e) => { if(e.key==='Enter') { e.preventDefault(); document.getElementById(`price-input-${item.id}`)?.focus(); } }} className={`w-12 text-right pr-4 font-bold outline-none rounded py-0.5 transition-colors ${item.isCancelled ? 'text-[11px] bg-transparent line-through text-gray-400 dark:text-slate-500 cursor-not-allowed' : `${Number(localQty) >= 2 ? 'text-[12px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30' : 'text-[11px] text-gray-900 dark:text-slate-100 bg-transparent'} hover:bg-gray-100 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-indigo-300`}`} disabled={item.isCancelled} />
-                            <span className={`absolute right-1 pointer-events-none ${Number(localQty) >= 2 && !item.isCancelled ? 'text-[10px] text-red-600 dark:text-red-400 font-bold' : 'text-[10px] text-gray-500 dark:text-slate-400'}`}>개</span>
+                            <input id={`qty-input-${item.id}`} type="number" value={localQty} onChange={(e) => setLocalQty(e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={(e) => { e.target.select(); setIsQtyFocused(true); setSelectedNick(nick); }} onBlur={() => { setIsQtyFocused(false); const q = localQty === '' || isNaN(parseInt(localQty)) ? '' : parseInt(localQty); if (q !== item.quantity) handleQuantityUpdate(item.id, q); }} onKeyDown={(e) => { if(e.key==='Enter') { e.preventDefault(); document.getElementById(`price-input-${item.id}`)?.focus(); } }} className={`w-12 text-right pr-4 font-bold outline-none rounded py-0.5 transition-colors ${item.isCancelled ? 'text-[11px] bg-transparent line-through text-slate-400 dark:text-slate-500 cursor-not-allowed' : `${Number(localQty) >= 2 ? 'text-[12px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30' : 'text-[11px] text-slate-800 dark:text-slate-200 bg-transparent'} hover:bg-slate-200 dark:hover:bg-slate-600 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-slate-400`}`} disabled={item.isCancelled} />
+                            <span className={`absolute right-1 pointer-events-none ${Number(localQty) >= 2 && !item.isCancelled ? 'text-[10px] text-red-600 dark:text-red-400 font-bold' : 'text-[10px] text-slate-500 dark:text-slate-400'}`}>개</span>
                         </div>
-                        <input id={`price-input-${item.id}`} type="text" value={localPrice} onChange={(e) => { const val = e.target.value.replace(/,/g, ''); if (!isNaN(val) && val !== '') setLocalPrice(Number(val).toLocaleString()); else if (val === '') setLocalPrice(''); }} onClick={(e) => e.stopPropagation()} onFocus={(e) => { e.target.select(); setIsPriceFocused(true); setSelectedNick(nick); }} onBlur={() => { setIsPriceFocused(false); const val = String(localPrice).replace(/,/g, ''); if (!isNaN(val) && Number(val) !== Number(item.price)) { handleProductChange(item.id, 'price', val); } }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const val = String(localPrice).replace(/,/g, ''); if (!isNaN(val) && Number(val) !== Number(item.price)) { handleProductChange(item.id, 'price', val); } if (!isLast && nextItemId) { document.getElementById(`prod-input-${nextItemId}`)?.focus(); } else { addOrderLogic(nick, '', 1, true, item.id); } } }} className={`w-16 text-right bg-transparent outline-none px-1 rounded transition-colors font-bold ${item.isCancelled ? 'line-through text-gray-400 dark:text-slate-500 cursor-not-allowed' : (item.isUnmodified ? 'text-blue-500 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-indigo-300 focus:text-indigo-600 dark:focus:text-indigo-300')} ${Number(item.price) === 0 && !item.isCancelled ? 'bg-red-50 dark:bg-red-900/10 border-b border-red-300 dark:border-red-900' : ''}`} disabled={item.isCancelled} />
-                        <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id); setSelectedNick(nick);}} className={`ml-1 ${item.isCancelled ? "text-blue-500 dark:text-blue-400 hover:text-blue-700" : "text-gray-300 dark:text-slate-600 hover:text-red-500"}`} title={item.isCancelled ? "취소 철회" : "주문 취소"}><Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/></button>
-                        <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id); setSelectedNick(nick);}} className="text-gray-300 dark:text-slate-600 hover:text-red-500 ml-1"><Icon name="trash" weight="bold"/></button>
+                        <input id={`price-input-${item.id}`} type="text" value={localPrice} onChange={(e) => { const val = e.target.value.replace(/,/g, ''); if (!isNaN(val) && val !== '') setLocalPrice(Number(val).toLocaleString()); else if (val === '') setLocalPrice(''); }} onClick={(e) => e.stopPropagation()} onFocus={(e) => { e.target.select(); setIsPriceFocused(true); setSelectedNick(nick); }} onBlur={() => { setIsPriceFocused(false); const val = String(localPrice).replace(/,/g, ''); if (!isNaN(val) && Number(val) !== Number(item.price)) { handleProductChange(item.id, 'price', val); } }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const val = String(localPrice).replace(/,/g, ''); if (!isNaN(val) && Number(val) !== Number(item.price)) { handleProductChange(item.id, 'price', val); } if (!isLast && nextItemId) { document.getElementById(`prod-input-${nextItemId}`)?.focus(); } else { addOrderLogic(nick, '', 1, true, item.id); } } }} className={`w-16 text-right bg-transparent outline-none px-1 rounded transition-colors font-bold ${item.isCancelled ? 'line-through text-slate-400 dark:text-slate-500 cursor-not-allowed' : (item.isUnmodified ? 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/50' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-slate-400 focus:text-slate-800 dark:focus:text-slate-100')} ${Number(item.price) === 0 && !item.isCancelled ? 'bg-red-50 dark:bg-red-900/10 border-b border-red-300 dark:border-red-900' : ''}`} disabled={item.isCancelled} />
+                        <button onClick={(e)=>{e.stopPropagation(); handleOrderCancel(item.id); setSelectedNick(nick);}} className={`ml-1 ${item.isCancelled ? "text-slate-500 hover:text-slate-700" : "text-slate-300 dark:text-slate-600 hover:text-red-500"}`} title={item.isCancelled ? "취소 철회" : "주문 취소"}><Icon name={item.isCancelled ? "arrow-u-up-left" : "prohibit"} weight="bold"/></button>
+                        <button onClick={(e)=>{e.stopPropagation(); handleOrderDelete(item.id); setSelectedNick(nick);}} className="text-slate-300 dark:text-slate-600 hover:text-red-500 ml-1"><Icon name="trash" weight="bold"/></button>
                     </div>
                 </div>
             );
         }, (prev, next) => {
             if (prev.item.product !== next.item.product || prev.item.quantity !== next.item.quantity || prev.item.price !== next.item.price || prev.item.isCancelled !== next.item.isCancelled || prev.item.deposit !== next.item.deposit || prev.item.isUnmodified !== next.item.isUnmodified) return false;
-            if (prev.nick !== next.nick || prev.isLast !== next.isLast || prev.stockLookup[prev.item.product] !== next.stockLookup[next.item.product]) return false;
+            if (prev.nick !== next.nick || prev.isLast !== next.isLast) return false;
             return true;
         });
 
-        const CustomerBlock = memo(({ nick, items, isSelected, currentShipping, isCard, isPaidState, grandTotal, depositTotal, balance, baseGrandTotal, baseBalance, addr, addrType, addressMapping, autoDepositorName, displayDepositorName, isAutoDepositor, depositorNames, copyStatus, isOrderConfirmed, isEditingShipping, stockLookup, setSelectedNick, addOrderLogic, handleNicknameEdit, toggleCardPayment, handleShippingChange, setEditingShippingNick, openModal, setDepositorNames, handleFullDepositToggle, copyOrderSheet, handleOrderCheckToggle, handleAddressUnmapping, handleAddressMapping, handleProductChange, handleQuantityUpdate, handleOrderCancel, handleOrderDelete, toggleVIP, specialCustomers, onOpenQuickAddress, findAddressSuggestions }) => {
+        // ============================================
+        // 컴포넌트: 주문서 블록 (고객별)
+        // ============================================
+        const CustomerBlock = memo(({ nick, items, isSelected, currentShipping, isCard, isPaidState, grandTotal, depositTotal, balance, baseGrandTotal, baseBalance, addr, addrType, addressMapping, autoDepositorName, displayDepositorName, isAutoDepositor, depositorNames, copyStatus, isOrderConfirmed, isEditingShipping, setSelectedNick, addOrderLogic, handleNicknameEdit, toggleCardPayment, handleShippingChange, setEditingShippingNick, openModal, setDepositorNames, handleFullDepositToggle, copyOrderSheet, handleOrderCheckToggle, handleAddressUnmapping, handleAddressMapping, handleProductChange, handleQuantityUpdate, handleOrderCancel, handleOrderDelete, toggleVIP, specialCustomers, onOpenQuickAddress, findAddressSuggestions }) => {
             let borderClass = 'border-transparent', headerBgClass = 'bg-white dark:bg-slate-800';
-            if (isCard) { borderClass = 'border-purple-200 dark:border-purple-900 ring-1 ring-purple-200 dark:ring-purple-900'; headerBgClass = 'bg-purple-50 dark:bg-purple-900/10'; } 
+            if (isCard) { borderClass = 'border-slate-300 dark:border-slate-700 ring-1 ring-slate-300 dark:ring-slate-700'; headerBgClass = 'bg-slate-50 dark:bg-slate-800/80'; } 
             else if (!isPaidState && balance > 0) { borderClass = 'border-red-200 dark:border-red-900 ring-1 ring-red-200 dark:ring-red-900'; headerBgClass = 'bg-red-50 dark:bg-red-900/10'; } 
-            else if (balance < 0 && !isCard) { borderClass = 'border-blue-200 dark:border-blue-900 ring-1 ring-blue-200 dark:ring-blue-900'; headerBgClass = 'bg-blue-50 dark:bg-blue-900/10'; } 
-            else if (isPaidState) { borderClass = 'border-gray-200 dark:border-slate-700'; headerBgClass = 'bg-white dark:bg-slate-800'; } 
-            if (isSelected) { headerBgClass = 'bg-yellow-50 dark:bg-yellow-900/20'; borderClass = 'border-yellow-500 dark:border-yellow-600 ring-2 ring-yellow-500 dark:ring-yellow-600 shadow-lg relative z-10'; }
+            else if (balance < 0 && !isCard) { borderClass = 'border-slate-300 dark:border-slate-600 ring-1 ring-slate-300 dark:ring-slate-600'; headerBgClass = 'bg-slate-100 dark:bg-slate-800/50'; } 
+            else if (isPaidState) { borderClass = 'border-slate-200 dark:border-slate-700'; headerBgClass = 'bg-white dark:bg-slate-800'; } 
+            if (isSelected) { headerBgClass = 'bg-slate-100 dark:bg-slate-700/80'; borderClass = 'border-slate-500 dark:border-slate-400 ring-2 ring-slate-400 dark:ring-slate-500 shadow-lg relative z-10'; }
             
             const suggestions = useMemo(() => findAddressSuggestions ? findAddressSuggestions(nick) : [], [nick, findAddressSuggestions]);
             const isVip = useMemo(() => { const nickNorm = normalizeString(nick); const key = Object.keys(specialCustomers || {}).find(k => normalizeString(k) === nickNorm); return key && specialCustomers[key].type === 'vip'; }, [specialCustomers, nick]);
@@ -423,59 +584,59 @@
                     <div className={`px-2 py-1 flex justify-between items-center border-b dark:border-slate-700 ${headerBgClass}`}>
                         <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                             <div className="flex items-center gap-1 flex-wrap mb-0.5">
-                                <span onClick={(e) => { e.stopPropagation(); const textArea = document.createElement("textarea"); textArea.value = nick; document.body.appendChild(textArea); textArea.select(); try { document.execCommand('copy'); const el = e.currentTarget; el.classList.add('text-green-500', 'dark:text-green-400'); setTimeout(() => el.classList.remove('text-green-500', 'dark:text-green-400'), 500); } catch (err) {} document.body.removeChild(textArea); }} className={`font-bold text-[12px] text-gray-900 dark:text-slate-100 truncate cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors`} title="클릭하여 닉네임 복사">{nick}</span>
-                                {isVip && (<span onClick={(e) => e.stopPropagation()} className="ml-1 text-[10px] px-1.5 py-0.5 rounded border bg-yellow-100 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-400 font-bold shadow-sm shrink-0 flex items-center gap-0.5 cursor-default" title="우측 상단 VIP 관리대장에서 관리 가능"><Icon name="crown" weight="fill"/> VIP</span>)}
-                                <button onClick={(e) => { e.stopPropagation(); addOrderLogic(nick, '', 1); }} className="bg-indigo-100 dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-indigo-200 dark:hover:bg-slate-600 shrink-0" title="빈 상품줄 추가">+</button>
-                                <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-gray-300 dark:text-slate-500 hover:text-indigo-600 shrink-0" title="닉네임 수정"><Icon name="pencil-simple" weight="bold" size={12}/></button>
-                                <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} className={`ml-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors shrink-0 ${isCard ? 'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-bold' : 'bg-white dark:bg-slate-700 text-gray-400 dark:text-slate-400 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600'}`}>카드</button>
+                                <span onClick={(e) => { e.stopPropagation(); const textArea = document.createElement("textarea"); textArea.value = nick; document.body.appendChild(textArea); textArea.select(); try { document.execCommand('copy'); const el = e.currentTarget; el.classList.add('text-green-500', 'dark:text-green-400'); setTimeout(() => el.classList.remove('text-green-500', 'dark:text-green-400'), 500); } catch (err) {} document.body.removeChild(textArea); }} className={`font-bold text-[12px] text-slate-900 dark:text-slate-100 truncate cursor-pointer hover:text-slate-600 dark:hover:text-slate-400 transition-colors`} title="클릭하여 닉네임 복사">{nick}</span>
+                                {isVip && (<span onClick={(e) => e.stopPropagation()} className="ml-1 text-[10px] px-1.5 py-0.5 rounded border bg-slate-800 dark:bg-slate-200 border-slate-900 dark:border-slate-100 text-amber-400 dark:text-amber-600 font-bold shadow-sm shrink-0 flex items-center gap-0.5 cursor-default" title="우측 상단 VIP 관리대장에서 관리 가능"><Icon name="crown" weight="fill"/> VIP</span>)}
+                                <button onClick={(e) => { e.stopPropagation(); addOrderLogic(nick, '', 1); }} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-600 shrink-0" title="빈 상품줄 추가">+</button>
+                                <button onClick={(e)=>{e.stopPropagation(); handleNicknameEdit(nick);}} className="text-slate-400 dark:text-slate-500 hover:text-slate-700 shrink-0" title="닉네임 수정"><Icon name="pencil-simple" weight="bold" size={12}/></button>
+                                <button onClick={(e) => { e.stopPropagation(); toggleCardPayment(nick); }} className={`ml-1 text-[10px] px-1.5 py-0.5 rounded border transition-colors shrink-0 ${isCard ? 'bg-slate-700 dark:bg-slate-300 border-slate-800 dark:border-slate-200 text-white dark:text-slate-900 font-bold' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'}`}>카드</button>
                                 
                                 <div onClick={(e) => e.stopPropagation()} className="ml-1 shrink-0">
                                     {isEditingShipping ? (
-                                        <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-800 rounded px-1 py-0.5 shadow-sm"><Icon name="truck" className="text-indigo-600 dark:text-indigo-400 text-[10px]"/><input type="number" defaultValue={currentShipping === 0 ? '' : currentShipping} onBlur={(e) => { handleShippingChange(nick, e.target.value); setEditingShippingNick(null); }} onKeyDown={(e) => { if(e.key === 'Enter') { handleShippingChange(nick, e.target.value); setEditingShippingNick(null); } }} autoFocus onFocus={(e) => e.target.select()} placeholder="0" className="w-12 text-[10px] outline-none font-bold text-right text-indigo-600 dark:text-indigo-300 bg-transparent" /></div>
+                                        <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-400 dark:border-slate-600 rounded px-1 py-0.5 shadow-sm"><Icon name="truck" className="text-slate-600 dark:text-slate-400 text-[10px]"/><input type="number" defaultValue={currentShipping === 0 ? '' : currentShipping} onBlur={(e) => { handleShippingChange(nick, e.target.value); setEditingShippingNick(null); }} onKeyDown={(e) => { if(e.key === 'Enter') { handleShippingChange(nick, e.target.value); setEditingShippingNick(null); } }} autoFocus onFocus={(e) => e.target.select()} placeholder="0" className="w-12 text-[10px] outline-none font-bold text-right text-slate-700 dark:text-slate-300 bg-transparent" /></div>
                                     ) : (
-                                        <div onClick={() => setEditingShippingNick(nick)} className="cursor-pointer flex items-center gap-1 text-[10px] text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-600 hover:bg-indigo-50 dark:hover:bg-slate-600 hover:text-indigo-600 transition-colors" title="클릭하여 배송비 수정"><Icon name="truck" weight="fill"/> <span>{currentShipping.toLocaleString()}</span></div>
+                                        <div onClick={() => setEditingShippingNick(nick)} className="cursor-pointer flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 hover:text-slate-700 transition-colors" title="클릭하여 배송비 수정"><Icon name="truck" weight="fill"/> <span>{currentShipping.toLocaleString()}</span></div>
                                     )}
                                 </div>
                                 
-                                <div onClick={(e) => { e.stopPropagation(); openModal(`'${nick}'님의 입금자명(실명)을 입력하세요.`, 'prompt', (newName) => { if(newName !== null) setDepositorNames(prev => ({...prev, [nick]: newName})); }, null, depositorNames[nick] || ''); }} className={`cursor-pointer flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border hover:bg-indigo-50 dark:hover:bg-slate-600 transition-colors ml-1 shrink-0 ${depositorNames[nick] ? 'bg-indigo-50 dark:bg-slate-900 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' : (isAutoDepositor ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-white dark:bg-slate-700 text-gray-400 dark:text-slate-400 border-gray-200 dark:border-slate-600')}`} title={isAutoDepositor ? "주소록 실명 연동됨 (클릭하여 수정)" : "실명 입금자 등록"}><Icon name="user" weight={depositorNames[nick] || isAutoDepositor ? "fill" : "regular"}/> <span>{displayDepositorName}</span></div>
-                                <div onClick={(e) => { e.stopPropagation(); handleFullDepositToggle(nick, baseGrandTotal, depositTotal); }} className={`cursor-pointer ml-1 flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors shrink-0 ${isPaidState ? 'bg-green-500 border-green-600 text-white shadow-inner' : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-600'}`} title={isPaidState ? "입금 완료됨 (클릭시 취소)" : "클릭시 전액 입금 처리"}><Icon name={isPaidState ? "toggle-right" : "toggle-left"} weight="fill" size={16} /><span className="text-[10px] font-bold">{isPaidState ? "완납" : "미납"}</span></div>
-                                <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, baseGrandTotal, depositTotal, baseBalance, isCard, addr); }} className={`ml-1 flex items-center gap-1 px-2 py-0.5 rounded border transition-colors shrink-0 ${copyStatus[nick] ? 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-800 text-green-700 dark:text-green-300' : 'bg-yellow-300 dark:bg-yellow-600 border-yellow-400 dark:border-yellow-700 text-yellow-900 dark:text-yellow-50 hover:bg-yellow-400 active:scale-95'}`} title="주문서 카톡 복사"><Icon name={copyStatus[nick] ? "check" : "chat-circle-dots"} weight="fill" size={16}/><span className="text-[10px] font-bold">카톡</span></button>
+                                <div onClick={(e) => { e.stopPropagation(); openModal(`'${nick}'님의 입금자명(실명)을 입력하세요.`, 'prompt', (newName) => { if(newName !== null) setDepositorNames(prev => ({...prev, [nick]: newName})); }, null, depositorNames[nick] || ''); }} className={`cursor-pointer flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors ml-1 shrink-0 ${depositorNames[nick] ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-400 dark:border-slate-600' : (isAutoDepositor ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600')}`} title={isAutoDepositor ? "주소록 실명 연동됨 (클릭하여 수정)" : "실명 입금자 등록"}><Icon name="user" weight={depositorNames[nick] || isAutoDepositor ? "fill" : "regular"}/> <span>{displayDepositorName}</span></div>
+                                <div onClick={(e) => { e.stopPropagation(); handleFullDepositToggle(nick, baseGrandTotal, depositTotal); }} className={`cursor-pointer ml-1 flex items-center gap-1 px-1.5 py-0.5 rounded border transition-colors shrink-0 ${isPaidState ? 'bg-green-600 border-green-700 text-white shadow-inner' : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'}`} title={isPaidState ? "입금 완료됨 (클릭시 취소)" : "클릭시 전액 입금 처리"}><Icon name={isPaidState ? "toggle-right" : "toggle-left"} weight="fill" size={16} /><span className="text-[10px] font-bold">{isPaidState ? "완납" : "미납"}</span></div>
+                                <button onClick={(e) => { e.stopPropagation(); copyOrderSheet(nick, items, baseGrandTotal, depositTotal, baseBalance, isCard, addr); }} className={`ml-1 flex items-center gap-1 px-2 py-0.5 rounded border transition-colors shrink-0 ${copyStatus[nick] ? 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-800 text-green-700 dark:text-green-300' : 'bg-[#FEE500] border-[#E5CE00] text-gray-900 hover:bg-[#FADA0A] active:scale-95'}`} title="주문서 카톡 복사"><Icon name={copyStatus[nick] ? "check" : "chat-circle-dots"} weight="fill" size={16}/><span className="text-[10px] font-bold">카톡</span></button>
                                 <div onClick={(e) => { e.stopPropagation(); handleOrderCheckToggle(nick); }} className="ml-1 cursor-pointer flex items-center shrink-0" title="주문 확인 체크"><input type="checkbox" checked={isOrderConfirmed} readOnly className="custom-checkbox" /></div>
                             </div>
                             <div className="flex flex-col items-start gap-1 text-xs mt-1 w-full overflow-hidden">
                                 {addr ? (
                                     <div onClick={(e) => { if (addressMapping[nick]) { e.stopPropagation(); handleAddressUnmapping(nick); } }} className={`text-[11px] flex items-center gap-1.5 w-full overflow-hidden mt-1 py-1 rounded transition-colors ${addressMapping[nick] ? 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 px-1' : ''}`} title={addressMapping[nick] ? "클릭하여 주소 연결 해제" : "자동 연동된 주소"}>
-                                        <span className="text-green-600 dark:text-green-400 shrink-0 flex items-center gap-0.5"><Icon name="house-line" weight="fill" /> <span className="font-bold">{addr.realname}</span></span>
-                                        <span className="text-gray-500 dark:text-slate-400 shrink-0 font-medium">{addr.phone}</span>
-                                        <span className="text-gray-700 dark:text-slate-300 truncate flex-1 ml-1" title={`${addr.address} ${addr.memo}`}>{addr.address}{addr.memo && <span className="text-red-500 font-bold ml-1.5">[{addr.memo}]</span>}</span>
+                                        <span className="text-green-700 dark:text-green-500 shrink-0 flex items-center gap-0.5"><Icon name="house-line" weight="fill" /> <span className="font-bold">{addr.realname}</span></span>
+                                        <span className="text-slate-500 dark:text-slate-400 shrink-0 font-medium">{addr.phone}</span>
+                                        <span className="text-slate-700 dark:text-slate-300 truncate flex-1 ml-1" title={`${addr.address} ${addr.memo}`}>{addr.address}{addr.memo && <span className="text-red-500 font-bold ml-1.5">[{addr.memo}]</span>}</span>
                                         {addressMapping[nick] && <Icon name="link-break" className="shrink-0 text-red-400 ml-1" weight="bold"/>}
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-1 flex-wrap">
-                                        {addrType === 'multiple' ? (<span className="text-orange-500 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800 text-[10px] flex items-center gap-1 font-bold animate-pulse shrink-0"><Icon name="warning-diamond" weight="fill"/> ⚠️ 중복(수동매칭필요)</span>) : (<span className="text-red-300 dark:text-red-900/60 text-[10px] flex items-center gap-1 shrink-0"><Icon name="warning-circle" weight="fill"/> 주소없음</span>)}
-                                        <button onClick={(e) => { e.stopPropagation(); openModal("연결할 주소록의 닉네임을 입력하세요.", "prompt", (targetNick) => { if(targetNick) handleAddressMapping(nick, targetNick); }); }} className="text-[10px] bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 flex items-center gap-1 shrink-0"><Icon name="link" weight="bold" /> 연결</button>
-                                        <button onClick={(e) => { e.stopPropagation(); onOpenQuickAddress(nick); }} className="text-[10px] bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 flex items-center gap-1 shrink-0 transition-colors shadow-sm"><Icon name="pencil-line" weight="bold" /> 직접입력</button>
-                                        {suggestions && suggestions.length > 0 && (<div className="flex flex-wrap gap-1 items-center bg-orange-50 dark:bg-orange-900/10 px-1 py-0.5 rounded"><span className="text-[9px] text-orange-600 dark:text-orange-400 font-bold shrink-0">유사:</span>{suggestions.map(s => (<button key={s} onClick={(e) => {e.stopPropagation(); handleAddressMapping(nick, s);}} className="bg-white dark:bg-slate-700 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded text-[9px] hover:bg-orange-100 dark:hover:bg-orange-900 transition-colors shadow-sm shrink-0">{s}</button>))}</div>)}
+                                        {addrType === 'multiple' ? (<span className="text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800 text-[10px] flex items-center gap-1 font-bold animate-pulse shrink-0"><Icon name="warning-diamond" weight="fill"/> ⚠️ 중복(수동매칭필요)</span>) : (<span className="text-red-400 dark:text-red-900/60 text-[10px] flex items-center gap-1 shrink-0"><Icon name="warning-circle" weight="fill"/> 주소없음</span>)}
+                                        <button onClick={(e) => { e.stopPropagation(); openModal("연결할 주소록의 닉네임을 입력하세요.", "prompt", (targetNick) => { if(targetNick) handleAddressMapping(nick, targetNick); }); }} className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center gap-1 shrink-0"><Icon name="link" weight="bold" /> 연결</button>
+                                        <button onClick={(e) => { e.stopPropagation(); onOpenQuickAddress(nick); }} className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1 shrink-0 transition-colors shadow-sm"><Icon name="pencil-line" weight="bold" /> 직접입력</button>
+                                        {suggestions && suggestions.length > 0 && (<div className="flex flex-wrap gap-1 items-center bg-orange-50 dark:bg-orange-900/10 px-1 py-0.5 rounded"><span className="text-[9px] text-orange-700 dark:text-orange-400 font-bold shrink-0">유사:</span>{suggestions.map(s => (<button key={s} onClick={(e) => {e.stopPropagation(); handleAddressMapping(nick, s);}} className="bg-white dark:bg-slate-700 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded text-[9px] hover:bg-orange-100 dark:hover:bg-orange-900 transition-colors shadow-sm shrink-0">{s}</button>))}</div>)}
                                     </div>
                                 )}
                             </div>
                         </div>
                         <div className="flex flex-col gap-1 items-end text-right shrink-0 ml-2">
-                            <div className={`font-bold text-sm ${isPaidState && balance === 0 ? 'text-green-600 dark:text-green-400' : (balance < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-slate-100')}`}>{grandTotal.toLocaleString()}원</div>
+                            <div className={`font-bold text-sm ${isPaidState && balance === 0 ? 'text-green-600 dark:text-green-400' : (balance < 0 ? 'text-slate-600 dark:text-slate-400' : 'text-slate-800 dark:text-slate-100')}`}>{grandTotal.toLocaleString()}원</div>
                             {isCard ? (
-                                <div className="flex flex-col items-end"><div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">입금: {depositTotal.toLocaleString()} / 카드: {Math.max(0, balance).toLocaleString()}</div></div>
+                                <div className="flex flex-col items-end"><div className="text-[10px] text-slate-600 dark:text-slate-400 font-bold">입금: {depositTotal.toLocaleString()} / 카드: {Math.max(0, balance).toLocaleString()}</div></div>
                             ) : (
                                 <>
-                                    {balance !== 0 && depositTotal > 0 && (<div className="text-[10px] text-gray-500 dark:text-slate-400">(입금: {depositTotal.toLocaleString()}원)</div>)}
+                                    {balance !== 0 && depositTotal > 0 && (<div className="text-[10px] text-slate-500 dark:text-slate-400">(입금: {depositTotal.toLocaleString()}원)</div>)}
                                     {balance > 0 && (<div className="text-[10px] font-bold text-red-500 dark:text-red-400 mt-0.5">미납: {balance.toLocaleString()}원</div>)}
-                                    {balance < 0 && (<div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-0.5">과납: {Math.abs(balance).toLocaleString()}원</div>)}
+                                    {balance < 0 && (<div className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mt-0.5">과납: {Math.abs(balance).toLocaleString()}원</div>)}
                                 </>
                             )}
                         </div>
                     </div>
                     <div className="p-0.5 space-y-0.5 bg-white dark:bg-slate-800">
                         {items.map((item, idx) => (
-                            <OrderItem key={item.id} item={item} nick={nick} nextItemId={items[idx + 1]?.id} isLast={idx === items.length - 1} stockLookup={stockLookup} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} addOrderLogic={addOrderLogic} setSelectedNick={setSelectedNick} />
+                            <OrderItem key={item.id} item={item} nick={nick} nextItemId={items[idx + 1]?.id} isLast={idx === items.length - 1} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} addOrderLogic={addOrderLogic} setSelectedNick={setSelectedNick} />
                         ))}
                     </div>
                 </div>
@@ -489,7 +650,6 @@
             for (let i = 0; i < prev.items.length; i++) {
                 const pItem = prev.items[i], nItem = next.items[i];
                 if (pItem.product !== nItem.product || pItem.quantity !== nItem.quantity || pItem.price !== nItem.price || pItem.isCancelled !== nItem.isCancelled || pItem.deposit !== nItem.deposit || pItem.isUnmodified !== nItem.isUnmodified) return false;
-                if (prev.stockLookup[pItem.product] !== next.stockLookup[nItem.product]) return false;
             }
             return true;
         });
@@ -512,6 +672,10 @@
             const [orderSearch, setOrderSearch] = useState('');
             const [filterStatus, setFilterStatus] = useState('all');
             const [expandedInventoryItem, setExpandedInventoryItem] = useState(null);
+            
+            const [newInvName, setNewInvName] = useState('');
+            const [newInvPrice, setNewInvPrice] = useState('');
+            const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
             
             const deferredOrderSearch = React.useDeferredValue(orderSearch);
             const deferredChatSearch = React.useDeferredValue(chatSearch);
@@ -537,7 +701,7 @@
             const sortOrderCache = useRef([]);
             const [hiddenChatIds, setHiddenChatIds] = useLocalStorage('hiddenChatIds', []);
 
-            // ESC 키 동작 핸들러
+            // 💡 ESC 만능 초기화 키 (모든 상태를 초기화합니다)
             useEffect(() => {
                 const handleKeyDown = (e) => {
                     if (e.key === 'Escape') {
@@ -547,6 +711,7 @@
                         setManualProduct('');
                         setManualPrice('');
                         setCurrentSearchTerm('');
+                        setIsBatchModalOpen(false);
                     }
                 };
                 window.addEventListener('keydown', handleKeyDown);
@@ -724,7 +889,7 @@
                 const kwArray = Array.from(keywordsSet).filter(k => k.trim());
                 if (!kwArray.length) return safeContent;
                 const pattern = new RegExp(`(${kwArray.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-                return safeContent.split(pattern).map((part, i) => keywordsSet.has(part) ? <span key={i} className="text-blue-600 font-bold">{part}</span> : part);
+                return safeContent.split(pattern).map((part, i) => keywordsSet.has(part) ? <span key={i} className="text-slate-700 dark:text-slate-300 font-bold bg-slate-200 dark:bg-slate-600 px-0.5 rounded">{part}</span> : part);
             }, []);
 
             const allDeposits = useMemo(() => [...manualDeposits, ...serverDeposits], [manualDeposits, serverDeposits]);
@@ -820,6 +985,25 @@
                 return { totalSales, totalDeposit, totalUnpaid, totalCardExpected, missingAddressCount };
             }, [orders, cardPayments, getCalculatedShipping, addressLookup]);
 
+            // 🔥 미입금/완납 상태를 개별적으로 계산하여 재고 패널로 보내주는 함수
+            const customerPaidStatus = useMemo(() => {
+                const status = {};
+                const groups = {};
+                orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
+                Object.entries(groups).forEach(([nick, items]) => {
+                    const activeItems = items.filter(i => !i.isCancelled);
+                    if (activeItems.length === 0) { status[nick] = true; return; }
+                    const isCard = cardPayments[nick];
+                    const shipping = getCalculatedShipping(nick);
+                    const productTotal = activeItems.reduce((sum, i) => sum + Number(i.price), 0);
+                    const baseGrandTotal = productTotal + shipping;
+                    const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0);
+                    const baseBalance = baseGrandTotal - depositTotal;
+                    status[nick] = isCard || (baseBalance <= 0);
+                });
+                return status;
+            }, [orders, cardPayments, getCalculatedShipping]);
+
             const filteredGroupedOrders = useMemo(() => {
                 const groups = {};
                 orders.forEach(o => { if (!groups[o.customer]) groups[o.customer] = []; groups[o.customer].push(o); });
@@ -889,16 +1073,6 @@
             useEffect(() => { setDisplayLimit(30); }, [deferredOrderSearch, filterStatus, selectedNick]);
             const handleOrderScroll = useCallback((e) => { const { scrollTop, clientHeight, scrollHeight } = e.target; if (scrollHeight - scrollTop <= clientHeight + 300) setDisplayLimit(prev => Math.min(prev + 30, filteredGroupedOrders.length)); }, [filteredGroupedOrders.length]);
             const displayedOrders = useMemo(() => filteredGroupedOrders.slice(0, displayLimit), [filteredGroupedOrders, displayLimit]);
-
-            const stockLookup = useMemo(() => {
-                const lookup = {};
-                if (!Array.isArray(inventory)) return lookup;
-                inventory.forEach(inv => {
-                    const totalO = orders.filter(o => o.product === inv.name && !o.isCancelled).reduce((sum, o) => sum + Number(o.quantity || 0), 0);
-                    lookup[inv.name] = (Number(inv.stock) || 0) - totalO;
-                });
-                return lookup;
-            }, [inventory, orders]);
             
             const nicknameSuggestions = useMemo(() => {
                 if (!manualNick.trim()) return [];
@@ -932,7 +1106,7 @@
                     const data = JSON.parse(text);
                     if (data.error) { setConnectionStatus({ code: 'error_auth', msg: '시트오류(ID확인)' }); return; }
                     if (data.chats) {
-                        const rawChats = data.chats; // 5000개 제한 해제
+                        const rawChats = data.chats;
                         const seen = new Set(); const incoming = [];
                         rawChats.forEach((chat, idx) => {
                             const uniqueKey = `c_${String(chat.time || '').replace(/[^0-9]/g, '')}_${String(chat.nickname || '').replace(/\s/g, '')}_${String(chat.content || '').replace(/\s/g, '').substring(0, 20)}`;
@@ -1156,7 +1330,7 @@
                     } catch(e) {}
                 }, 5000); 
                 return () => clearTimeout(timer);
-            }, [inventory, googleScriptUrl, inventoryScriptUrl, customerSheetId]);
+            }, [inventory, googleScriptUrl, inventoryScriptUrl]);
 
             useEffect(() => { if (lastAddedOrderId) { const input = document.getElementById(`prod-input-${lastAddedOrderId}`); if (input) input.focus(); setLastAddedOrderId(null); } }, [lastAddedOrderId, orders]);
 
@@ -1201,7 +1375,7 @@
                                 setInventory(prevInv => {
                                     if (!Array.isArray(prevInv)) return prevInv;
                                     const exists = prevInv.find(i => String(i.name).trim() === cleanProd);
-                                    if (!exists) return [...prevInv, { id: `inv_${Date.now()}_${Math.random()}`, name: cleanProd, stock: 100, price: uPrice }];
+                                    if (!exists) return [{ id: `inv_${Date.now()}_${Math.random()}`, name: cleanProd, price: uPrice }, ...prevInv];
                                     return prevInv.map(i => String(i.name).trim() === cleanProd ? { ...i, price: uPrice } : i);
                                 });
                             }
@@ -1284,7 +1458,7 @@
                     const priceToSave = price || 0;
                     setInventory(prevInv => {
                         const invArr = Array.isArray(prevInv) ? prevInv : []; const exists = invArr.find(i => String(i.name).trim() === cContent);
-                        if (!exists) return [...invArr, { id: `inv_${Date.now()}_${Math.random()}`, name: cContent, stock: 100, price: priceToSave }]; return invArr;
+                        if (!exists) return [{ id: `inv_${Date.now()}_${Math.random()}`, name: cContent, price: priceToSave }, ...invArr]; return invArr;
                     });
                     if (priceToSave > 0) setProductHistory(h => ({ ...h, [cContent]: priceToSave }));
                 }
@@ -1351,11 +1525,10 @@
             const handleChatClick = (chat) => { bringToTop(chat.nickname); setClickedChats(prev => new Set(prev).add(chat.id)); const finalProduct = (isFixedProductMode && manualProduct.trim() !== '') ? manualProduct.trim() : String(chat.content || ''); const finalPrice = isFixedProductMode ? manualPrice : null; addOrderLogic(chat.nickname, finalProduct, 1, true, null, finalPrice, isFixedProductMode); };
             const handleAddManualDeposit = (e) => { e.preventDefault(); if (!newDepositName.trim() || !newDepositAmount) return openModal("입금자명/금액 필수", 'alert'); const newDep = { id: `manual_${Date.now()}`, name: newDepositName, amount: newDepositAmount, source: 'manual' }; setManualDeposits(prev => [newDep, ...prev]); setNewDepositName(''); setNewDepositAmount(''); };
 
-            // 제한 해제 적용
             const visibleDeposits = useMemo(() => {
                 if (depositSearch) return filteredDeposits; const unmatched = []; const matched = [];
                 filteredDeposits.forEach(d => { if (matchedDeposits?.has(d.id)) matched.push(d); else unmatched.push(d); });
-                return [...unmatched, ...matched]; // slice 제한 제거
+                return [...unmatched, ...matched];
             }, [filteredDeposits, depositSearch, matchedDeposits]);
 
             const usedAddressNicks = useMemo(() => {
@@ -1364,18 +1537,14 @@
                 return set;
             }, [orders, addressMapping]);
 
-            // 주소록 최신순(내림차순) 정렬 적용
             const visibleAddresses = useMemo(() => {
                 let res = [...addresses];
                 if (addressSearch) { const term = addressSearch.toLowerCase(); res = res.filter(a => String(a.nickname).toLowerCase().includes(term) || String(a.realname).toLowerCase().includes(term) || String(a.phone).includes(term) || (a.linkedNicks && a.linkedNicks.some(ln => String(ln).toLowerCase().includes(term)))); }
-                
-                // 타임스탬프 기준으로 최신순 내림차순 정렬
                 res.sort((a, b) => {
                     const tA = new Date(a.timestamp || 0).getTime();
                     const tB = new Date(b.timestamp || 0).getTime();
                     return tB - tA;
                 });
-
                 if (selectedNick) {
                     const targetClean = normalizeString(selectedNick);
                     res.sort((a, b) => {
@@ -1387,82 +1556,174 @@
                 return res;
             }, [addresses, addressSearch, selectedNick]);
 
+            // --- 실시간 재고 퀵 등록 (상단) ---
+            const handleQuickAddProduct = (e) => {
+                e.preventDefault();
+                const cleanName = newInvName.trim();
+                if(!cleanName) return openModal("상품명을 입력해주세요.", "alert");
+                const priceNum = Number(newInvPrice.replace(/,/g, '')) || 0;
+                
+                if(inventory.some(i => i.name === cleanName)) {
+                    return openModal("이미 등록된 상품명입니다.", "alert");
+                }
+                setInventory(prev => [{ id: `inv_${Date.now()}`, name: cleanName, price: priceNum }, ...prev]);
+                if(priceNum > 0) setProductHistory(prev => ({...prev, [cleanName]: priceNum}));
+                setNewInvName(''); setNewInvPrice('');
+            };
+
             return (
-                <div className="flex h-full gap-2 p-2 overflow-x-auto bg-gray-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                <div className="flex h-full gap-2 p-2 overflow-x-auto bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                     <datalist id="product-list">{Array.isArray(inventory) && inventory.map(i => <option key={i.id} value={i.name} />)}</datalist>
                     <QuickAddressModal isOpen={quickAddrModal.isOpen} nick={quickAddrModal.nick} initialData={quickAddrModal.editData} onClose={() => setQuickAddrModal({ isOpen: false, nick: '', editData: null })} onSubmit={handleQuickAddressSubmit} openModal={openModal} />
 
+                    {isBatchModalOpen && (
+                        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[9999] animate-pop" onClick={() => setIsBatchModalOpen(false)}>
+                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+                                <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2"><Icon name="copy" weight="fill"/> 옵션 일괄 생성</h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">기본 상품명</label>
+                                        <input type="text" id="batch-base-name" placeholder="예: 나그랑 티셔츠" autoFocus className="w-full border dark:border-slate-600 rounded px-2 py-2 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">옵션 1: 색상 등 (쉼표로 구분)</label>
+                                        <input type="text" id="batch-options-1" placeholder="예: 블랙, 화이트, 레드" className="w-full border dark:border-slate-600 rounded px-2 py-2 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">옵션 2: 사이즈 등 (쉼표로 구분)</label>
+                                        <input type="text" id="batch-options-2" placeholder="예: S, M, L, XL" className="w-full border dark:border-slate-600 rounded px-2 py-2 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-500 mb-1" />
+                                        <div className="flex gap-1 flex-wrap mt-1">
+                                            <button type="button" onClick={()=>{document.getElementById('batch-options-2').value='XS, S, M, L, XL, XXL';}} className="bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors">XS~XXL</button>
+                                            <button type="button" onClick={()=>{document.getElementById('batch-options-2').value='44, 55, 66, 77, 88, 99';}} className="bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors">44~99</button>
+                                            <button type="button" onClick={()=>{document.getElementById('batch-options-2').value='225, 230, 235, 240, 245, 250, 255';}} className="bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors">225~255</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">일괄 단가 (선택)</label>
+                                        <input type="text" id="batch-price" placeholder="예: 15000" className="w-full border dark:border-slate-600 rounded px-2 py-2 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-500 text-right font-bold" />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mt-5">
+                                    <button onClick={() => setIsBatchModalOpen(false)} className="flex-1 py-2 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-200">취소</button>
+                                    <button onClick={() => {
+                                        const baseName = document.getElementById('batch-base-name').value.trim();
+                                        const optionsStr1 = document.getElementById('batch-options-1').value.trim();
+                                        const optionsStr2 = document.getElementById('batch-options-2').value.trim();
+                                        const priceStr = document.getElementById('batch-price').value.replace(/,/g, '').trim();
+                                        const priceNum = Number(priceStr) || 0;
+                                        
+                                        if(!baseName) return openModal("기본 상품명을 입력해주세요.", "alert");
+                                        if(!optionsStr1 && !optionsStr2) return openModal("옵션을 하나 이상 입력해주세요.", "alert");
+                                        
+                                        const list1 = optionsStr1.split(',').map(s => s.trim()).filter(Boolean);
+                                        const list2 = optionsStr2.split(',').map(s => s.trim()).filter(Boolean);
+                                        
+                                        let combinations = [];
+                                        if (list1.length > 0 && list2.length > 0) {
+                                            list1.forEach(c => { list2.forEach(s => { combinations.push(`${baseName} ${c} ${s}`); }); });
+                                        } else if (list1.length > 0) {
+                                            list1.forEach(c => combinations.push(`${baseName} ${c}`));
+                                        } else if (list2.length > 0) {
+                                            list2.forEach(s => combinations.push(`${baseName} ${s}`));
+                                        } else {
+                                            combinations.push(baseName);
+                                        }
+
+                                        let addedCount = 0;
+                                        
+                                        setInventory(prev => {
+                                            const next = [...prev];
+                                            combinations.reverse().forEach(opt => {
+                                                if(!next.some(i => i.name === opt)) {
+                                                    next.unshift({ id: `inv_${Date.now()}_${Math.random()}`, name: opt, price: priceNum });
+                                                    if (priceNum > 0) {
+                                                        setProductHistory(h => ({...h, [opt]: priceNum}));
+                                                    }
+                                                    addedCount++;
+                                                }
+                                            });
+                                            return next;
+                                        });
+                                        
+                                        setIsBatchModalOpen(false);
+                                        setTimeout(() => openModal(`${addedCount}개의 상품이 일괄 등록되었습니다.`, "alert"), 300);
+                                    }} className="flex-1 py-2 rounded bg-slate-800 text-white font-bold text-xs shadow-sm hover:bg-slate-900">일괄 생성</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="w-[18%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-sm overflow-hidden min-w-[180px]">
-                        <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 border-b dark:border-slate-700 grid grid-cols-4 gap-1">
+                        <div className="p-1.5 bg-slate-100 dark:bg-slate-900 border-b dark:border-slate-700 grid grid-cols-4 gap-1">
                             {quickMessages.map((msg, idx) => (
-                                <button key={idx} onClick={() => handleCopyQuickMessage(msg, idx)} className={`text-[10px] border rounded py-1 truncate transition-colors shadow-sm ${quickMsgCopyStatus[idx] ? 'bg-green-500 text-white font-bold' : 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300'}`}>{quickMsgCopyStatus[idx] ? '✅ 복사완료' : (msg || "빈 메시지")}</button>
+                                <button key={idx} onClick={() => handleCopyQuickMessage(msg, idx)} className={`text-[10px] border rounded py-1 truncate transition-colors shadow-sm ${quickMsgCopyStatus[idx] ? 'bg-green-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>{quickMsgCopyStatus[idx] ? '✅ 복사완료' : (msg || "빈 메시지")}</button>
                             ))}
                         </div>
-                        <div className="p-2 bg-indigo-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2">
-                             <div className="font-bold text-indigo-700 dark:text-indigo-300 flex items-center justify-between"><div className="flex items-center gap-2"><span className="flex items-center gap-1"><Icon name="youtube-logo" weight="fill" className="text-red-600"/> 라이브 댓글</span><button onClick={() => setShowKeywordOnly(!showKeywordOnly)} className={`flex items-center justify-center w-6 h-6 rounded-full transition-all ${showKeywordOnly ? 'bg-blue-600 text-white shadow-sm' : 'bg-white dark:bg-slate-600 text-gray-400 dark:text-slate-300 border border-gray-200 dark:border-slate-500 hover:text-blue-500'}`}><Icon name="target" weight={showKeywordOnly ? "fill" : "bold"} size={14} /></button></div><span className="text-xs text-gray-500 dark:text-slate-400">{filteredChats.length}건</span></div>
+                        <div className="p-2 bg-slate-100 dark:bg-slate-800 border-b dark:border-slate-700 flex flex-col gap-2">
+                             <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between"><div className="flex items-center gap-2"><span className="flex items-center gap-1"><Icon name="youtube-logo" weight="fill" className="text-red-500"/> 라이브 댓글</span><button onClick={() => setShowKeywordOnly(!showKeywordOnly)} className={`flex items-center justify-center w-6 h-6 rounded-full transition-all ${showKeywordOnly ? 'bg-slate-700 text-white shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-400 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:text-slate-600 dark:hover:text-slate-100'}`}><Icon name="target" weight={showKeywordOnly ? "fill" : "bold"} size={14} /></button></div><span className="text-xs text-slate-500 dark:text-slate-400">{filteredChats.length}건</span></div>
                              <div className="flex gap-2">
-                                 <div className="relative flex-1"><Icon name="magnifying-glass" className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]"/><input type="text" placeholder="검색" value={chatSearch} onChange={e => setChatSearch(e.target.value)} className="w-full text-[10px] pl-5 py-1.5 border dark:border-slate-600 rounded outline-none bg-white dark:bg-slate-800 focus:ring-1 focus:ring-indigo-400" /></div>
+                                 <div className="relative flex-1"><Icon name="magnifying-glass" className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"/><input type="text" placeholder="검색" value={chatSearch} onChange={e => setChatSearch(e.target.value)} className="w-full text-[10px] pl-5 py-1.5 border dark:border-slate-600 rounded outline-none bg-white dark:bg-slate-900 focus:ring-1 focus:ring-slate-400" /></div>
                                  <form onSubmit={handleAddKeyword} className="flex gap-1 w-[45%]">
-                                     <input type="text" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)} placeholder="키워드" className="w-full text-[10px] border dark:border-slate-600 rounded px-1.5 py-1.5 bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-indigo-400" />
-                                     <button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white px-1.5 rounded text-[10px] font-bold transition-colors">＋</button>
+                                     <input type="text" value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)} placeholder="키워드" className="w-full text-[10px] border dark:border-slate-600 rounded px-1.5 py-1.5 bg-white dark:bg-slate-900 outline-none focus:ring-1 focus:ring-slate-400" />
+                                     <button type="submit" className="bg-slate-600 hover:bg-slate-700 text-white px-1.5 rounded text-[10px] font-bold transition-colors">＋</button>
                                      {keywords.size > 0 && <button type="button" onClick={() => openModal('키워드를 모두 삭제하시겠습니까?', 'confirm', () => setKeywords(new Set()))} className="bg-red-500 hover:bg-red-600 text-white px-1.5 rounded text-[10px] font-bold whitespace-nowrap transition-colors shadow-sm">비우기</button>}
                                  </form>
                              </div>
-                             {keywords.size > 0 && (<div className="flex gap-1 overflow-x-auto scrollbar-hide py-0.5">{Array.from(keywords).map(k => (<span key={k} onClick={() => handleRemoveKeyword(k)} className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full text-[10px] cursor-pointer whitespace-nowrap hover:bg-red-100 hover:text-red-600 transition-colors flex items-center gap-0.5">{k} <Icon name="x" weight="bold" size={8}/></span>))}</div>)}
+                             {keywords.size > 0 && (<div className="flex gap-1 overflow-x-auto scrollbar-hide py-0.5">{Array.from(keywords).map(k => (<span key={k} onClick={() => handleRemoveKeyword(k)} className="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 px-1.5 py-0.5 rounded-full text-[10px] cursor-pointer whitespace-nowrap hover:bg-red-100 hover:text-red-600 transition-colors flex items-center gap-0.5">{k} <Icon name="x" weight="bold" size={8}/></span>))}</div>)}
                         </div>
-                        <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-1.5 space-y-0.5 bg-gray-100 dark:bg-slate-900">
+                        <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-1.5 space-y-0.5 bg-slate-50 dark:bg-slate-900">
                             {filteredChats.map(c => {
                                 const safeContent = String(c.content || '');
                                 const isMatched = Array.from(keywords).some(k => safeContent.includes(k));
                                 const isProcessed = clickedChats?.has(c.id);
-                                const chatClasses = isProcessed ? 'opacity-80 bg-gray-100 dark:bg-slate-800/80 border-transparent' : (isMatched ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 ring-1 ring-blue-300 dark:ring-blue-700 shadow-sm' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700');
+                                const chatClasses = isProcessed ? 'opacity-80 bg-slate-100 dark:bg-slate-800/80 border-transparent' : (isMatched ? 'bg-slate-100 dark:bg-slate-800 border-slate-400 dark:border-slate-600 ring-1 ring-slate-400 dark:ring-slate-600 shadow-sm' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700');
                                 return (
                                     <div key={c.id} onClick={() => handleChatClick(c)} className={`py-1.5 px-2 border rounded cursor-pointer transition-all flex flex-col gap-1 ${chatClasses}`}>
-                                        <div className="flex justify-between items-start"><span className={`flex items-center gap-1 break-all text-[12px] font-bold ${isProcessed ? 'text-gray-400 dark:text-slate-500' : 'text-indigo-700 dark:text-indigo-300'}`}>{c.nickname}</span><span className="text-[10px] text-gray-400 dark:text-slate-500 shrink-0 mt-0.5">{formatTimeOnly(c.time)}</span></div>
-                                        <div className={`text-[12px] font-medium leading-snug break-all pl-1 ${isProcessed ? 'text-gray-400 dark:text-slate-500' : 'text-gray-900 dark:text-slate-100'}`}>{renderChatContent(safeContent, keywords)}</div>
+                                        <div className="flex justify-between items-start"><span className={`flex items-center gap-1 break-all text-[12px] font-bold ${isProcessed ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}`}>{c.nickname}</span><span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0 mt-0.5">{formatTimeOnly(c.time)}</span></div>
+                                        <div className={`text-[12px] font-medium leading-snug break-all pl-1 ${isProcessed ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{renderChatContent(safeContent, keywords)}</div>
                                     </div>
                                 );
                             })}
                         </div>
                     </div>
 
-                    <div className="w-[35%] bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg flex flex-col overflow-hidden shadow-sm min-w-[350px]">
-                        <div className="grid grid-cols-5 gap-1 p-2 bg-indigo-50 dark:bg-slate-700/50 border-b dark:border-slate-700 text-center text-[10px]">
+                    <div className="w-[34%] bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg flex flex-col overflow-hidden shadow-sm min-w-[340px]">
+                        <div className="grid grid-cols-5 gap-1 p-2 bg-slate-100 dark:bg-slate-800 border-b dark:border-slate-700 text-center text-[10px]">
                             {[{id:'all', label:'총매출', val:dashboardStats.totalSales}, {id:'paid', label:'입금액', val:dashboardStats.totalDeposit}, {id:'unpaid', label:'미수금', val:dashboardStats.totalUnpaid}, {id:'card', label:'카드예정', val:dashboardStats.totalCardExpected}, {id:'no-address', label:'주소미입력', val:dashboardStats.missingAddressCount, onClick:handleNoAddressClick}].map(s => (
-                                <div key={s.id} onClick={s.onClick || (()=>setFilterStatus(s.id))} className={`bg-white dark:bg-slate-800 p-1 rounded border-2 cursor-pointer shadow-sm transition-colors ${filterStatus===s.id ? 'border-indigo-500' : 'border-transparent hover:border-indigo-200 dark:hover:border-indigo-800'}`}><div>{s.label}</div><div className={`font-bold text-[12px] ${s.id==='paid'?'text-green-600':s.id==='unpaid'?'text-red-500':s.id==='card'?'text-purple-600':s.id==='no-address'?'text-orange-500':'text-indigo-700 dark:text-indigo-400'}`}>{s.val.toLocaleString()}{s.id==='no-address'?'명':''}</div></div>
+                                <div key={s.id} onClick={s.onClick || (()=>setFilterStatus(s.id))} className={`bg-white dark:bg-slate-800 p-1 rounded border-2 cursor-pointer shadow-sm transition-colors ${filterStatus===s.id ? 'border-slate-600 dark:border-slate-400' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600'}`}><div>{s.label}</div><div className={`font-bold text-[12px] ${s.id==='paid'?'text-green-600':s.id==='unpaid'?'text-red-500':s.id==='card'?'text-slate-600 dark:text-slate-400':s.id==='no-address'?'text-orange-500':'text-slate-800 dark:text-slate-200'}`}>{s.val.toLocaleString()}{s.id==='no-address'?'명':''}</div></div>
                             ))}
                         </div>
                         <div className="p-2 flex flex-col gap-2 bg-white dark:bg-slate-800 border-b dark:border-slate-700 z-20 shadow-sm">
                             <div className="flex justify-between items-center">
-                                <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1"><Icon name="package" weight="fill"/> 주문서 <span className="text-xs font-normal text-gray-500">({filteredGroupedOrders.length}명 / {totalItemsCount}건)</span></span>
+                                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1"><Icon name="package" weight="fill"/> 주문서 <span className="text-xs font-normal text-slate-500">({filteredGroupedOrders.length}명 / {totalItemsCount}건)</span></span>
                                 <div className="flex items-center gap-1.5">
-                                    <button onClick={handleLoadOrders} className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm transition-colors"><Icon name="cloud-arrow-down" weight="fill"/> 불러오기</button>
-                                    <button onClick={handleResetAllData} className="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm transition-colors"><Icon name="trash" weight="fill"/> 초기화</button>
-                                    <button onClick={() => { if(autoSaveRef.current) autoSaveRef.current(); }} disabled={isSaving} className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow-inner transition-colors ${isSaving ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 cursor-not-allowed' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 cursor-pointer'}`}>{isSaving ? <Icon name="spinner" className="animate-spin" /> : <Icon name="cloud-check" weight="fill" />} {isSaving ? "저장중..." : "시트 저장"}</button>
+                                    <button onClick={handleLoadOrders} className="bg-slate-600 hover:bg-slate-700 text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm transition-colors"><Icon name="cloud-arrow-down" weight="fill"/> 불러오기</button>
+                                    <button onClick={handleResetAllData} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm transition-colors"><Icon name="trash" weight="fill"/> 초기화</button>
+                                    <button onClick={() => { if(autoSaveRef.current) autoSaveRef.current(); }} disabled={isSaving} className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow-inner transition-colors ${isSaving ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 cursor-pointer'}`}>{isSaving ? <Icon name="spinner" className="animate-spin" /> : <Icon name="cloud-check" weight="fill" />} {isSaving ? "저장중..." : "시트 저장"}</button>
                                 </div>
                             </div>
                             <div className="flex gap-2 items-stretch w-full">
-                                <form onSubmit={handleManualSubmit} className="flex-1 flex gap-1.5 items-center bg-indigo-50 dark:bg-slate-700/50 p-1.5 rounded border border-indigo-100 dark:border-slate-600 shadow-sm min-w-[280px]">
+                                <form onSubmit={handleManualSubmit} className="flex-1 flex gap-1.5 items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded border border-slate-200 dark:border-slate-700 shadow-sm min-w-[280px]">
                                     <div className="relative w-20 sm:w-24 shrink-0">
-                                        <input type="text" placeholder="닉네임" value={manualNick} onChange={e => {setManualNick(e.target.value); setShowNickSuggestions(true);}} onFocus={()=>setShowNickSuggestions(true)} onBlur={()=>setTimeout(()=>setShowNickSuggestions(false), 200)} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs font-bold outline-none focus:ring-1 focus:ring-indigo-400 bg-white dark:bg-slate-800 dark:text-white" />
-                                        {showNickSuggestions && nicknameSuggestions.length > 0 && (<div className="absolute top-full left-0 mt-1 w-full min-w-[200px] bg-white dark:bg-slate-800 border dark:border-slate-600 rounded shadow-xl z-50 overflow-hidden">{nicknameSuggestions.map((s, i) => (<div key={i} onClick={()=>{setManualNick(s.nick); setShowNickSuggestions(false); document.getElementById('manual-prod-input')?.focus();}} className="px-2 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-50 dark:border-slate-700/50 last:border-0 flex flex-col"><span className="font-bold">{s.nick}</span>{s.realName && <span className="text-[10px] text-gray-500">👤 {s.realName}</span>}</div>))}</div>)}
+                                        <input type="text" placeholder="닉네임" value={manualNick} onChange={e => {setManualNick(e.target.value); setShowNickSuggestions(true);}} onFocus={()=>setShowNickSuggestions(true)} onBlur={()=>setTimeout(()=>setShowNickSuggestions(false), 200)} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs font-bold outline-none focus:ring-1 focus:ring-slate-500 bg-white dark:bg-slate-900 dark:text-white" />
+                                        {showNickSuggestions && nicknameSuggestions.length > 0 && (<div className="absolute top-full left-0 mt-1 w-full min-w-[200px] bg-white dark:bg-slate-800 border dark:border-slate-600 rounded shadow-xl z-50 overflow-hidden">{nicknameSuggestions.map((s, i) => (<div key={i} onClick={()=>{setManualNick(s.nick); setShowNickSuggestions(false); document.getElementById('manual-prod-input')?.focus();}} className="px-2 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-50 dark:border-slate-700/50 last:border-0 flex flex-col"><span className="font-bold">{s.nick}</span>{s.realName && <span className="text-[10px] text-slate-500">👤 {s.realName}</span>}</div>))}</div>)}
                                     </div>
                                     <div className="flex-1 flex gap-1 items-center relative">
                                         <div className="relative flex-1">
-                                            <input id="manual-prod-input" type="text" list="product-list" placeholder="상품명" value={manualProduct} onChange={e => {setManualProduct(e.target.value); setCurrentSearchTerm(e.target.value);}} className={`w-full border dark:border-slate-600 rounded pl-2 pr-9 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-400 bg-white dark:bg-slate-800 dark:text-white transition-all ${isFixedProductMode ? 'ring-2 ring-indigo-500 border-indigo-500' : ''}`} />
-                                            <button type="button" onClick={() => setIsFixedProductMode(!isFixedProductMode)} className={`absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${isFixedProductMode ? 'bg-indigo-500 text-white shadow-inner' : 'bg-gray-200 dark:bg-slate-600 text-gray-500 dark:text-slate-300 hover:bg-gray-300'}`} title="고정">고정</button>
+                                            <input id="manual-prod-input" type="text" list="product-list" placeholder="상품명" value={manualProduct} onChange={e => {setManualProduct(e.target.value); setCurrentSearchTerm(e.target.value);}} className={`w-full border dark:border-slate-600 rounded pl-2 pr-9 py-1.5 text-xs outline-none focus:ring-1 focus:ring-slate-500 bg-white dark:bg-slate-900 dark:text-white transition-all ${isFixedProductMode ? 'ring-2 ring-slate-600 border-slate-600' : ''}`} />
+                                            <button type="button" onClick={() => setIsFixedProductMode(!isFixedProductMode)} className={`absolute right-1 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${isFixedProductMode ? 'bg-slate-700 text-white shadow-inner' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300'}`} title="고정">고정</button>
                                         </div>
-                                        <input type="text" placeholder="단가" value={manualPrice} onChange={e => { const val = e.target.value.replace(/,/g, ''); if(!isNaN(val)) setManualPrice(val ? Number(val).toLocaleString() : ''); }} className={`w-16 border dark:border-slate-600 rounded px-2 py-1.5 text-xs outline-none text-right bg-white dark:bg-slate-800 transition-all ${isFixedProductMode ? 'ring-2 ring-indigo-500 border-indigo-500' : ''}`} />
+                                        <input type="text" placeholder="단가" value={manualPrice} onChange={e => { const val = e.target.value.replace(/,/g, ''); if(!isNaN(val)) setManualPrice(val ? Number(val).toLocaleString() : ''); }} className={`w-16 border dark:border-slate-600 rounded px-2 py-1.5 text-xs outline-none text-right bg-white dark:bg-slate-900 transition-all ${isFixedProductMode ? 'ring-2 ring-slate-600 border-slate-600' : ''}`} />
                                     </div>
-                                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 transition-colors text-white px-2 py-1.5 rounded text-xs font-bold shadow-sm shrink-0 whitespace-nowrap">＋</button>
+                                    <button type="submit" className="bg-slate-700 hover:bg-slate-800 transition-colors text-white px-2 py-1.5 rounded text-xs font-bold shadow-sm shrink-0 whitespace-nowrap">＋</button>
                                 </form>
                                 <div className="w-[20%] relative h-full flex items-center min-w-[80px]">
-                                    <Icon name="magnifying-glass" className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]"/>
-                                    <input type="text" placeholder="검색" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="w-full h-full pl-6 pr-1 py-1.5 border dark:border-slate-600 rounded text-[10px] outline-none focus:ring-1 focus:ring-indigo-400 bg-gray-50 dark:bg-slate-800 dark:text-white shadow-sm" />
+                                    <Icon name="magnifying-glass" className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"/>
+                                    <input type="text" placeholder="검색" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="w-full h-full pl-6 pr-1 py-1.5 border dark:border-slate-600 rounded text-[10px] outline-none focus:ring-1 focus:ring-slate-500 bg-white dark:bg-slate-800 dark:text-white shadow-sm" />
                                 </div>
                             </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-1.5 bg-gray-100 dark:bg-slate-900 relative z-0" onScroll={handleOrderScroll}>
+                        <div className="flex-1 overflow-y-auto p-1.5 bg-slate-50 dark:bg-slate-900 relative z-0" onScroll={handleOrderScroll}>
                             {displayedOrders.map(([nick, items]) => {
                                 const ship = getCalculatedShipping(nick);
                                 const activeItems = items.filter(i => !i.isCancelled);
@@ -1475,211 +1736,133 @@
                                 const grand = baseGrand + cardFee;
                                 const bal = baseBal + cardFee;
                                 
-                                return (<CustomerBlock key={nick} nick={nick} items={items} isSelected={selectedNick === nick} currentShipping={ship} isCard={isCard} isPaidState={bal <= 0 && activeItems.length > 0} grandTotal={grand} depositTotal={depSum} balance={bal} baseGrandTotal={baseGrand} baseBalance={baseBal} addr={addressLookup.get(nick)?.data} addrType={addressLookup.get(nick)?.type} addressMapping={addressMapping} autoDepositorName={addressLookup.get(nick)?.data?.realname || ''} displayDepositorName={depositorNames[nick] || addressLookup.get(nick)?.data?.realname || '입금자'} isAutoDepositor={!depositorNames[nick] && addressLookup.get(nick)?.data?.realname} depositorNames={depositorNames} copyStatus={copyStatus} isOrderConfirmed={checkedOrders.has(nick)} isEditingShipping={editingShippingNick === nick} stockLookup={stockLookup} setSelectedNick={setSelectedNick} addOrderLogic={addOrderLogic} handleNicknameEdit={handleNicknameEdit} toggleCardPayment={toggleCardPayment} handleShippingChange={handleShippingChange} setEditingShippingNick={setEditingShippingNick} openModal={openModal} setDepositorNames={setDepositorNames} handleFullDepositToggle={handleFullDepositToggle} copyOrderSheet={copyOrderSheet} handleOrderCheckToggle={handleOrderCheckToggle} handleAddressUnmapping={handleAddressUnmapping} handleAddressMapping={handleAddressMapping} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} toggleVIP={toggleVIP} specialCustomers={specialCustomers} onOpenQuickAddress={(nick) => setQuickAddrModal({ isOpen: true, nick, editData: null })} findAddressSuggestions={findAddressSuggestions} />);
+                                return (<CustomerBlock key={nick} nick={nick} items={items} isSelected={selectedNick === nick} currentShipping={ship} isCard={isCard} isPaidState={bal <= 0 && activeItems.length > 0} grandTotal={grand} depositTotal={depSum} balance={bal} baseGrandTotal={baseGrand} baseBalance={baseBal} addr={addressLookup.get(nick)?.data} addrType={addressLookup.get(nick)?.type} addressMapping={addressMapping} autoDepositorName={addressLookup.get(nick)?.data?.realname || ''} displayDepositorName={depositorNames[nick] || addressLookup.get(nick)?.data?.realname || '입금자'} isAutoDepositor={!depositorNames[nick] && addressLookup.get(nick)?.data?.realname} depositorNames={depositorNames} copyStatus={copyStatus} isOrderConfirmed={checkedOrders.has(nick)} isEditingShipping={editingShippingNick === nick} setSelectedNick={setSelectedNick} addOrderLogic={addOrderLogic} handleNicknameEdit={handleNicknameEdit} toggleCardPayment={toggleCardPayment} handleShippingChange={handleShippingChange} setEditingShippingNick={setEditingShippingNick} openModal={openModal} setDepositorNames={setDepositorNames} handleFullDepositToggle={handleFullDepositToggle} copyOrderSheet={copyOrderSheet} handleOrderCheckToggle={handleOrderCheckToggle} handleAddressUnmapping={handleAddressUnmapping} handleAddressMapping={handleAddressMapping} handleProductChange={handleProductChange} handleQuantityUpdate={handleQuantityUpdate} handleOrderCancel={handleOrderCancel} handleOrderDelete={handleOrderDelete} toggleVIP={toggleVIP} specialCustomers={specialCustomers} onOpenQuickAddress={(nick) => setQuickAddrModal({ isOpen: true, nick, editData: null })} findAddressSuggestions={findAddressSuggestions} />);
                             })}
                         </div>
                     </div>
 
                     <div className="w-[14%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[120px]">
-                        <div className="p-2 bg-yellow-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2">
-                            <div className="font-bold text-yellow-700 dark:text-yellow-300 flex items-center justify-between">
+                        <div className="p-2 bg-slate-100 dark:bg-slate-800 border-b dark:border-slate-700 flex flex-col gap-2">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span>
-                                <div className="flex items-center gap-1.5"><span className="text-[10px] text-gray-500 dark:text-slate-400 mr-1">{filteredDeposits.length}건</span><button onClick={handleRematchAll} className="bg-red-500 hover:bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5"><Icon name="arrows-clockwise" weight="bold"/></button></div>
+                                <div className="flex items-center gap-1.5"><span className="text-[10px] text-slate-500 dark:text-slate-400 mr-1">{filteredDeposits.length}건</span><button onClick={handleRematchAll} className="bg-red-500 hover:bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5"><Icon name="arrows-clockwise" weight="bold"/></button></div>
                             </div>
-                            <form onSubmit={handleAddManualDeposit} className="flex flex-col gap-1 bg-white dark:bg-slate-800 p-1 rounded border border-yellow-200 dark:border-slate-600">
-                                <div className="flex gap-1"><input type="text" value={newDepositName} onChange={(e)=>setNewDepositName(e.target.value)} placeholder="입금자" className="w-[50%] text-[10px] border dark:border-slate-600 rounded px-1 py-1 bg-transparent outline-none focus:ring-1 focus:ring-yellow-400" /><input type="text" value={newDepositAmount ? Number(newDepositAmount).toLocaleString() : ''} onChange={(e)=>{ const val = e.target.value.replace(/,/g, ''); if(!isNaN(val)) setNewDepositAmount(val); }} placeholder="금액" className="w-[50%] text-[10px] border dark:border-slate-600 rounded px-1 py-1 bg-transparent text-right font-bold outline-none focus:ring-1 focus:ring-yellow-400" /></div>
-                                <button type="submit" className="bg-yellow-500 text-white text-[10px] font-bold py-1 rounded hover:bg-yellow-600 transition-colors shadow-sm">추가</button>
+                            <form onSubmit={handleAddManualDeposit} className="flex flex-col gap-1 bg-white dark:bg-slate-900 p-1 rounded border border-slate-300 dark:border-slate-600">
+                                <div className="flex gap-1"><input type="text" value={newDepositName} onChange={(e)=>setNewDepositName(e.target.value)} placeholder="입금자" className="w-[50%] text-[10px] border dark:border-slate-600 rounded px-1 py-1 bg-transparent outline-none focus:ring-1 focus:ring-slate-500" /><input type="text" value={newDepositAmount ? Number(newDepositAmount).toLocaleString() : ''} onChange={(e)=>{ const val = e.target.value.replace(/,/g, ''); if(!isNaN(val)) setNewDepositAmount(val); }} placeholder="금액" className="w-[50%] text-[10px] border dark:border-slate-600 rounded px-1 py-1 bg-transparent text-right font-bold outline-none focus:ring-1 focus:ring-slate-500" /></div>
+                                <button type="submit" className="bg-slate-700 text-white text-[10px] font-bold py-1 rounded hover:bg-slate-800 transition-colors shadow-sm">추가</button>
                             </form>
-                            <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 text-[10px]"/><input type="text" placeholder="검색" value={depositSearch} onChange={e => setDepositSearch(e.target.value)} className="w-full text-[10px] pl-6 pr-6 py-1.5 border dark:border-slate-600 rounded focus:ring-1 focus:ring-yellow-500 outline-none bg-white dark:bg-slate-800" />{depositSearch && <button onClick={()=>setDepositSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
-                            {selectedNick && <div className="text-[10px] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 p-1 rounded text-center font-bold animate-pulse border border-blue-200 dark:border-blue-800 truncate">👇 '{selectedNick}' 대기</div>}
+                            <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 text-[10px]"/><input type="text" placeholder="검색" value={depositSearch} onChange={e => setDepositSearch(e.target.value)} className="w-full text-[10px] pl-6 pr-6 py-1.5 border dark:border-slate-600 rounded focus:ring-1 focus:ring-slate-500 outline-none bg-white dark:bg-slate-900" />{depositSearch && <button onClick={()=>setDepositSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
+                            {selectedNick && <div className="text-[10px] text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-700 p-1 rounded text-center font-bold animate-pulse border border-slate-300 dark:border-slate-600 truncate">👇 '{selectedNick}' 대기</div>}
                         </div>
-                        <div className="flex-1 overflow-y-auto p-1 space-y-1 bg-gray-100 dark:bg-slate-900">
+                        <div className="flex-1 overflow-y-auto p-1 space-y-1 bg-slate-50 dark:bg-slate-900">
                             {visibleDeposits.map(d => {
                                 const isUsed = matchedDeposits?.has(d.id);
                                 return (
-                                    <div key={d.id} onClick={() => handleDepositClick(d)} className={`relative flex items-center justify-between py-1.5 px-1.5 border rounded cursor-pointer transition-all group ${isUsed ? 'opacity-70 bg-gray-100 dark:bg-slate-800/80 border-transparent' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'}`}>
+                                    <div key={d.id} onClick={() => handleDepositClick(d)} className={`relative flex items-center justify-between py-1.5 px-1.5 border rounded cursor-pointer transition-all group ${isUsed ? 'opacity-70 bg-slate-100 dark:bg-slate-800/80 border-transparent' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm'}`}>
                                         <div className="flex items-center gap-1 overflow-hidden min-w-0">
-                                            <span className={`text-[12px] truncate font-bold ${isUsed ? 'text-gray-500 dark:text-slate-400 line-through' : 'text-gray-900 dark:text-slate-100'}`}>{d.name}</span>
-                                            {d.source === 'manual' && <span className="text-[8px] text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-700 px-0.5 rounded shrink-0">수동</span>}
+                                            <span className={`text-[12px] truncate font-bold ${isUsed ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-800 dark:text-slate-100'}`}>{d.name}</span>
+                                            {d.source === 'manual' && <span className="text-[8px] text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-0.5 rounded shrink-0">수동</span>}
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                                            {isUsed ? <span className="text-[8px] font-bold text-green-600 dark:text-green-400 whitespace-nowrap">완료</span> : <span className="text-[8px] text-gray-400 dark:text-slate-500 whitespace-nowrap">{formatTimeOnly(d.time || d.date)}</span>}
-                                            <span className={`font-bold text-[12px] ${isUsed ? 'text-gray-500 dark:text-slate-400' : 'text-blue-600 dark:text-blue-400'}`}>+{Number(d.amount).toLocaleString()}</span>
+                                            {isUsed ? <span className="text-[8px] font-bold text-green-600 dark:text-green-400 whitespace-nowrap">완료</span> : <span className="text-[8px] text-slate-400 dark:text-slate-500 whitespace-nowrap">{formatTimeOnly(d.time || d.date)}</span>}
+                                            <span className={`font-bold text-[12px] ${isUsed ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>+{Number(d.amount).toLocaleString()}</span>
                                         </div>
                                         <button onClick={(e)=>{e.stopPropagation(); handleDeleteDepositItem(d.id);}} className="absolute -right-1 -top-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"><Icon name="trash" size={10} weight="bold"/></button>
                                     </div>
                                 );
                             })}
                         </div>
-                        <div className="p-1 bg-white dark:bg-slate-800 text-center font-bold text-[10px] border-t dark:border-slate-700">총: <span className="text-green-600 dark:text-green-400 text-xs">{totalDepositAmount.toLocaleString()}</span>원</div>
+                        <div className="p-1 bg-white dark:bg-slate-800 text-center font-bold text-[10px] border-t dark:border-slate-700">총: <span className="text-slate-800 dark:text-slate-200 text-xs">{totalDepositAmount.toLocaleString()}</span>원</div>
                     </div>
 
                     <div className="w-[13%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[130px]">
-                        <div className="p-2 bg-emerald-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2">
-                            <div className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
+                        <div className="p-2 bg-slate-100 dark:bg-slate-800 border-b dark:border-slate-700 flex flex-col gap-2">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="address-book" weight="fill"/> 실시간 주소록</span>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-xs text-gray-500 dark:text-slate-400 mr-1">{addresses.length}명</span>
-                                    <button onClick={handleResetAddresses} className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="기존 주소 삭제 및 새로고침"><Icon name="trash" weight="bold"/> 비우기</button>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">{addresses.length}명</span>
+                                    <button onClick={handleResetAddresses} className="bg-slate-500 hover:bg-slate-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="기존 주소 삭제 및 새로고침"><Icon name="trash" weight="bold"/> 비우기</button>
                                 </div>
                             </div>
-                            <div className="text-[9px] text-emerald-600 dark:text-emerald-500 bg-emerald-100/50 dark:bg-emerald-900/20 p-1 rounded border border-emerald-200 dark:border-emerald-800 text-center flex items-center justify-center gap-1"><Icon name="arrows-clockwise" className="animate-spin" /> 외부 폼 실시간 동기화 중</div>
-                            <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 text-[10px]"/><input type="text" placeholder="이름/연락처 검색" value={addressSearch} onChange={e => setAddressSearch(e.target.value)} className="w-full text-[10px] pl-6 pr-6 py-1.5 border dark:border-slate-600 rounded focus:ring-1 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-800" />{addressSearch && <button onClick={()=>setAddressSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
+                            <div className="text-[9px] text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 p-1 rounded border border-slate-300 dark:border-slate-600 text-center flex items-center justify-center gap-1"><Icon name="arrows-clockwise" className="animate-spin" /> 외부 폼 실시간 동기화 중</div>
+                            <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 text-[10px]"/><input type="text" placeholder="이름/연락처 검색" value={addressSearch} onChange={e => setAddressSearch(e.target.value)} className="w-full text-[10px] pl-6 pr-6 py-1.5 border dark:border-slate-600 rounded focus:ring-1 focus:ring-slate-500 outline-none bg-white dark:bg-slate-900" />{addressSearch && <button onClick={()=>setAddressSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-1 space-y-1 bg-gray-100 dark:bg-slate-900">
+                        <div className="flex-1 overflow-y-auto p-1 space-y-1 bg-slate-50 dark:bg-slate-900">
                             {visibleAddresses.map((addr, idx) => {
                                 const isUsed = usedAddressNicks.has(normalizeString(addr.nickname)) || (addr.linkedNicks && addr.linkedNicks.some(ln => usedAddressNicks.has(normalizeString(ln))));
                                 return (
-                                    <div key={`${addr.phone}-${idx}`} onClick={() => handleAddressClick(addr)} className={`relative flex flex-col p-1.5 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-60 bg-gray-100 dark:bg-slate-800/80 border-transparent' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm'}`}>
+                                    <div key={`${addr.phone}-${idx}`} onClick={() => handleAddressClick(addr)} className={`relative flex flex-col p-1.5 border rounded cursor-pointer transition-all ${isUsed ? 'opacity-60 bg-slate-100 dark:bg-slate-800/80 border-transparent' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm'}`}>
                                         <div className="flex justify-between items-center gap-1">
-                                            <span className={`text-[12px] font-bold truncate ${isUsed ? 'text-gray-500 dark:text-slate-400' : 'text-indigo-700 dark:text-indigo-300'}`} title={addr.nickname}>
+                                            <span className={`text-[12px] font-bold truncate ${isUsed ? 'text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200'}`} title={addr.nickname}>
                                                 {addr.nickname}
-                                                {addr.linkedNicks && addr.linkedNicks.length > 0 && <span className="text-indigo-400 dark:text-indigo-500 font-normal ml-1">({addr.linkedNicks.join(', ')})</span>}
+                                                {addr.linkedNicks && addr.linkedNicks.length > 0 && <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">({addr.linkedNicks.join(', ')})</span>}
                                             </span>
                                             <div className="flex items-center gap-1 shrink-0">
-                                                {addr.timestamp && <span className="text-[9px] text-gray-400 dark:text-slate-500 tracking-tighter mr-0.5">{formatMMDD(addr.timestamp)}</span>}
-                                                {isUsed ? <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-1 py-0.5 rounded shrink-0">연결됨</span> : <span className="text-[9px] text-gray-400 dark:text-slate-500 shrink-0">수동매칭 대기</span>}
-                                                <button onClick={(e) => { e.stopPropagation(); setQuickAddrModal({ isOpen: true, nick: addr.nickname, editData: addr }); }} className="text-gray-400 hover:text-indigo-500 transition-colors bg-gray-50 hover:bg-indigo-50 dark:bg-slate-700 dark:hover:bg-slate-600 rounded p-0.5" title="주소 수정"><Icon name="pencil-simple" weight="bold" size={12}/></button>
+                                                {addr.timestamp && <span className="text-[9px] text-slate-400 dark:text-slate-500 tracking-tighter mr-0.5">{formatMMDD(addr.timestamp)}</span>}
+                                                {isUsed ? <span className="text-[8px] font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1 py-0.5 rounded shrink-0">연결됨</span> : <span className="text-[9px] text-slate-400 dark:text-slate-500 shrink-0">수동매칭 대기</span>}
+                                                <button onClick={(e) => { e.stopPropagation(); setQuickAddrModal({ isOpen: true, nick: addr.nickname, editData: addr }); }} className="text-slate-400 hover:text-slate-700 transition-colors bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded p-0.5" title="주소 수정"><Icon name="pencil-simple" weight="bold" size={12}/></button>
                                             </div>
                                         </div>
-                                        <div className="text-[11px] text-gray-600 dark:text-slate-300 font-medium flex items-center gap-1 w-full overflow-hidden mt-0.5">
+                                        <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1 w-full overflow-hidden mt-0.5">
                                             <span className="shrink-0">{addr.realname}</span>
-                                            <span className="text-gray-400 shrink-0">|</span>
+                                            <span className="text-slate-400 shrink-0">|</span>
                                             <span className="shrink-0">{addr.phone}</span>
-                                            <span className="text-gray-400 shrink-0">|</span>
-                                            <span className="text-gray-700 dark:text-slate-300 truncate flex-1 ml-1" title={`${addr.address} ${addr.memo}`}>{addr.address}{addr.memo && <span className="text-red-500 font-bold ml-1.5">[{addr.memo}]</span>}</span>
+                                            <span className="text-slate-400 shrink-0">|</span>
+                                            <span className="text-slate-700 dark:text-slate-300 truncate flex-1 ml-1" title={`${addr.address} ${addr.memo}`}>{addr.address}{addr.memo && <span className="text-red-500 font-bold ml-1.5">[{addr.memo}]</span>}</span>
                                         </div>
                                     </div>
                                 );
                             })}
-                            {visibleAddresses.length === 0 && <div className="text-center text-[10px] text-gray-400 py-4">주소록이 비어있습니다.</div>}
+                            {visibleAddresses.length === 0 && <div className="text-center text-[10px] text-slate-400 py-4">주소록이 비어있습니다.</div>}
                         </div>
                     </div>
 
-                    <div className="w-[23%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[240px]">
-                        <div className="p-2 bg-blue-50 dark:bg-slate-700/50 border-b dark:border-slate-700 flex flex-col gap-2 shrink-0">
-                            <div className="font-bold text-blue-700 dark:text-blue-400 flex items-center justify-between">
+                    <div className="w-[20%] flex flex-col bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg overflow-hidden shadow-sm min-w-[210px]">
+                        <div className="p-2 bg-slate-100 dark:bg-slate-800 border-b dark:border-slate-700 flex flex-col gap-2 shrink-0">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                                 <span className="flex items-center gap-1"><Icon name="package" weight="fill"/> 실시간 재고</span>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-xs text-gray-500 dark:text-slate-400">{inventory.length}종</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">{inventory.length}종</span>
+                                    <button onClick={(e) => { e.stopPropagation(); setIsBatchModalOpen(true); }} className="bg-slate-600 hover:bg-slate-700 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="옵션 일괄 생성"><Icon name="list-plus" weight="bold"/> 일괄옵션</button>
                                     <button onClick={async (e) => {
                                         e.stopPropagation();
                                         const targetUrl = inventoryScriptUrl || googleScriptUrl;
                                         if (!targetUrl) return openModal("설정에서 구글 스크립트 URL을 먼저 등록해주세요.", "alert");
                                         try {
                                             const payload = { action: 'save_inventory', data: inventory.map(i => ({ name: i.name, price: i.price })) };
-                                            await fetch(targetUrl, { 
-                                                method: 'POST', 
-                                                body: JSON.stringify(payload), 
-                                                mode: 'no-cors', 
-                                                headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
-                                            });
+                                            await fetch(targetUrl, { method: 'POST', body: JSON.stringify(payload), mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
                                             openModal("고객용 시트로 즉시 전송 완료!", 'alert');
-                                        } catch(err) {
-                                            openModal("전송 실패: " + err.message, 'alert');
-                                        }
-                                    }} className="bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="시트에 즉시 저장"><Icon name="cloud-arrow-up" weight="bold"/></button>
+                                        } catch(err) { openModal("전송 실패: " + err.message, 'alert'); }
+                                    }} className="bg-slate-600 hover:bg-slate-700 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="시트에 즉시 저장"><Icon name="cloud-arrow-up" weight="bold"/></button>
                                     <button onClick={() => openModal("재고 목록을 모두 비우시겠습니까?\n(주문 내역은 유지됩니다)", "confirm", () => setInventory([]))} className="bg-red-500 hover:bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="재고 비우기"><Icon name="trash" weight="bold"/></button>
                                 </div>
                             </div>
-                            <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 text-[10px]"/><input type="text" placeholder="상품명 검색" value={currentSearchTerm} onChange={e => setCurrentSearchTerm(e.target.value)} className="w-full text-[10px] pl-6 pr-6 py-1.5 border dark:border-slate-600 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800" />{currentSearchTerm && <button onClick={()=>setCurrentSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
+                            <div className="flex items-center gap-1 mt-1">
+                                <form onSubmit={handleQuickAddProduct} className="flex-1 flex gap-1 items-center bg-white dark:bg-slate-900 p-0.5 rounded border dark:border-slate-600">
+                                    <input type="text" placeholder="새 상품명" value={newInvName} onChange={e=>setNewInvName(e.target.value)} className="w-full text-[10px] px-1.5 py-1 bg-transparent outline-none dark:text-white font-bold" />
+                                    <input type="text" placeholder="단가" value={newInvPrice} onChange={e=> { const val = e.target.value.replace(/,/g, ''); if(!isNaN(val)) setNewInvPrice(val ? Number(val).toLocaleString() : ''); }} className="w-14 text-[10px] px-1 py-1 bg-transparent text-right outline-none dark:text-white font-bold" />
+                                    <button type="submit" className="bg-slate-700 hover:bg-slate-800 text-white px-1.5 py-1 rounded text-[10px] font-bold shrink-0">등록</button>
+                                </form>
+                                <div className="relative w-16 sm:w-20 shrink-0">
+                                    <Icon name="magnifying-glass" className="absolute left-1 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"/>
+                                    <input type="text" placeholder="검색" value={currentSearchTerm} onChange={e => setCurrentSearchTerm(e.target.value)} className="w-full text-[10px] pl-4 pr-1 py-1 border dark:border-slate-600 rounded outline-none bg-white dark:bg-slate-900 dark:text-white" />
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex w-full bg-gray-100 dark:bg-slate-700/50 p-1.5 border-b border-gray-200 dark:border-slate-700 text-[10px] font-bold text-gray-600 dark:text-slate-400 items-center text-center shrink-0">
-                            <div className="flex-1 text-left pl-1">상품명</div>
-                            <div className="w-12 shrink-0">단가</div>
-                            <div className="w-8 shrink-0">주문</div>
-                            <div className="w-8 shrink-0 pr-4">잔여</div>
+                        <div className="flex w-full bg-slate-50 dark:bg-slate-800 p-1.5 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 dark:text-slate-400 items-center text-center shrink-0">
+                            <div className="flex-1 text-left pl-1">상품명 <span className="text-[8px] font-normal">(수정가능)</span></div>
+                            <div className="w-5 shrink-0"></div>
+                            <div className="w-14 shrink-0 text-center">단가</div>
+                            <div className="w-8 shrink-0 text-center">주문</div>
+                            <div className="w-6 shrink-0"></div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 bg-gray-100 dark:bg-slate-900">
-                            {inventory.filter(i => !currentSearchTerm || String(i.name).toLowerCase().includes(currentSearchTerm.toLowerCase())).map(item => {
-                                const activeOrders = orders.filter(o => o.product === item.name && !o.isCancelled);
-                                const orderedCount = activeOrders.reduce((sum, o) => sum + Number(o.quantity || 0), 0);
-                                const remaining = (Number(item.stock) || 0) - orderedCount;
-                                const isExpanded = expandedInventoryItem === item.name;
-                                
-                                return (
-                                    <div key={item.id} className="flex flex-col bg-white dark:bg-slate-800 rounded border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                                        <div 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const textArea = document.createElement("textarea");
-                                                textArea.value = item.name;
-                                                document.body.appendChild(textArea);
-                                                textArea.select();
-                                                try { document.execCommand('copy'); } catch (err) {}
-                                                document.body.removeChild(textArea);
-                                                const el = e.currentTarget;
-                                                el.classList.add('bg-green-100', 'dark:bg-green-900/50');
-                                                setTimeout(() => el.classList.remove('bg-green-100', 'dark:bg-green-900/50'), 300);
-                                            }}
-                                            onDoubleClick={(e) => {
-                                                e.stopPropagation();
-                                                setManualProduct(item.name);
-                                                setCurrentSearchTerm(item.name);
-                                                setManualPrice(item.price ? Number(item.price).toLocaleString() : '');
-                                                setIsFixedProductMode(true);
-                                                document.getElementById('manual-prod-input')?.focus();
-                                            }}
-                                            className="flex items-center justify-between p-1.5 text-[11px] cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
-                                            title="클릭: 복사 / 더블클릭: 자동 고정 입력"
-                                        >
-                                            <div className="flex-1 font-bold text-gray-800 dark:text-slate-200 truncate pr-1" title={item.name}>{item.name}</div>
-                                            <div className="w-12 text-center text-[11px] text-gray-800 dark:text-slate-300 font-bold shrink-0">{item.price ? Number(item.price).toLocaleString() : '0'}</div>
-                                            <div className="w-8 text-center text-blue-600 dark:text-blue-400 font-bold shrink-0">{orderedCount}</div>
-                                            <div className={`w-8 text-center font-bold shrink-0 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{remaining}</div>
-                                            <button onClick={(e) => { e.stopPropagation(); setExpandedInventoryItem(isExpanded ? null : item.name); }} className={`ml-1 p-0.5 rounded text-gray-400 hover:text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shrink-0 ${isExpanded ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600' : ''}`} title="주문자 명단 보기"><Icon name="caret-down" weight="bold" className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></button>
-                                        </div>
-                                        {isExpanded && (
-                                            <div className="bg-blue-50/50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-700 p-1.5 flex flex-col gap-1">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1"><Icon name="users" weight="fill" /> 주문 고객 ({activeOrders.length}명)</span>
-                                                    <button onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        const uniqueNicks = [...new Set(activeOrders.map(o => o.customer))];
-                                                        if(uniqueNicks.length === 0) return;
-                                                        
-                                                        let text = `[${item.name} / ${uniqueNicks.length}명]\n`;
-                                                        for(let k=0; k<uniqueNicks.length; k+=2) {
-                                                            if(uniqueNicks[k+1]) text += `${uniqueNicks[k]} / ${uniqueNicks[k+1]}\n`;
-                                                            else text += `${uniqueNicks[k]}\n`;
-                                                        }
-                                                        
-                                                        const textArea = document.createElement("textarea");
-                                                        textArea.value = text; document.body.appendChild(textArea); textArea.select();
-                                                        try { document.execCommand('copy'); openModal('명단이 2열로 복사되었습니다!', 'alert'); } catch (err) {}
-                                                        document.body.removeChild(textArea);
-                                                    }} className="text-[9px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-800 px-1.5 py-0.5 rounded font-bold transition-colors">명단 복사</button>
-                                                </div>
-                                                {activeOrders.length === 0 ? (
-                                                    <div className="text-center text-[10px] text-gray-400 py-2">주문 내역이 없습니다.</div>
-                                                ) : (
-                                                    <div className="grid grid-cols-2 gap-1 max-h-[160px] overflow-y-auto pr-1">
-                                                        {activeOrders.map(o => (
-                                                            <div key={o.id} className="flex justify-between items-center bg-white dark:bg-slate-800 p-1 rounded border border-gray-100 dark:border-slate-700 shadow-sm text-[10px] group hover:border-blue-200 dark:hover:border-blue-800 min-w-0">
-                                                                <span className="font-bold text-gray-700 dark:text-slate-200 cursor-pointer hover:text-blue-500 transition-colors truncate flex-1" onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const textArea = document.createElement("textarea"); textArea.value = o.customer; document.body.appendChild(textArea); textArea.select();
-                                                                    try { document.execCommand('copy'); openModal(`'${o.customer}' 닉네임 복사 완료!`, 'alert'); } catch (err) {}
-                                                                    document.body.removeChild(textArea);
-                                                                }} title="클릭하여 닉네임 복사">
-                                                                    {o.customer} {o.quantity > 1 && <span className="text-blue-500">({o.quantity}개)</span>}
-                                                                </span>
-                                                                <button onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    openModal(`'${o.customer}'님의 '${item.name}' 주문을 삭제하시겠습니까?`, 'confirm', () => {
-                                                                        setOrders(prev => prev.filter(order => order.id !== o.id));
-                                                                    });
-                                                                }} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 px-1.5 py-0.5 rounded font-bold transition-colors shrink-0 ml-1 opacity-0 group-hover:opacity-100">삭제</button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            {inventory.length === 0 && <div className="text-center text-[10px] text-gray-400 py-4">등록된 상품이 없습니다.</div>}
+                        <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5 bg-slate-50 dark:bg-slate-900">
+                            {inventory.filter(i => !currentSearchTerm || String(i.name).toLowerCase().includes(currentSearchTerm.toLowerCase())).map(item => (
+                                <InventoryItemRow 
+                                    key={item.id} item={item} orders={orders} setOrders={setOrders} inventory={inventory} setInventory={setInventory} setProductHistory={setProductHistory} openModal={openModal} expandedInventoryItem={expandedInventoryItem} setExpandedInventoryItem={setExpandedInventoryItem} setManualProduct={setManualProduct} setCurrentSearchTerm={setCurrentSearchTerm} setManualPrice={setManualPrice} setIsFixedProductMode={setIsFixedProductMode} customerPaidStatus={customerPaidStatus}
+                                />
+                            ))}
+                            {inventory.length === 0 && <div className="text-center text-[10px] text-slate-400 py-4">상단에서 상품을 등록해주세요.</div>}
                         </div>
                     </div>
                 </div>
@@ -1760,11 +1943,17 @@
                     const depositTotal = items.reduce((sum, i) => sum + (i.deposit || 0), 0); const balance = grandTotal - depositTotal;
                     if (balance > 0) { 
                         const depositStatus = depositTotal > 0 ? `부분입금(${depositTotal.toLocaleString()}원)` : '미입금';
-                        activeItems.forEach(item => {
+                        let itemListText = activeItems.map(item => {
                             const unitPrice = item.quantity > 0 ? item.price / item.quantity : 0;
-                            const prodNameDisplay = item.quantity > 1 ? `${item.product} (${item.quantity}개)` : item.product;
-                            data.push({ '닉네임': nick, '상품명': prodNameDisplay, '단가': unitPrice.toLocaleString(), '입금여부': depositStatus });
-                        });
+                            return `${item.product}${item.quantity > 1 ? ` (${item.quantity}개)` : ''} ${unitPrice.toLocaleString()}원`;
+                        }).join('\n');
+                        if (currentShipping > 0) itemListText += `\n배송비 ${currentShipping.toLocaleString()}원`;
+                        
+                        const { emoji, unpaidPrefix } = JSON.parse(localStorage.getItem('templateConfig') || "{}");
+                        const bankStr = localStorage.getItem('bankAccount') || FIXED_BANK_ACCOUNT;
+                        const msgText = `${emoji} ${nick} 님 ${emoji}\n[주문내역]\n${itemListText}\n\n총 주문금액: ${grandTotal.toLocaleString()}원\n입금확인: ${depositTotal.toLocaleString()}원\n미입금액: ${balance.toLocaleString()}원\n------------------\n${unpaidPrefix || '[미입금] 총 입금하실 금액 👉'}\n${bankStr}\n입금 부탁드립니다 🙏`;
+                        
+                        data.push({ '닉네임': nick, '주문내역 (상세)': itemListText, '총금액': grandTotal.toLocaleString() + '원', '입금액': depositTotal.toLocaleString() + '원', '미입금액': balance.toLocaleString() + '원', '카톡안내메시지': msgText });
                     }
                 });
                 if (data.length === 0) { openModal("미입금 내역이 없습니다.", "alert"); return; }
@@ -1837,34 +2026,34 @@
                 <div className="flex flex-col items-center justify-center h-full p-10 gap-6 overflow-y-auto dark:bg-slate-900">
                     <div className="grid grid-cols-2 gap-6 w-full max-w-5xl"> 
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700 text-center">
-                            <h2 className="text-lg font-bold mb-2 dark:text-slate-100 flex items-center justify-center gap-2"><Icon name="clipboard-text" weight="fill" className="text-green-600"/> 발주용 품목 집계</h2>
-                            <p className="text-gray-500 dark:text-slate-400 mb-4 text-xs">상품별 전체 수량 요약 (취소건 제외)</p>
-                            <button onClick={handleExportProducts} className="w-full bg-green-600 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2"><Icon name="download-simple" weight="bold"/> 엑셀 다운로드</button>
+                            <h2 className="text-lg font-bold mb-2 dark:text-slate-100 flex items-center justify-center gap-2"><Icon name="clipboard-text" weight="fill" className="text-slate-600"/> 발주용 품목 집계</h2>
+                            <p className="text-slate-500 dark:text-slate-400 mb-4 text-xs">상품별 전체 수량 요약 (취소건 제외)</p>
+                            <button onClick={handleExportProducts} className="w-full bg-slate-700 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2 hover:bg-slate-800"><Icon name="download-simple" weight="bold"/> 엑셀 다운로드</button>
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700 text-center">
-                            <h2 className="text-lg font-bold mb-2 dark:text-slate-100 flex items-center justify-center gap-2"><Icon name="users" weight="fill" className="text-blue-600"/> 배송용 고객 리스트 (전체)</h2>
-                            <p className="text-gray-500 dark:text-slate-400 mb-4 text-xs">완납 상단 / 카드 중간 / 노쇼 하단 자동 정렬</p>
-                            <button onClick={handleExportCustomers} className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2"><Icon name="download-simple" weight="bold"/> 엑셀 다운로드</button>
+                            <h2 className="text-lg font-bold mb-2 dark:text-slate-100 flex items-center justify-center gap-2"><Icon name="users" weight="fill" className="text-slate-600"/> 배송용 고객 리스트 (전체)</h2>
+                            <p className="text-slate-500 dark:text-slate-400 mb-4 text-xs">완납 상단 / 카드 중간 / 노쇼 하단 자동 정렬</p>
+                            <button onClick={handleExportCustomers} className="w-full bg-slate-700 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2 hover:bg-slate-800"><Icon name="download-simple" weight="bold"/> 엑셀 다운로드</button>
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700 text-center ring-2 ring-red-100 dark:ring-red-900/30">
                             <h2 className="text-lg font-bold mb-2 text-red-600 dark:text-red-400 flex items-center justify-center gap-2"><Icon name="warning-circle" weight="fill"/> 미입금자 상세 리스트</h2>
-                            <p className="text-gray-500 dark:text-slate-400 mb-4 text-xs">입금을 완료하지 않은 노쇼 고객 목록</p>
-                            <button onClick={handleExportUnpaid} className="w-full bg-red-500 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2"><Icon name="download-simple" weight="bold"/> 엑셀 다운로드</button>
+                            <p className="text-slate-500 dark:text-slate-400 mb-4 text-xs">입금을 완료하지 않은 노쇼 고객 목록</p>
+                            <button onClick={handleExportUnpaid} className="w-full bg-red-500 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2 hover:bg-red-600"><Icon name="download-simple" weight="bold"/> 엑셀 다운로드</button>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700 text-center ring-2 ring-indigo-100 dark:ring-indigo-900/30">
-                            <h2 className="text-lg font-bold mb-2 text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-2"><Icon name="printer" weight="fill"/> 포장 리스트 인쇄</h2>
-                            <p className="text-gray-500 dark:text-slate-400 mb-4 text-xs">감열지 10x15cm 세로 양식 (닉네임 오름차순 정렬)</p>
-                            <button onClick={handlePrintPackingList} className="w-full bg-indigo-500 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2"><Icon name="printer" weight="bold"/> 10x15cm 인쇄</button>
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700 text-center ring-2 ring-slate-200 dark:ring-slate-900/30">
+                            <h2 className="text-lg font-bold mb-2 text-slate-700 dark:text-slate-300 flex items-center justify-center gap-2"><Icon name="printer" weight="fill"/> 포장 리스트 인쇄</h2>
+                            <p className="text-slate-500 dark:text-slate-400 mb-4 text-xs">감열지 10x15cm 세로 양식 (닉네임 오름차순 정렬)</p>
+                            <button onClick={handlePrintPackingList} className="w-full bg-slate-600 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2 hover:bg-slate-700"><Icon name="printer" weight="bold"/> 10x15cm 인쇄</button>
                         </div>
-                        <div className="col-span-2 bg-indigo-50 dark:bg-slate-800 p-6 rounded-xl border border-indigo-200 dark:border-indigo-900/50 flex flex-row items-center justify-between">
+                        <div className="col-span-2 bg-slate-100 dark:bg-slate-800 p-6 rounded-xl border border-slate-300 dark:border-slate-700 flex flex-row items-center justify-between">
                             <div className="text-left">
-                                <h2 className="text-lg font-bold mb-2 text-indigo-800 dark:text-indigo-400 flex items-center gap-2"><Icon name="database" weight="fill"/> 전체 데이터 백업 / 복구</h2>
-                                <p className="text-gray-500 dark:text-slate-400 text-xs">장소 이동 시 작업 내역을 파일로 저장하고 불러옵니다.</p>
+                                <h2 className="text-lg font-bold mb-2 text-slate-800 dark:text-slate-200 flex items-center gap-2"><Icon name="database" weight="fill"/> 전체 데이터 백업 / 복구</h2>
+                                <p className="text-slate-500 dark:text-slate-400 text-xs">장소 이동 시 작업 내역을 파일로 저장하고 불러옵니다.</p>
                             </div>
                             <div className="flex gap-3 w-1/2">
-                                <button onClick={handleExportBackup} className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-1"><Icon name="export" weight="bold"/> 파일로 저장</button>
+                                <button onClick={handleExportBackup} className="flex-1 bg-slate-700 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-1 hover:bg-slate-800"><Icon name="export" weight="bold"/> 파일로 저장</button>
                                 <input type="file" ref={fileInputRef} onChange={handleImportBackup} className="hidden" />
-                                <button onClick={() => fileInputRef.current.click()} className="flex-1 bg-slate-600 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-1"><Icon name="file-arrow-up" weight="bold"/> 파일 불러오기</button>
+                                <button onClick={() => fileInputRef.current.click()} className="flex-1 bg-slate-500 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-1 hover:bg-slate-600"><Icon name="file-arrow-up" weight="bold"/> 파일 불러오기</button>
                             </div>
                         </div>
                     </div>
@@ -1953,7 +2142,7 @@
                                 const actualSheetId = getCleanSheetId(customerSheetId); 
                                 const res = await fetch(`${googleScriptUrl}?action=get_orders&t=${Date.now()}&sheet_id=${actualSheetId}`); 
                                 const text = await res.text();
-                                if (text.trim().startsWith("<!DOCTYPE")) { setTimeout(() => openModal(`서버 거부: 스크립트 권한을 확인해주세요.`, 'alert'), 300); return; }
+                                if (text.trim().startsWith("<!DOCTYPE")) { setTimeout(() => openModal(`서버 거부: 스크립 권한을 확인해주세요.`, 'alert'), 300); return; }
                                 const data = JSON.parse(text); 
                                 let fs = data.orders || data.data || data; 
                                 if (fs && fs.length > 0) { 
@@ -1974,26 +2163,20 @@
             }, []); 
 
             useEffect(() => { if (isDarkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [isDarkMode]);
-            useEffect(() => { localStorage.setItem('matchedDeposits', JSON.stringify([...matchedDeposits])); }, [matchedDeposits]);
-            useEffect(() => { localStorage.setItem('clickedChats', JSON.stringify([...clickedChats])); }, [clickedChats]);
-            useEffect(() => { localStorage.setItem('keywords', JSON.stringify([...keywords])); }, [keywords]);
-            useEffect(() => { localStorage.setItem('sentAddressRequests', JSON.stringify([...sentAddressRequests])); }, [sentAddressRequests]);
-            useEffect(() => { localStorage.setItem('deletedDepositIds', JSON.stringify([...deletedDepositIds])); }, [deletedDepositIds]);
-            useEffect(() => { localStorage.setItem('checkedOrders', JSON.stringify([...checkedOrders])); }, [checkedOrders]);
 
             return (
-                <div className="flex flex-col h-screen overflow-hidden text-slate-700 dark:text-slate-200">
-                    <header className="h-12 bg-indigo-900 dark:bg-slate-950 text-white flex items-center justify-between px-4 shrink-0 shadow-md z-50">
-                        <div className="font-bold text-lg flex items-center gap-2 transition-transform hover:scale-105 duration-200 cursor-pointer"><Icon name="lightning" className="text-yellow-400" weight="fill"/> 깔로 주문서 PRO</div>
+                <div className="flex flex-col h-screen overflow-hidden text-slate-800 dark:text-slate-200">
+                    <header className="h-12 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between px-4 shrink-0 shadow-md z-50 border-b border-slate-700">
+                        <div className="font-bold text-lg flex items-center gap-2 transition-transform hover:scale-105 duration-200 cursor-pointer text-slate-100"><Icon name="lightning" className="text-slate-400" weight="fill"/> 깔로 주문서 PRO <span className="text-[10px] font-normal border border-slate-600 rounded px-1.5 py-0.5 ml-1 bg-slate-800 text-slate-300">기업용 모노톤</span></div>
                         <div className="flex items-center gap-2">
-                            <div className="flex bg-indigo-800 dark:bg-slate-900 rounded p-1 gap-1">
+                            <div className="flex bg-slate-800 dark:bg-slate-900 rounded p-1 gap-1">
                                 {[{ id: 'live', label: '라이브관제', icon: 'monitor-play' }, { id: 'manage', label: '주문관리', icon: 'file-xls' }].map(tab => (
-                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-indigo-900 shadow' : 'text-indigo-300 hover:text-white'}`}><Icon name="hit-the-play" weight="bold"/> {tab.label}</button>
+                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition-all ${activeTab === tab.id ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white shadow' : 'text-slate-400 hover:text-white'}`}><Icon name={tab.icon} weight="bold"/> {tab.label}</button>
                                 ))}
                             </div>
-                            <button onClick={()=>setIsVipModalOpen(true)} className="p-2 hover:bg-indigo-800 dark:bg-slate-800 rounded transition-colors text-yellow-400 ml-1" title="VIP 관리"><Icon name="crown" weight="fill" size={20}/></button>
-                            <button onClick={()=>setIsDarkMode(!isDarkMode)} className="p-2 hover:bg-indigo-800 dark:bg-slate-800 rounded transition-colors" title="다크모드"><Icon name={isDarkMode ? 'sun' : 'moon'} weight="fill" size={20}/></button>
-                            <button onClick={()=>setIsSettingsOpen(!isSettingsOpen)} className="p-2 hover:bg-indigo-800 dark:bg-slate-800 rounded transition-colors" title="환경설정"><Icon name="gear" weight="fill" size={20}/></button>
+                            <button onClick={()=>setIsVipModalOpen(true)} className="p-2 hover:bg-slate-800 dark:bg-slate-800 rounded transition-colors text-amber-400 ml-1 border border-slate-700" title="VIP 관리"><Icon name="crown" weight="fill" size={20}/></button>
+                            <button onClick={()=>setIsDarkMode(!isDarkMode)} className="p-2 hover:bg-slate-800 dark:bg-slate-800 rounded transition-colors border border-slate-700" title="다크모드"><Icon name={isDarkMode ? 'sun' : 'moon'} weight="fill" size={20}/></button>
+                            <button onClick={()=>setIsSettingsOpen(!isSettingsOpen)} className="p-2 hover:bg-slate-800 dark:bg-slate-800 rounded transition-colors border border-slate-700" title="환경설정"><Icon name="gear" weight="fill" size={20}/></button>
                         </div>
                     </header>
                     <Modal isOpen={modalConfig.isOpen} type={modalConfig.type} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={modalConfig.onCancel} initialValue={modalConfig.initialValue} />
@@ -2003,36 +2186,36 @@
                         <div className="absolute top-12 right-4 bg-white dark:bg-slate-800 shadow-xl border dark:border-slate-700 rounded-lg p-4 w-[420px] z-50 animate-pop max-h-[85vh] overflow-y-auto">
                             <h3 className="font-bold mb-4 flex items-center gap-2 border-b dark:border-slate-700 pb-2"><Icon name="gear" weight="fill" className="text-gray-500"/> 환경설정</h3>
                             <div className="mb-4 space-y-4">
-                                <div><label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">메인 구글 앱스 스크립트 URL</label><input type="text" value={googleScriptUrl} onChange={(e)=>{const v = e.target.value; setGoogleScriptUrl(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white" /></div>
+                                <div><label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">메인 구글 앱스 스크립트 URL</label><input type="text" value={googleScriptUrl} onChange={(e)=>{const v = e.target.value; setGoogleScriptUrl(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white focus:ring-1 focus:ring-slate-400 outline-none" /></div>
                                 <div>
-                                    <label className="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">고객용 상품 스크립트 URL (선택/자동저장용)</label>
-                                    <input type="text" value={inventoryScriptUrl} onChange={(e)=>{const v = e.target.value; setInventoryScriptUrl(() => v);}} placeholder="고객용 시트에서 배포한 앱스 스크립트 주소 입력" className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white border-blue-300 dark:border-blue-700" />
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">고객용 상품 스크립트 URL (선택/자동저장용)</label>
+                                    <input type="text" value={inventoryScriptUrl} onChange={(e)=>{const v = e.target.value; setInventoryScriptUrl(() => v);}} placeholder="고객용 시트에서 배포한 앱스 스크립트 주소 입력" className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white focus:ring-1 focus:ring-slate-400 outline-none" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">주소록 전용 앱스 스크립트 URL (선택)</label>
-                                    <input type="text" value={addressScriptUrl} onChange={(e)=>{const v = e.target.value; setAddressScriptUrl(() => v);}} placeholder="입력 시, 주소록은 이곳에서만 동기화됩니다." className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white border-emerald-300 dark:border-emerald-700" />
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">주소록 전용 앱스 스크립트 URL (선택)</label>
+                                    <input type="text" value={addressScriptUrl} onChange={(e)=>{const v = e.target.value; setAddressScriptUrl(() => v);}} placeholder="입력 시, 주소록은 이곳에서만 동기화됩니다." className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white focus:ring-1 focus:ring-slate-400 outline-none" />
                                 </div>
-                                <div><label className="block text-xs font-bold text-green-600 dark:text-green-400 mb-1">고객 주소록 시트 ID</label><input type="text" value={customerSheetId} onChange={(e)=>{const v = e.target.value; setCustomerSheetId(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white" /></div>
-                                <div><label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">기본 배송비</label><input type="number" value={quickShipping} onChange={(e)=>{const v = Number(e.target.value); setQuickShipping(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-sm bg-transparent dark:text-white" /></div>
+                                <div><label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">고객 주소록 시트 ID</label><input type="text" value={customerSheetId} onChange={(e)=>{const v = e.target.value; setCustomerSheetId(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white focus:ring-1 focus:ring-slate-400 outline-none" /></div>
+                                <div><label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">기본 배송비</label><input type="number" value={quickShipping} onChange={(e)=>{const v = Number(e.target.value); setQuickShipping(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 dark:text-white focus:ring-1 focus:ring-slate-400 outline-none" /></div>
                                 <div className="border-t dark:border-slate-700 pt-4"><h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1"><Icon name="chat-text" weight="fill"/> 주문서 멘트 설정</h4>
                                     <div className="space-y-3">
-                                        <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">닉네임 이모지</label><input type="text" value={templateConfig.emoji} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, emoji: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-sm bg-transparent dark:text-white mb-2" />
-                                        <div className="flex flex-wrap gap-1 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-700 max-h-32 overflow-y-auto">
+                                        <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">닉네임 이모지</label><input type="text" value={templateConfig.emoji} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, emoji: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 dark:text-white mb-2 outline-none focus:ring-1 focus:ring-slate-400" />
+                                        <div className="flex flex-wrap gap-1 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 max-h-32 overflow-y-auto">
                                             {EMOJI_LIST.map(em => (<button type="button" key={em} onClick={() => setTemplateConfig(p => ({...p, emoji: em}))} className="w-7 h-7 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded transition-all text-base">{em}</button>))}
                                         </div>
                                         </div>
-                                        <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">완납 메시지</label><input type="text" value={templateConfig.paidMsg} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, paidMsg: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-sm bg-transparent dark:text-white" /></div>
-                                        <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">미납 안내</label><textarea value={templateConfig.unpaidPrefix} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, unpaidPrefix: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-16 resize-none bg-transparent dark:text-white" /></div>
-                                        <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">계좌번호</label><textarea value={bankAccount} onChange={(e)=>{const v = e.target.value; setBankAccount(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-12 resize-none bg-transparent dark:text-white" /></div>
-                                        <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">주소 있음 안내</label><textarea value={templateConfig.addrNotice} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, addrNotice: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-12 resize-none bg-transparent dark:text-white" /></div>
-                                        <div><label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1">주소 없음 안내</label><textarea value={templateConfig.surveyNotice} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, surveyNotice: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-24 resize-none bg-transparent dark:text-white" /></div>
-                                        <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded border border-indigo-100 dark:border-indigo-800">
-                                            <label className="text-xs font-bold text-indigo-700 dark:text-indigo-300 cursor-pointer" onClick={() => setTemplateConfig(p => ({...p, alwaysRequestAddress: !p.alwaysRequestAddress}))}>주소록 무시하고 항상 새로 입력받기</label>
+                                        <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">완납 메시지</label><input type="text" value={templateConfig.paidMsg} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, paidMsg: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
+                                        <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">미납 안내</label><textarea value={templateConfig.unpaidPrefix} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, unpaidPrefix: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-16 resize-none bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
+                                        <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">계좌번호</label><textarea value={bankAccount} onChange={(e)=>{const v = e.target.value; setBankAccount(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-12 resize-none bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
+                                        <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">주소 있음 안내</label><textarea value={templateConfig.addrNotice} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, addrNotice: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-12 resize-none bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
+                                        <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">주소 없음 안내</label><textarea value={templateConfig.surveyNotice} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, surveyNotice: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-24 resize-none bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
+                                        <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800 p-2 rounded border border-slate-300 dark:border-slate-600">
+                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer" onClick={() => setTemplateConfig(p => ({...p, alwaysRequestAddress: !p.alwaysRequestAddress}))}>주소록 무시하고 항상 새로 입력받기</label>
                                             <input type="checkbox" checked={templateConfig.alwaysRequestAddress || false} onChange={(e)=>{const v = e.target.checked; setTemplateConfig(p => ({...p, alwaysRequestAddress: v}));}} className="custom-checkbox" />
                                         </div>
                                     </div>
                                 </div>
-                                <div className="border-t dark:border-slate-700 pt-4"><h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1"><Icon name="lightning" weight="fill" className="text-yellow-500"/> 빠른 댓글 설정</h4>
+                                <div className="border-t dark:border-slate-700 pt-4"><h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1"><Icon name="lightning" weight="fill" className="text-slate-500"/> 빠른 댓글 설정</h4>
                                     <div className="space-y-2">
                                         {quickMessages.map((msg, idx) => (
                                             <input 
@@ -2047,16 +2230,16 @@
                                                         return next;
                                                     });
                                                 }}
-                                                className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-transparent dark:text-white" 
+                                                className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" 
                                             />
                                         ))}
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={()=>setIsSettingsOpen(false)} className="w-full bg-indigo-600 text-white rounded py-2 text-sm font-bold hover:bg-indigo-700 transition-colors">닫기</button>
+                            <button onClick={()=>setIsSettingsOpen(false)} className="w-full bg-slate-800 text-white rounded py-2 text-sm font-bold hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors shadow-sm">닫기</button>
                         </div>
                     )}
-                    <main className="flex-1 overflow-hidden bg-gray-200 dark:bg-slate-950 p-2 relative">
+                    <main className="flex-1 overflow-hidden bg-slate-200 dark:bg-slate-950 p-2 relative">
                         {activeTab === 'live' && <LiveTab {...{ orders, setOrders, productHistory, setProductHistory, quickShipping, shippingOverrides, setShippingOverrides, bankAccount, googleScriptUrl, addressScriptUrl, inventoryScriptUrl, addresses, setAddresses, cardPayments, setCardPayments, matchedDeposits, setMatchedDeposits, depositorNames, setDepositorNames, clickedChats, setClickedChats, openModal, keywords, setKeywords, sentAddressRequests, setSentAddressRequests, deletedDepositIds, setDeletedDepositIds, checkedOrders, setCheckedOrders, addressMapping, setAddressMapping, templateConfig, specialCustomers, setSpecialCustomers, inventory, setInventory, quickMessages, customerSheetId, handleResetAllData }} />}
                         {activeTab === 'manage' && <OrderManagementTab {...{ orders, shippingOverrides, quickShipping, addresses, handleExportBackup, handleImportBackup, addressMapping, cardPayments, specialCustomers, openModal }} />}
                     </main>
