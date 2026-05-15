@@ -373,7 +373,6 @@
             const activeOrders = useMemo(() => orders.filter(o => o.product === item.name && !o.isCancelled), [orders, item.name]);
             const orderedCount = activeOrders.reduce((sum, o) => sum + Number(o.quantity || 0), 0);
             
-            // 🔥 한 고객이 같은 상품을 여러 번 샀을 경우 수량을 하나로 합치고 정리하는 로직
             const aggregatedOrders = useMemo(() => {
                 const groups = {};
                 activeOrders.forEach(o => {
@@ -615,7 +614,7 @@
                                     <div className="flex items-center gap-1 flex-wrap">
                                         {addrType === 'multiple' ? (<span className="text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800 text-[10px] flex items-center gap-1 font-bold animate-pulse shrink-0"><Icon name="warning-diamond" weight="fill"/> ⚠️ 중복(수동매칭필요)</span>) : (<span className="text-red-400 dark:text-red-900/60 text-[10px] flex items-center gap-1 shrink-0"><Icon name="warning-circle" weight="fill"/> 주소없음</span>)}
                                         <button onClick={(e) => { e.stopPropagation(); openModal("연결할 주소록의 닉네임을 입력하세요.", "prompt", (targetNick) => { if(targetNick) handleAddressMapping(nick, targetNick); }); }} className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center gap-1 shrink-0"><Icon name="link" weight="bold" /> 연결</button>
-                                        <button onClick={(e) => { e.stopPropagation(); onOpenQuickAddress(nick); }} className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1 shrink-0 transition-colors shadow-sm"><Icon name="pencil-line" weight="bold" /> 직접입력</button>
+                                        <button onClick={(e) => { e.stopPropagation(); onOpenQuickAddress(nick); }} className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1 shrink-0 transition-colors shadow-sm"><Icon name="pencil-line" weight="bold" /> 직접입력</button>
                                         {suggestions && suggestions.length > 0 && (<div className="flex flex-wrap gap-1 items-center bg-orange-50 dark:bg-orange-900/10 px-1 py-0.5 rounded"><span className="text-[9px] text-orange-700 dark:text-orange-400 font-bold shrink-0">유사:</span>{suggestions.map(s => (<button key={s} onClick={(e) => {e.stopPropagation(); handleAddressMapping(nick, s);}} className="bg-white dark:bg-slate-700 border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded text-[9px] hover:bg-orange-100 dark:hover:bg-orange-900 transition-colors shadow-sm shrink-0">{s}</button>))}</div>)}
                                     </div>
                                 )}
@@ -1122,6 +1121,7 @@
                     if (data.deposits) {
                         const depCounts = {};
                         const stableDeposits = data.deposits.map((d, i) => {
+                            if (d.id) return { ...d, source: 'server' }; // 🚨 완벽 수정: 서버가 주는 ID를 우선 사용
                             if (d.uid) return { ...d, id: d.uid, source: 'server' };
                             const baseKey = `dep_${d.name}_${d.amount}_${String(d.time || d.date || '').replace(/[^0-9]/g, '')}`;
                             depCounts[baseKey] = (depCounts[baseKey] || 0) + 1;
@@ -1244,6 +1244,7 @@
                 if (addedAny) { setClickedChats(prev => { const next = new Set(prev); newIds.forEach(id => next.add(id)); return next; }); }
             }, [chats, addOrderLogic]);
 
+            // 🚨 완벽 수정: 매칭 시 이중 잠금장치 설정 및 메모리 보존
             useEffect(() => {
                 const timer = setTimeout(() => {
                     if (allDeposits.length === 0 || orders.length === 0) return;
@@ -1286,11 +1287,20 @@
                         
                         if (matchedCustomer) {
                             const cb = customerBalances[matchedCustomer];
-                            if (cb.isCloud && cb.balance <= 0) { newMatchedIds.add(deposit.id); hasChanges = true; } 
-                            else {
+                            // 🚨 완벽 수정: 이미 완납(잔액 0원이하)된 상태라면 컴퓨터가 돈을 더 더하지 않고 매칭 목록에서 없애기만 합니다.
+                            if (cb.balance <= 0) { 
+                                newMatchedIds.add(deposit.id); hasChanges = true; 
+                            } else {
                                 let applied = false;
-                                updatedOrders = updatedOrders.map(o => { if (o.customer === matchedCustomer && !applied) { applied = true; return { ...o, deposit: (o.deposit || 0) + depositAmount, loadedFromCloud: false }; } return o; });
-                                cb.depositTotal += depositAmount; cb.balance -= depositAmount; cb.isCloud = false; newMatchedIds.add(deposit.id); hasChanges = true;
+                                updatedOrders = updatedOrders.map(o => { 
+                                    if (o.customer === matchedCustomer && !applied) { 
+                                        applied = true; 
+                                        return { ...o, deposit: (o.deposit || 0) + depositAmount, loadedFromCloud: false }; 
+                                    } 
+                                    return o; 
+                                });
+                                cb.depositTotal += depositAmount; cb.balance -= depositAmount; cb.isCloud = false; 
+                                newMatchedIds.add(deposit.id); hasChanges = true;
                             }
                         }
                     });
@@ -1747,7 +1757,7 @@
                                 <span className="flex items-center gap-1"><Icon name="money" weight="fill"/> 입금 내역</span>
                                 <div className="flex items-center gap-1.5"><span className="text-[10px] text-slate-500 dark:text-slate-400 mr-1">{filteredDeposits.length}건</span><button onClick={handleRematchAll} className="bg-red-500 hover:bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5"><Icon name="arrows-clockwise" weight="bold"/></button></div>
                             </div>
-                            <form onSubmit={handleAddManualDeposit} className="flex flex-col gap-1 bg-white dark:bg-slate-900 p-1 rounded border border-slate-300 dark:border-slate-600">
+                            <form onSubmit={handleAddManualDeposit} className="flex flex-col gap-1 bg-white dark:bg-slate-900 p-1 rounded border dark:border-slate-600">
                                 <div className="flex gap-1"><input type="text" value={newDepositName} onChange={(e)=>setNewDepositName(e.target.value)} placeholder="입금자" className="w-[50%] text-[10px] border dark:border-slate-600 rounded px-1 py-1 bg-transparent outline-none focus:ring-1 focus:ring-slate-500" /><input type="text" value={newDepositAmount ? Number(newDepositAmount).toLocaleString() : ''} onChange={(e)=>{ const val = e.target.value.replace(/,/g, ''); if(!isNaN(val)) setNewDepositAmount(val); }} placeholder="금액" className="w-[50%] text-[10px] border dark:border-slate-600 rounded px-1 py-1 bg-transparent text-right font-bold outline-none focus:ring-1 focus:ring-slate-500" /></div>
                                 <button type="submit" className="bg-slate-700 text-white text-[10px] font-bold py-1 rounded hover:bg-slate-800 transition-colors shadow-sm">추가</button>
                             </form>
@@ -1784,7 +1794,7 @@
                                     <button onClick={handleResetAddresses} className="bg-slate-500 hover:bg-slate-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm transition-colors flex items-center gap-0.5" title="기존 주소 삭제 및 새로고침"><Icon name="trash" weight="bold"/> 비우기</button>
                                 </div>
                             </div>
-                            <div className="text-[9px] text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 p-1 rounded border border-slate-300 dark:border-slate-600 text-center flex items-center justify-center gap-1"><Icon name="arrows-clockwise" className="animate-spin" /> 외부 폼 실시간 동기화 중</div>
+                            <div className="text-[9px] text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 p-1 rounded border dark:border-slate-600 text-center flex items-center justify-center gap-1"><Icon name="arrows-clockwise" className="animate-spin" /> 외부 폼 실시간 동기화 중</div>
                             <div className="relative"><Icon name="magnifying-glass" className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 text-[10px]"/><input type="text" placeholder="이름/연락처 검색" value={addressSearch} onChange={e => setAddressSearch(e.target.value)} className="w-full text-[10px] pl-6 pr-6 py-1.5 border dark:border-slate-600 rounded focus:ring-1 focus:ring-slate-500 outline-none bg-white dark:bg-slate-900" />{addressSearch && <button onClick={()=>setAddressSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><Icon name="x-circle" weight="fill" size={12}/></button>}</div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-1 space-y-1 bg-slate-50 dark:bg-slate-900">
@@ -2045,7 +2055,7 @@
                             <p className="text-slate-500 dark:text-slate-400 mb-4 text-xs">감열지 10x15cm 세로 양식 (닉네임 오름차순 정렬)</p>
                             <button onClick={handlePrintPackingList} className="w-full bg-slate-600 text-white font-bold py-3 rounded-lg transition-transform hover:scale-105 shadow-md flex items-center justify-center gap-2 hover:bg-slate-700"><Icon name="printer" weight="bold"/> 10x15cm 인쇄</button>
                         </div>
-                        <div className="col-span-2 bg-slate-100 dark:bg-slate-800 p-6 rounded-xl border border-slate-300 dark:border-slate-700 flex flex-row items-center justify-between">
+                        <div className="col-span-2 bg-slate-100 dark:bg-slate-800 p-6 rounded-xl border dark:border-slate-700 flex flex-row items-center justify-between">
                             <div className="text-left">
                                 <h2 className="text-lg font-bold mb-2 text-slate-800 dark:text-slate-200 flex items-center gap-2"><Icon name="database" weight="fill"/> 전체 데이터 백업 / 복구</h2>
                                 <p className="text-slate-500 dark:text-slate-400 text-xs">장소 이동 시 작업 내역을 파일로 저장하고 불러옵니다.</p>
@@ -2078,6 +2088,13 @@
             const [sentAddressRequests, setSentAddressRequests] = useState(() => { const s = localStorage.getItem('sentAddressRequests'); return s ? new Set(JSON.parse(s)) : new Set(); });
             const [deletedDepositIds, setDeletedDepositIds] = useState(() => { const s = localStorage.getItem('deletedDepositIds'); return s ? new Set(JSON.parse(s)) : new Set(); });
             const [checkedOrders, setCheckedOrders] = useState(() => { const s = localStorage.getItem('checkedOrders'); return s ? new Set(JSON.parse(s)) : new Set(); });
+            
+            useEffect(() => { localStorage.setItem('matchedDeposits', JSON.stringify([...matchedDeposits])); }, [matchedDeposits]);
+            useEffect(() => { localStorage.setItem('clickedChats', JSON.stringify([...clickedChats])); }, [clickedChats]);
+            useEffect(() => { localStorage.setItem('keywords', JSON.stringify([...keywords])); }, [keywords]);
+            useEffect(() => { localStorage.setItem('sentAddressRequests', JSON.stringify([...sentAddressRequests])); }, [sentAddressRequests]);
+            useEffect(() => { localStorage.setItem('deletedDepositIds', JSON.stringify([...deletedDepositIds])); }, [deletedDepositIds]);
+            useEffect(() => { localStorage.setItem('checkedOrders', JSON.stringify([...checkedOrders])); }, [checkedOrders]);
             
             const [depositorNames, setDepositorNames] = useLocalStorage('depositorNames', {});
             const [addressMapping, setAddressMapping] = useLocalStorage('addressMapping', {});
@@ -2200,7 +2217,7 @@
                                 <div className="border-t dark:border-slate-700 pt-4"><h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1"><Icon name="chat-text" weight="fill"/> 주문서 멘트 설정</h4>
                                     <div className="space-y-3">
                                         <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">닉네임 이모지</label><input type="text" value={templateConfig.emoji} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, emoji: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 dark:text-white mb-2 outline-none focus:ring-1 focus:ring-slate-400" />
-                                        <div className="flex flex-wrap gap-1 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 max-h-32 overflow-y-auto">
+                                        <div className="flex flex-wrap gap-1 bg-slate-50 dark:bg-slate-900 p-2 rounded border dark:border-slate-700 max-h-32 overflow-y-auto">
                                             {EMOJI_LIST.map(em => (<button type="button" key={em} onClick={() => setTemplateConfig(p => ({...p, emoji: em}))} className="w-7 h-7 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded transition-all text-base">{em}</button>))}
                                         </div>
                                         </div>
@@ -2209,7 +2226,7 @@
                                         <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">계좌번호</label><textarea value={bankAccount} onChange={(e)=>{const v = e.target.value; setBankAccount(() => v);}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-12 resize-none bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
                                         <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">주소 있음 안내</label><textarea value={templateConfig.addrNotice} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, addrNotice: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-12 resize-none bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
                                         <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">주소 없음 안내</label><textarea value={templateConfig.surveyNotice} onChange={(e)=>{const v = e.target.value; setTemplateConfig(p => ({...p, surveyNotice: v}));}} className="w-full border dark:border-slate-600 rounded px-2 py-1.5 text-xs h-24 resize-none bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-slate-400" /></div>
-                                        <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800 p-2 rounded border border-slate-300 dark:border-slate-600">
+                                        <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800 p-2 rounded border dark:border-slate-600">
                                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer" onClick={() => setTemplateConfig(p => ({...p, alwaysRequestAddress: !p.alwaysRequestAddress}))}>주소록 무시하고 항상 새로 입력받기</label>
                                             <input type="checkbox" checked={templateConfig.alwaysRequestAddress || false} onChange={(e)=>{const v = e.target.checked; setTemplateConfig(p => ({...p, alwaysRequestAddress: v}));}} className="custom-checkbox" />
                                         </div>
